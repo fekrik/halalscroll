@@ -9,14 +9,17 @@
     "build": "node scripts/build_static.js",
     "test:e2e": "node server/e2e_test.js"
   },
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
+    "esbuild": "0.21.5",
     "lucide-react": "0.460.0",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@types/react": "18.3.31",
-    "@types/react-dom": "18.3.7",
-    "esbuild": "0.21.5"
+    "@types/react-dom": "18.3.7"
   }
 }

@@ -384,8 +384,8 @@ const server = http.createServer(handleRequest);
 
 if (require.main === module) {
   buildFrontend().then(() => {
-    server.listen(PORT, () => {
-      console.log(`Halal Scroll E2E Server listening on http://localhost:${PORT}`);
+    server.listen(Number(PORT), '0.0.0.0', () => {
+      console.log(`Halal Scroll E2E Server listening on http://0.0.0.0:${PORT}`);
     });
   }).catch(err => {
     console.error('Build error:', err);
