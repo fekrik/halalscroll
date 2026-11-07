@@ -384,12 +384,12 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* 1. TOP FLOATING BAR (Mode Switcher + Streak + Vault + Settings) */}
+        {/* 1. TOP HEADER BAR (In-Flow so zero artificial top margin gap on mobile) */}
         <div style={{
-          position: 'absolute',
-          top: webCompanionSlug ? 42 : 14,
-          left: 14,
-          right: 14,
+          position: 'relative',
+          flexShrink: 0,
+          padding: '10px 14px 8px 14px',
+          borderBottom: '1px solid var(--border-specular)',
           zIndex: 25,
           display: 'flex',
           flexDirection: 'column',
@@ -665,9 +665,6 @@ const App: React.FC = () => {
               <div
                 key={card.id}
                 className="feed-card-snap"
-                style={{
-                  paddingTop: feedMode === 'for_you' ? 64 : 108
-                }}
               >
                 {/* UNIFIED CARD CONTENT CLUSTER: Metadata Header + Sacred Text Canvas */}
                 <div className="card-content-cluster" style={{ zIndex: 2 }}>
@@ -804,182 +801,204 @@ const App: React.FC = () => {
                   </p>
                 </div>
 
-                {/* RIGHT VERTICAL ACTION RAIL (Thumb-Zone Optimized) */}
+                {/* BOTTOM THUMB-ZONE ACTION DOCK (In-flow at bottom of card — full width on mobile) */}
                 <div style={{
-                  position: 'absolute',
-                  right: 14,
-                  bottom: 92,
+                  width: '100%',
+                  flexShrink: 0,
                   display: 'flex',
                   flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 14,
+                  gap: 10,
                   zIndex: 15
                 }}>
-                  {/* 1. Audio Play / Reciter Switcher */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, position: 'relative' }}>
-                    <button
-                      onClick={() => handleToggleRecitation(card)}
-                      className={`glass-pill ${isCardPlaying ? 'audio-playing-ring' : ''}`}
-                      title="Play Synchronized Word-by-Word Recitation"
-                      style={{
-                        width: 46,
-                        height: 46,
-                        borderRadius: 999,
-                        color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {isCardPlaying ? <Pause size={19} /> : <Volume2 size={19} />}
-                    </button>
-                    <button
-                      onClick={() => {
-                        soundEngine.triggerHaptic('selectionTick');
-                        setShowReciterMenuForCard(showReciterMenuForCard === card.id ? null : card.id);
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text-secondary)',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 2
-                      }}
-                    >
-                      <span>{RECITERS.find(r => r.id === userState.reciter)?.short || 'Reciter'}</span>
-                      <ChevronDown size={10} />
-                    </button>
+                  {/* Row 1: Audio Reciter + Bookmark Folder + Share Studio + Card Counter */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      {/* 1. Audio Play / Reciter Switcher */}
+                      <div style={{ display: 'inline-flex', alignItems: 'center', position: 'relative' }}>
+                        <button
+                          onClick={() => handleToggleRecitation(card)}
+                          className={`glass-pill ${isCardPlaying ? 'audio-playing-ring' : ''}`}
+                          title="Play Synchronized Word-by-Word Recitation"
+                          style={{
+                            padding: '8px 12px',
+                            borderTopLeftRadius: 999,
+                            borderBottomLeftRadius: 999,
+                            color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {isCardPlaying ? <Pause size={15} /> : <Volume2 size={15} />}
+                          <span>{isCardPlaying ? 'Playing' : 'Recite'}</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            soundEngine.triggerHaptic('selectionTick');
+                            setShowReciterMenuForCard(showReciterMenuForCard === card.id ? null : card.id);
+                          }}
+                          className="glass-pill"
+                          style={{
+                            padding: '8px 9px',
+                            borderTopRightRadius: 999,
+                            borderBottomRightRadius: 999,
+                            borderLeft: 'none',
+                            color: 'var(--text-secondary)',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3
+                          }}
+                        >
+                          <span>{RECITERS.find(r => r.id === userState.reciter)?.short || 'Reciter'}</span>
+                          <ChevronDown size={11} />
+                        </button>
 
-                    {/* Reciter Quick-Switcher Popover */}
-                    {showReciterMenuForCard === card.id && (
-                      <div
-                        className="glass-pill"
-                        style={{
-                          position: 'absolute',
-                          right: 54,
-                          top: 0,
-                          width: 215,
-                          padding: 8,
-                          borderRadius: 16,
-                          boxShadow: '0 14px 36px rgba(0,0,0,0.65)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 4,
-                          zIndex: 30
-                        }}
-                      >
-                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-gold)', padding: '2px 6px' }}>
-                          Select Qari / Reciter
-                        </div>
-                        {RECITERS.map(r => (
-                          <button
-                            key={r.id}
-                            onClick={() => {
-                              soundEngine.triggerHaptic('selectionTick');
-                              updateServerState({ reciter: r.id });
-                              setShowReciterMenuForCard(null);
-                            }}
+                        {/* Reciter Quick-Switcher Popover */}
+                        {showReciterMenuForCard === card.id && (
+                          <div
+                            className="glass-pill"
                             style={{
-                              padding: '6px 8px',
-                              borderRadius: 10,
-                              border: 'none',
-                              textAlign: 'left',
-                              cursor: 'pointer',
-                              background: userState.reciter === r.id ? 'rgba(212, 175, 55, 0.2)' : 'transparent',
-                              color: userState.reciter === r.id ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
-                              fontSize: 11.5,
-                              fontWeight: userState.reciter === r.id ? 700 : 500
+                              position: 'absolute',
+                              left: 0,
+                              bottom: 42,
+                              width: 220,
+                              padding: 8,
+                              borderRadius: 16,
+                              boxShadow: '0 14px 36px rgba(0,0,0,0.45)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 4,
+                              zIndex: 30
                             }}
                           >
-                            <div>{r.id}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{r.origin}</div>
-                          </button>
-                        ))}
+                            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-gold)', padding: '2px 6px' }}>
+                              Select Qari / Reciter
+                            </div>
+                            {RECITERS.map(r => (
+                              <button
+                                key={r.id}
+                                onClick={() => {
+                                  soundEngine.triggerHaptic('selectionTick');
+                                  updateServerState({ reciter: r.id });
+                                  setShowReciterMenuForCard(null);
+                                }}
+                                style={{
+                                  padding: '6px 8px',
+                                  borderRadius: 10,
+                                  border: 'none',
+                                  textAlign: 'left',
+                                  cursor: 'pointer',
+                                  background: userState.reciter === r.id ? 'rgba(212, 175, 55, 0.2)' : 'transparent',
+                                  color: userState.reciter === r.id ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
+                                  fontSize: 11.5,
+                                  fontWeight: userState.reciter === r.id ? 700 : 500
+                                }}
+                              >
+                                <div>{r.id}</div>
+                                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{r.origin}</div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
 
-                  {/* 2. Bookmark / Custom Collection Button */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                    <button
-                      onClick={() => handleToggleBookmark(card, 'Favorites', 'toggle')}
+                      {/* 2. Bookmark / Custom Collection Pill */}
+                      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        <button
+                          onClick={() => handleToggleBookmark(card, 'Favorites', 'toggle')}
+                          className="glass-pill"
+                          title="Tap to Bookmark"
+                          style={{
+                            padding: '8px 11px',
+                            borderTopLeftRadius: 999,
+                            borderBottomLeftRadius: 999,
+                            color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
+                            borderColor: card.is_bookmarked ? 'var(--border-gold)' : undefined,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Bookmark size={14} fill={card.is_bookmarked ? 'currentColor' : 'none'} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            soundEngine.triggerHaptic('selectionTick');
+                            setBookmarkFolderModalCard(card);
+                          }}
+                          className="glass-pill"
+                          style={{
+                            padding: '8px 9px',
+                            borderTopRightRadius: 999,
+                            borderBottomRightRadius: 999,
+                            borderLeft: 'none',
+                            color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-secondary)',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {card.bookmark_folders[0] || 'Folder'}
+                        </button>
+                      </div>
+
+                      {/* 3. Social Share Studio Pill */}
+                      <button
+                        onClick={() => {
+                          soundEngine.triggerHaptic('lightImpact');
+                          setShareStudioModal({ card, initialSlide: 0 });
+                        }}
+                        className="glass-pill"
+                        title="Open Studio-Grade Social Share & Video Reel Exporter"
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 999,
+                          color: 'var(--text-primary)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Share2 size={14} />
+                        <span>Share</span>
+                      </button>
+                    </div>
+
+                    {/* Card Progress Pill */}
+                    <div
                       className="glass-pill"
-                      title="Tap to Bookmark; tap Folder label below to organize into Collections"
                       style={{
-                        width: 46,
-                        height: 46,
+                        padding: '7px 10px',
                         borderRadius: 999,
-                        color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
-                        borderColor: card.is_bookmarked ? 'var(--border-gold)' : undefined,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer'
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: 'var(--text-secondary)',
+                        fontVariantNumeric: 'tabular-nums',
+                        flexShrink: 0
                       }}
                     >
-                      <Bookmark size={19} fill={card.is_bookmarked ? 'currentColor' : 'none'} />
-                    </button>
-                    <button
-                      onClick={() => {
-                        soundEngine.triggerHaptic('selectionTick');
-                        setBookmarkFolderModalCard(card);
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-secondary)',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {card.bookmark_folders[0] || 'Folder'}
-                    </button>
+                      {cardIdx + 1} / {displayedCards.length}
+                    </div>
                   </div>
 
-                  {/* 3. Social Share Studio Button */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                    <button
-                      onClick={() => {
-                        soundEngine.triggerHaptic('lightImpact');
-                        setShareStudioModal({ card, initialSlide: 0 });
-                      }}
-                      className="glass-pill"
-                      title="Open Studio-Grade Social Share & Video Reel Exporter"
-                      style={{
-                        width: 46,
-                        height: 46,
-                        borderRadius: 999,
-                        color: 'var(--text-primary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Share2 size={18} />
-                    </button>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)' }}>Share</span>
-                  </div>
-                </div>
-
-                {/* BOTTOM FLOATING DOCK: Primary "Deep Study & Tafsir" Pill + Position Indicator */}
-                <div style={{
-                  position: 'absolute',
-                  bottom: 22,
-                  left: 20,
-                  right: 20,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  zIndex: 15
-                }}>
+                  {/* Row 2: Primary Full-Width "Deep Study & Tafsir" Pill */}
                   <button
                     onClick={() => {
                       soundEngine.triggerHaptic('lightImpact');
@@ -987,8 +1006,8 @@ const App: React.FC = () => {
                     }}
                     className="glass-pill deep-study-cta"
                     style={{
-                      flex: 1,
-                      padding: '13px 18px',
+                      width: '100%',
+                      padding: '12px 16px',
                       borderRadius: 999,
                       border: '1px solid var(--border-gold)',
                       color: 'var(--text-primary)',
@@ -1015,21 +1034,6 @@ const App: React.FC = () => {
                       5 Layers ↑
                     </span>
                   </button>
-
-                  {/* Card Progress Pill */}
-                  <div
-                    className="glass-pill"
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 999,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: 'var(--text-secondary)',
-                      fontVariantNumeric: 'tabular-nums'
-                    }}
-                  >
-                    {cardIdx + 1} / {displayedCards.length}
-                  </div>
                 </div>
               </div>
             );

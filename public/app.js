@@ -28819,10 +28819,10 @@ ${canonicalUrl}`;
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
-          position: "absolute",
-          top: webCompanionSlug ? 42 : 14,
-          left: 14,
-          right: 14,
+          position: "relative",
+          flexShrink: 0,
+          padding: "10px 14px 8px 14px",
+          borderBottom: "1px solid var(--border-specular)",
           zIndex: 25,
           display: "flex",
           flexDirection: "column",
@@ -29094,9 +29094,6 @@ ${canonicalUrl}`;
                 "div",
                 {
                   className: "feed-card-snap",
-                  style: {
-                    paddingTop: feedMode === "for_you" ? 64 : 108
-                  },
                   children: [
                     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "card-content-cluster", style: { zIndex: 2 }, children: [
                       /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
@@ -29195,185 +29192,214 @@ ${canonicalUrl}`;
                       )
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
-                      position: "absolute",
-                      right: 14,
-                      bottom: 92,
+                      width: "100%",
+                      flexShrink: 0,
                       display: "flex",
                       flexDirection: "column",
-                      alignItems: "center",
-                      gap: 14,
+                      gap: 10,
                       zIndex: 15
                     }, children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, position: "relative" }, children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                          "button",
-                          {
-                            onClick: () => handleToggleRecitation(card),
-                            className: `glass-pill ${isCardPlaying ? "audio-playing-ring" : ""}`,
-                            title: "Play Synchronized Word-by-Word Recitation",
-                            style: {
-                              width: 46,
-                              height: 46,
-                              borderRadius: 999,
-                              color: isCardPlaying ? "var(--accent-gold-bright)" : "var(--text-primary)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              cursor: "pointer"
-                            },
-                            children: isCardPlaying ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Pause, { size: 19 }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Volume2, { size: 19 })
-                          }
-                        ),
+                      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8
+                      }, children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }, children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "inline-flex", alignItems: "center", position: "relative" }, children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                              "button",
+                              {
+                                onClick: () => handleToggleRecitation(card),
+                                className: `glass-pill ${isCardPlaying ? "audio-playing-ring" : ""}`,
+                                title: "Play Synchronized Word-by-Word Recitation",
+                                style: {
+                                  padding: "8px 12px",
+                                  borderTopLeftRadius: 999,
+                                  borderBottomLeftRadius: 999,
+                                  color: isCardPlaying ? "var(--accent-gold-bright)" : "var(--text-primary)",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  cursor: "pointer"
+                                },
+                                children: [
+                                  isCardPlaying ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Pause, { size: 15 }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Volume2, { size: 15 }),
+                                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: isCardPlaying ? "Playing" : "Recite" })
+                                ]
+                              }
+                            ),
+                            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                              "button",
+                              {
+                                onClick: () => {
+                                  soundEngine.triggerHaptic("selectionTick");
+                                  setShowReciterMenuForCard(showReciterMenuForCard === card.id ? null : card.id);
+                                },
+                                className: "glass-pill",
+                                style: {
+                                  padding: "8px 9px",
+                                  borderTopRightRadius: 999,
+                                  borderBottomRightRadius: 999,
+                                  borderLeft: "none",
+                                  color: "var(--text-secondary)",
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 3
+                                },
+                                children: [
+                                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: RECITERS.find((r) => r.id === userState.reciter)?.short || "Reciter" }),
+                                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ChevronDown, { size: 11 })
+                                ]
+                              }
+                            ),
+                            showReciterMenuForCard === card.id && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                              "div",
+                              {
+                                className: "glass-pill",
+                                style: {
+                                  position: "absolute",
+                                  left: 0,
+                                  bottom: 42,
+                                  width: 220,
+                                  padding: 8,
+                                  borderRadius: 16,
+                                  boxShadow: "0 14px 36px rgba(0,0,0,0.45)",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 4,
+                                  zIndex: 30
+                                },
+                                children: [
+                                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--accent-gold)", padding: "2px 6px" }, children: "Select Qari / Reciter" }),
+                                  RECITERS.map((r) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                                    "button",
+                                    {
+                                      onClick: () => {
+                                        soundEngine.triggerHaptic("selectionTick");
+                                        updateServerState({ reciter: r.id });
+                                        setShowReciterMenuForCard(null);
+                                      },
+                                      style: {
+                                        padding: "6px 8px",
+                                        borderRadius: 10,
+                                        border: "none",
+                                        textAlign: "left",
+                                        cursor: "pointer",
+                                        background: userState.reciter === r.id ? "rgba(212, 175, 55, 0.2)" : "transparent",
+                                        color: userState.reciter === r.id ? "var(--accent-gold-bright)" : "var(--text-primary)",
+                                        fontSize: 11.5,
+                                        fontWeight: userState.reciter === r.id ? 700 : 500
+                                      },
+                                      children: [
+                                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { children: r.id }),
+                                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { fontSize: 10, color: "var(--text-muted)" }, children: r.origin })
+                                      ]
+                                    },
+                                    r.id
+                                  ))
+                                ]
+                              }
+                            )
+                          ] }),
+                          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "inline-flex", alignItems: "center" }, children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                              "button",
+                              {
+                                onClick: () => handleToggleBookmark(card, "Favorites", "toggle"),
+                                className: "glass-pill",
+                                title: "Tap to Bookmark",
+                                style: {
+                                  padding: "8px 11px",
+                                  borderTopLeftRadius: 999,
+                                  borderBottomLeftRadius: 999,
+                                  color: card.is_bookmarked ? "var(--accent-gold-bright)" : "var(--text-primary)",
+                                  borderColor: card.is_bookmarked ? "var(--border-gold)" : void 0,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 5,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  cursor: "pointer"
+                                },
+                                children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Bookmark, { size: 14, fill: card.is_bookmarked ? "currentColor" : "none" })
+                              }
+                            ),
+                            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                              "button",
+                              {
+                                onClick: () => {
+                                  soundEngine.triggerHaptic("selectionTick");
+                                  setBookmarkFolderModalCard(card);
+                                },
+                                className: "glass-pill",
+                                style: {
+                                  padding: "8px 9px",
+                                  borderTopRightRadius: 999,
+                                  borderBottomRightRadius: 999,
+                                  borderLeft: "none",
+                                  color: card.is_bookmarked ? "var(--accent-gold-bright)" : "var(--text-secondary)",
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  cursor: "pointer"
+                                },
+                                children: card.bookmark_folders[0] || "Folder"
+                              }
+                            )
+                          ] }),
+                          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                            "button",
+                            {
+                              onClick: () => {
+                                soundEngine.triggerHaptic("lightImpact");
+                                setShareStudioModal({ card, initialSlide: 0 });
+                              },
+                              className: "glass-pill",
+                              title: "Open Studio-Grade Social Share & Video Reel Exporter",
+                              style: {
+                                padding: "8px 12px",
+                                borderRadius: 999,
+                                color: "var(--text-primary)",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 5,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer"
+                              },
+                              children: [
+                                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Share2, { size: 14 }),
+                                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "Share" })
+                              ]
+                            }
+                          )
+                        ] }),
                         /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-                          "button",
-                          {
-                            onClick: () => {
-                              soundEngine.triggerHaptic("selectionTick");
-                              setShowReciterMenuForCard(showReciterMenuForCard === card.id ? null : card.id);
-                            },
-                            style: {
-                              background: "transparent",
-                              border: "none",
-                              color: "var(--text-secondary)",
-                              fontSize: 10,
-                              fontWeight: 600,
-                              cursor: "pointer",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 2
-                            },
-                            children: [
-                              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: RECITERS.find((r) => r.id === userState.reciter)?.short || "Reciter" }),
-                              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ChevronDown, { size: 10 })
-                            ]
-                          }
-                        ),
-                        showReciterMenuForCard === card.id && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
                           "div",
                           {
                             className: "glass-pill",
                             style: {
-                              position: "absolute",
-                              right: 54,
-                              top: 0,
-                              width: 215,
-                              padding: 8,
-                              borderRadius: 16,
-                              boxShadow: "0 14px 36px rgba(0,0,0,0.65)",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 4,
-                              zIndex: 30
+                              padding: "7px 10px",
+                              borderRadius: 999,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: "var(--text-secondary)",
+                              fontVariantNumeric: "tabular-nums",
+                              flexShrink: 0
                             },
                             children: [
-                              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--accent-gold)", padding: "2px 6px" }, children: "Select Qari / Reciter" }),
-                              RECITERS.map((r) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-                                "button",
-                                {
-                                  onClick: () => {
-                                    soundEngine.triggerHaptic("selectionTick");
-                                    updateServerState({ reciter: r.id });
-                                    setShowReciterMenuForCard(null);
-                                  },
-                                  style: {
-                                    padding: "6px 8px",
-                                    borderRadius: 10,
-                                    border: "none",
-                                    textAlign: "left",
-                                    cursor: "pointer",
-                                    background: userState.reciter === r.id ? "rgba(212, 175, 55, 0.2)" : "transparent",
-                                    color: userState.reciter === r.id ? "var(--accent-gold-bright)" : "var(--text-primary)",
-                                    fontSize: 11.5,
-                                    fontWeight: userState.reciter === r.id ? 700 : 500
-                                  },
-                                  children: [
-                                    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { children: r.id }),
-                                    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { fontSize: 10, color: "var(--text-muted)" }, children: r.origin })
-                                  ]
-                                },
-                                r.id
-                              ))
+                              cardIdx + 1,
+                              " / ",
+                              displayedCards.length
                             ]
                           }
                         )
                       ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }, children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                          "button",
-                          {
-                            onClick: () => handleToggleBookmark(card, "Favorites", "toggle"),
-                            className: "glass-pill",
-                            title: "Tap to Bookmark; tap Folder label below to organize into Collections",
-                            style: {
-                              width: 46,
-                              height: 46,
-                              borderRadius: 999,
-                              color: card.is_bookmarked ? "var(--accent-gold-bright)" : "var(--text-primary)",
-                              borderColor: card.is_bookmarked ? "var(--border-gold)" : void 0,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              cursor: "pointer"
-                            },
-                            children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Bookmark, { size: 19, fill: card.is_bookmarked ? "currentColor" : "none" })
-                          }
-                        ),
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                          "button",
-                          {
-                            onClick: () => {
-                              soundEngine.triggerHaptic("selectionTick");
-                              setBookmarkFolderModalCard(card);
-                            },
-                            style: {
-                              background: "transparent",
-                              border: "none",
-                              color: card.is_bookmarked ? "var(--accent-gold-bright)" : "var(--text-secondary)",
-                              fontSize: 10,
-                              fontWeight: 600,
-                              cursor: "pointer"
-                            },
-                            children: card.bookmark_folders[0] || "Folder"
-                          }
-                        )
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }, children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                          "button",
-                          {
-                            onClick: () => {
-                              soundEngine.triggerHaptic("lightImpact");
-                              setShareStudioModal({ card, initialSlide: 0 });
-                            },
-                            className: "glass-pill",
-                            title: "Open Studio-Grade Social Share & Video Reel Exporter",
-                            style: {
-                              width: 46,
-                              height: 46,
-                              borderRadius: 999,
-                              color: "var(--text-primary)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              cursor: "pointer"
-                            },
-                            children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Share2, { size: 18 })
-                          }
-                        ),
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: 10, fontWeight: 600, color: "var(--text-secondary)" }, children: "Share" })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
-                      position: "absolute",
-                      bottom: 22,
-                      left: 20,
-                      right: 20,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      zIndex: 15
-                    }, children: [
                       /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
                         "button",
                         {
@@ -29383,8 +29409,8 @@ ${canonicalUrl}`;
                           },
                           className: "glass-pill deep-study-cta",
                           style: {
-                            flex: 1,
-                            padding: "13px 18px",
+                            width: "100%",
+                            padding: "12px 16px",
                             borderRadius: 999,
                             border: "1px solid var(--border-gold)",
                             color: "var(--text-primary)",
@@ -29408,25 +29434,6 @@ ${canonicalUrl}`;
                               color: "var(--accent-gold-bright)",
                               fontWeight: 600
                             }, children: "5 Layers \u2191" })
-                          ]
-                        }
-                      ),
-                      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-                        "div",
-                        {
-                          className: "glass-pill",
-                          style: {
-                            padding: "10px 12px",
-                            borderRadius: 999,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: "var(--text-secondary)",
-                            fontVariantNumeric: "tabular-nums"
-                          },
-                          children: [
-                            cardIdx + 1,
-                            " / ",
-                            displayedCards.length
                           ]
                         }
                       )

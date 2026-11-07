@@ -67,7 +67,8 @@ async function buildStaticSite() {
   const css = fs.readFileSync(path.join(ROOT, 'public', 'app.css'), 'utf8');
   fs.writeFileSync(path.join(DOCS_DIR, 'app.css'), css);
 
-  // 3. Write HTML & 404.html with relative paths for GitHub Pages / static hosts
+  // 3. Write HTML & 404.html with relative paths and cache-busting query param for GitHub Pages / mobile browsers
+  const ver = Date.now();
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -79,11 +80,11 @@ async function buildStaticSite() {
   <meta property="og:description" content="Replace mindless social media doom-scrolling with a serene, tactile vertical feed of the Quran, Sahih Hadith, Prophetic Duas, and Seerah reflections." />
   <meta property="og:image" content="./api/og/ash-sharh-5-6.svg" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="stylesheet" href="./app.css" />
+  <link rel="stylesheet" href="./app.css?v=${ver}" />
 </head>
 <body>
   <div id="root"></div>
-  <script src="./app.js"></script>
+  <script src="./app.js?v=${ver}"></script>
 </body>
 </html>`;
 
