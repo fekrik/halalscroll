@@ -1,0 +1,22 @@
+{
+  "name": "halalscroll",
+  "version": "1.0.0",
+  "description": "Halal Scroll: Quran & Sunnah — Daily Ayah, Hadith & Tadabbur E2E Prototype",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "build": "node scripts/build_static.js",
+    "test:e2e": "node server/e2e_test.js"
+  },
+  "dependencies": {
+    "lucide-react": "0.460.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "esbuild": "0.21.5"
+  }
+}
