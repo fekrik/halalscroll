@@ -324,6 +324,18 @@ const handleRequest = async (req, res) => {
     return sendJson(res, 200, { state: getUserState() });
   }
 
+  // Dynamic OpenGraph Raster JPG Card Preview: /api/og/:slug.jpg
+  if (pathname.startsWith('/api/og/') && pathname.endsWith('.jpg')) {
+    const slug = decodeURIComponent(pathname.replace('/api/og/', '').replace('.jpg', ''));
+    const cards = getHydratedCards();
+    const card = cards.find(c => c.share_slug === slug || c.id === slug) || cards[0];
+    const jpgPath = path.join(PUBLIC_DIR, 'og', `${card.share_slug}.jpg`);
+    if (fs.existsSync(jpgPath)) {
+      res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=86400' });
+      return res.end(fs.readFileSync(jpgPath));
+    }
+  }
+
   // Dynamic OpenGraph SVG Card Preview: /api/og/:slug.svg
   if (pathname.startsWith('/api/og/') && pathname.endsWith('.svg')) {
     const slug = decodeURIComponent(pathname.replace('/api/og/', '').replace('.svg', ''));
@@ -351,9 +363,13 @@ const handleRequest = async (req, res) => {
   }
 
   // Serve HTML with dynamic OpenGraph metadata for /c/:slug or root /
+  const proto = (req.headers && req.headers['x-forwarded-proto']) || 'https';
+  const host = (req.headers && req.headers.host) || 'halalscroll-production.up.railway.app';
+  const baseOrigin = `${proto}://${host}`;
+
   let ogTitle = 'Halal Scroll: Quran & Sunnah — Daily Ayah, Hadith & Tadabbur';
   let ogDesc = 'Replace mindless social media doom-scrolling with a serene, tactile vertical feed of the Quran, Sahih Hadith, Prophetic Duas, and Seerah reflections.';
-  let ogImage = `/api/og/ash-sharh-5-6.svg`;
+  let ogSlug = 'ash-sharh-5-6';
   if (pathname.startsWith('/c/')) {
     const slug = decodeURIComponent(pathname.replace('/c/', ''));
     const cards = getHydratedCards();
@@ -361,23 +377,43 @@ const handleRequest = async (req, res) => {
     if (card) {
       ogTitle = `${card.source_title} • Halal Scroll`;
       ogDesc = `“${card.translation_en_clear}” — Tap to explore Word-by-Word Arabic Roots, Classical Tafsir & Daily Sunnah.`;
-      ogImage = `/api/og/${card.share_slug}.svg`;
+      ogSlug = card.share_slug;
     }
   }
+  const ogImage = `${baseOrigin}/api/og/${ogSlug}.jpg`;
 
-  const indexPath = path.join(PUBLIC_DIR, 'index.html');
-  if (fs.existsSync(indexPath)) {
-    let html = fs.readFileSync(indexPath, 'utf8');
-    html = html
-      .replace('__OG_TITLE__', escapeXml(ogTitle))
-      .replace('__OG_DESC__', escapeXml(ogDesc))
-      .replace('__OG_IMAGE__', escapeXml(ogImage));
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
-    return res.end(html);
-  }
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>${escapeXml(ogTitle)}</title>
+  <meta name="description" content="${escapeXml(ogDesc)}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="${escapeXml(baseOrigin + pathname)}" />
+  <meta property="og:site_name" content="Halal Scroll" />
+  <meta property="og:title" content="${escapeXml(ogTitle)}" />
+  <meta property="og:description" content="${escapeXml(ogDesc)}" />
+  <meta property="og:image" content="${escapeXml(ogImage)}" />
+  <meta property="og:image:secure_url" content="${escapeXml(ogImage)}" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <link rel="apple-touch-icon" href="${escapeXml(ogImage)}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${escapeXml(ogTitle)}" />
+  <meta name="twitter:description" content="${escapeXml(ogDesc)}" />
+  <meta name="twitter:image" content="${escapeXml(ogImage)}" />
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+  <div id="root"></div>
+  <script src="/app.js"></script>
+</body>
+</html>`;
 
-  res.writeHead(404);
-  res.end('Not found');
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+  return res.end(html);
 };
 
 const server = http.createServer(handleRequest);

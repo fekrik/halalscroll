@@ -9,7 +9,7 @@ function request(method, path, body = null) {
       const req = new EventEmitter();
       req.method = method;
       req.url = path;
-      req.headers = { 'content-type': 'application/json' };
+      req.headers = { 'content-type': 'application/json', host: 'halalscroll-production.up.railway.app' };
 
       let resStatus = 200;
       let resHeaders = {};
@@ -104,17 +104,27 @@ async function runTests() {
   await request('POST', '/api/state', { theme: 'andalusian_parchment' });
   console.log('✓ 5. /api/state verified: Theme, Arabic script & user state persisted');
 
-  // 6. Test Dynamic OpenGraph SVG Card & Web Companion Deep Link (/c/:slug & /api/og/:slug.svg)
-  const og = await request('GET', '/api/og/ash-sharh-5-6.svg');
-  assert.strictEqual(og.status, 200);
-  assert(og.headers['content-type'].includes('image/svg+xml'));
-  assert(og.text.includes('Surah Ash-Sharh'));
+  // 6. Test Dynamic OpenGraph JPG/SVG Card & Web Companion Deep Link (/c/:slug & /api/og/:slug.jpg)
+  const ogSvg = await request('GET', '/api/og/ash-sharh-5-6.svg');
+  assert.strictEqual(ogSvg.status, 200);
+  assert(ogSvg.headers['content-type'].includes('image/svg+xml'));
+  assert(ogSvg.text.includes('Surah Ash-Sharh'));
+
+  const ogJpg = await request('GET', '/api/og/ash-sharh-5-6.jpg');
+  assert.strictEqual(ogJpg.status, 200);
+  assert(ogJpg.headers['content-type'].includes('image/jpeg'));
+
+  const rootHtml = await request('GET', '/');
+  assert.strictEqual(rootHtml.status, 200);
+  assert(!rootHtml.text.includes('__OG_'), 'Root HTML must never contain raw __OG_ placeholders');
+  assert(rootHtml.text.includes('https://halalscroll-production.up.railway.app/api/og/ash-sharh-5-6.jpg'));
 
   const deepLinkHtml = await request('GET', '/c/ash-sharh-5-6');
   assert.strictEqual(deepLinkHtml.status, 200);
+  assert(!deepLinkHtml.text.includes('__OG_'), 'Deep link HTML must never contain raw __OG_ placeholders');
   assert(deepLinkHtml.text.includes('Surah Ash-Sharh • 94:5–6 • Halal Scroll'));
-  assert(deepLinkHtml.text.includes('/api/og/ash-sharh-5-6.svg'));
-  console.log('✓ 6. Web Companion Deep Link (/c/ash-sharh-5-6) & OpenGraph SVG generator verified');
+  assert(deepLinkHtml.text.includes('https://halalscroll-production.up.railway.app/api/og/ash-sharh-5-6.jpg'));
+  console.log('✓ 6. Web Companion Deep Link (/c/ash-sharh-5-6) & iMessage/WhatsApp OpenGraph JPG verified');
 
   // 7. Verify compiled frontend bundle (/app.js)
   const bundle = await request('GET', '/app.js');

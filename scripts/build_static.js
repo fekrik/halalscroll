@@ -1,13 +1,16 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const esbuild = require('esbuild');
 const { SEED_CARDS } = require('../server/seed');
 
 const ROOT = path.join(__dirname, '..');
 const DOCS_DIR = path.join(ROOT, 'docs');
 const OG_DIR = path.join(DOCS_DIR, 'api', 'og');
+const PUBLIC_OG_DIR = path.join(ROOT, 'public', 'og');
 
 fs.mkdirSync(OG_DIR, { recursive: true });
+fs.mkdirSync(PUBLIC_OG_DIR, { recursive: true });
 
 function escapeXml(str = '') {
   return String(str)
@@ -62,6 +65,7 @@ async function buildStaticSite() {
       'process.env.NODE_ENV': '"production"'
     }
   });
+  fs.copyFileSync(path.join(DOCS_DIR, 'app.js'), path.join(ROOT, 'public', 'app.js'));
 
   // 2. Copy CSS
   const css = fs.readFileSync(path.join(ROOT, 'public', 'app.css'), 'utf8');
@@ -76,10 +80,18 @@ async function buildStaticSite() {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Halal Scroll: Quran &amp; Sunnah — Daily Ayah, Hadith &amp; Tadabbur</title>
   <meta name="description" content="Replace mindless social media doom-scrolling with a serene, tactile vertical feed of the Quran, Sahih Hadith, Prophetic Duas, and Seerah reflections." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Halal Scroll" />
   <meta property="og:title" content="Halal Scroll: Quran &amp; Sunnah — Daily Ayah, Hadith &amp; Tadabbur" />
   <meta property="og:description" content="Replace mindless social media doom-scrolling with a serene, tactile vertical feed of the Quran, Sahih Hadith, Prophetic Duas, and Seerah reflections." />
-  <meta property="og:image" content="./api/og/ash-sharh-5-6.svg" />
+  <meta property="og:image" content="https://fekrik.github.io/halalscroll/api/og/ash-sharh-5-6.jpg" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Halal Scroll: Quran &amp; Sunnah — Daily Ayah, Hadith &amp; Tadabbur" />
+  <meta name="twitter:description" content="Replace mindless social media doom-scrolling with a serene, tactile vertical feed of the Quran, Sahih Hadith, Prophetic Duas, and Seerah reflections." />
+  <meta name="twitter:image" content="https://fekrik.github.io/halalscroll/api/og/ash-sharh-5-6.jpg" />
   <link rel="stylesheet" href="./app.css?v=${ver}" />
 </head>
 <body>
@@ -92,16 +104,27 @@ async function buildStaticSite() {
   fs.writeFileSync(path.join(DOCS_DIR, '404.html'), html);
   fs.writeFileSync(path.join(DOCS_DIR, '.nojekyll'), '');
 
-  // 4. Pre-render OpenGraph SVGs for all 16 cards
+  // 4. Pre-render OpenGraph SVGs & raster JPEGs for all 16 cards
+  const hasSips = fs.existsSync('/usr/bin/sips');
   for (const card of SEED_CARDS) {
-    fs.writeFileSync(path.join(OG_DIR, `${card.share_slug}.svg`), renderOgSvg(card));
+    const svgContent = renderOgSvg(card);
+    const svgPath = path.join(OG_DIR, `${card.share_slug}.svg`);
+    const pubSvgPath = path.join(PUBLIC_OG_DIR, `${card.share_slug}.svg`);
+    fs.writeFileSync(svgPath, svgContent);
+    fs.writeFileSync(pubSvgPath, svgContent);
+
+    if (hasSips) {
+      const jpgPath = path.join(OG_DIR, `${card.share_slug}.jpg`);
+      const pubJpgPath = path.join(PUBLIC_OG_DIR, `${card.share_slug}.jpg`);
+      execFileSync('/usr/bin/sips', ['-s', 'format', 'jpeg', '-s', 'formatOptions', '90', svgPath, '--out', jpgPath], { stdio: 'ignore' });
+      fs.copyFileSync(jpgPath, pubJpgPath);
+    }
   }
 
-  console.log(`Built static deployment bundle in ${DOCS_DIR} (${SEED_CARDS.length} OpenGraph cards generated).`);
+  console.log(`Built static deployment bundle in ${DOCS_DIR} (${SEED_CARDS.length} OpenGraph SVG + JPG cards generated).`);
 }
 
 buildStaticSite().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-
