@@ -384,24 +384,25 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* 1. TOP HEADER BAR (In-Flow so zero artificial top margin gap on mobile) */}
+        {/* 1. TOP HEADER BAR (In-Flow, No-Wrap Mobile Layout) */}
         <div style={{
           position: 'relative',
           flexShrink: 0,
-          padding: '10px 14px 8px 14px',
+          padding: '8px 10px 6px 10px',
           borderBottom: '1px solid var(--border-specular)',
           zIndex: 25,
           display: 'flex',
           flexDirection: 'column',
-          gap: 8
+          gap: 6
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'nowrap' }}>
             {/* Floating Frosted-Glass Segmented Mode Switcher */}
             <div
               className="glass-pill"
               style={{
                 display: 'inline-flex',
-                padding: 4,
+                flexShrink: 0,
+                padding: 3,
                 borderRadius: 999,
                 gap: 2
               }}
@@ -422,11 +423,12 @@ const App: React.FC = () => {
                       if (feedContainerRef.current) feedContainerRef.current.scrollTop = 0;
                     }}
                     style={{
-                      padding: '6px 12px',
+                      padding: '5px 9px',
                       borderRadius: 999,
                       border: 'none',
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: active ? 700 : 500,
+                      whiteSpace: 'nowrap',
                       cursor: 'pointer',
                       background: active ? 'rgba(212, 175, 55, 0.22)' : 'transparent',
                       color: active ? 'var(--accent-gold-bright)' : 'var(--text-secondary)',
@@ -440,7 +442,7 @@ const App: React.FC = () => {
             </div>
 
             {/* Right Top Controls: Daily Streak Pill + Bookmarks Vault + Theme Settings + Plus */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
               <button
                 onClick={() => {
                   soundEngine.triggerHaptic('selectionTick');
@@ -449,18 +451,19 @@ const App: React.FC = () => {
                 className="glass-pill"
                 title="Daily Tadabbur & Sunnah Streak"
                 style={{
-                  padding: '6px 10px',
+                  padding: '5px 8px',
                   borderRadius: 999,
                   color: 'var(--accent-gold-bright)',
-                  fontSize: 12,
+                  fontSize: 11.5,
                   fontWeight: 700,
+                  whiteSpace: 'nowrap',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 4,
+                  gap: 3,
                   cursor: 'pointer'
                 }}
               >
-                <Flame size={14} fill="currentColor" />
+                <Flame size={13} fill="currentColor" />
                 <span>{userState.streak_count}</span>
               </button>
 
@@ -472,29 +475,30 @@ const App: React.FC = () => {
                 className="glass-pill"
                 title="Saved Bookmarks & Custom Collections"
                 style={{
-                  width: 34,
-                  height: 34,
+                  width: 31,
+                  height: 31,
                   borderRadius: 999,
                   color: 'var(--text-primary)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  position: 'relative'
+                  position: 'relative',
+                  flexShrink: 0
                 }}
               >
-                <Bookmark size={15} />
+                <Bookmark size={14} />
                 {cards.filter(c => c.is_bookmarked).length > 0 && (
                   <span style={{
                     position: 'absolute',
                     top: -2,
                     right: -2,
-                    width: 15,
-                    height: 15,
+                    width: 14,
+                    height: 14,
                     borderRadius: 99,
                     background: 'var(--accent-gold)',
                     color: '#090A0F',
-                    fontSize: 9.5,
+                    fontSize: 9,
                     fontWeight: 800,
                     display: 'flex',
                     alignItems: 'center',
@@ -513,17 +517,18 @@ const App: React.FC = () => {
                 className="glass-pill"
                 title="Theme, Script & Typography Settings"
                 style={{
-                  width: 34,
-                  height: 34,
+                  width: 31,
+                  height: 31,
                   borderRadius: 999,
                   color: 'var(--text-primary)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  flexShrink: 0
                 }}
               >
-                <SlidersHorizontal size={15} />
+                <SlidersHorizontal size={14} />
               </button>
 
               <button
@@ -534,17 +539,18 @@ const App: React.FC = () => {
                 className="glass-pill"
                 title="Halal Scroll Plus & Student Scholarship"
                 style={{
-                  width: 34,
-                  height: 34,
+                  width: 31,
+                  height: 31,
                   borderRadius: 999,
                   color: userState.plus_member === 'true' ? 'var(--accent-emerald)' : 'var(--accent-gold-bright)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  flexShrink: 0
                 }}
               >
-                <Crown size={15} />
+                <Crown size={14} />
               </button>
             </div>
           </div>
@@ -668,22 +674,25 @@ const App: React.FC = () => {
               >
                 {/* UNIFIED CARD CONTENT CLUSTER: Metadata Header + Sacred Text Canvas */}
                 <div className="card-content-cluster" style={{ zIndex: 2 }}>
-                  {/* TOP CARD METADATA HEADER */}
+                  {/* TOP CARD METADATA HEADER (Clean 2-Line Mobile-Friendly Stack) */}
                   <div style={{
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 5
+                    gap: 4,
+                    width: '100%'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', justifyContent: 'center', maxWidth: '100%' }}>
                       {/* Card Type Pill */}
                       <span style={{
-                        fontSize: 10,
+                        fontSize: 9.5,
                         fontWeight: 800,
                         textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                        padding: '3px 9px',
+                        letterSpacing: '0.06em',
+                        padding: '3px 8px',
                         borderRadius: 99,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
                         background: card.card_type === 'quran'
                           ? 'rgba(212, 175, 55, 0.18)'
                           : card.card_type === 'hadith'
@@ -697,42 +706,40 @@ const App: React.FC = () => {
                           ? 'var(--accent-emerald)'
                           : 'var(--text-primary)'
                       }}>
-                        {card.card_type === 'quran' ? 'Quran Passage' : card.card_type === 'hadith' ? 'Sahih Hadith' : card.card_type === 'dua' ? 'Prophetic Dua' : 'Seerah Gem'}
+                        {card.card_type === 'quran' ? 'Quran' : card.card_type === 'hadith' ? 'Hadith' : card.card_type === 'dua' ? 'Dua' : 'Seerah'}
                       </span>
 
                       {/* Source Pill */}
                       <span
                         className="glass-pill"
                         style={{
-                          padding: '4px 12px',
+                          padding: '3px 10px',
                           borderRadius: 99,
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: 700,
-                          color: 'var(--text-primary)'
+                          color: 'var(--text-primary)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
                         }}
                       >
                         {card.source_title}
                       </span>
-
-                      {/* Authenticity / Revelation Badge */}
-                      <span style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        padding: '3px 9px',
-                        borderRadius: 99,
-                        background: 'rgba(16, 185, 129, 0.12)',
-                        border: '1px solid rgba(16, 185, 129, 0.28)',
-                        color: 'var(--accent-emerald)'
-                      }}>
-                        {card.revelation_place ? `${card.revelation_place} • ${card.authenticity_grade}` : card.authenticity_grade}
-                      </span>
                     </div>
 
-                    {card.narrator_chain && (
-                      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                        {card.narrator_chain}
-                      </div>
-                    )}
+                    {/* Authenticity / Revelation Subtitle */}
+                    <div style={{
+                      fontSize: 10.5,
+                      fontWeight: 600,
+                      color: 'var(--accent-emerald)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxWidth: '100%'
+                    }}>
+                      {card.revelation_place ? `${card.revelation_place} • ${card.authenticity_grade}` : card.authenticity_grade}
+                      {card.narrator_chain ? ` • ${card.narrator_chain}` : ''}
+                    </div>
                   </div>
 
                   {/* Complete Canonical Arabic Script (with Interactive Root Word Matching) */}
@@ -832,44 +839,47 @@ const App: React.FC = () => {
                   </p>
                 </div>
 
-                {/* BOTTOM THUMB-ZONE ACTION DOCK (In-flow at bottom of card — full width on mobile) */}
+                {/* BOTTOM THUMB-ZONE ACTION DOCK (No-Wrap Mobile-First 2-Row Layout) */}
                 <div style={{
                   width: '100%',
                   flexShrink: 0,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 10,
+                  gap: 8,
                   zIndex: 15
                 }}>
-                  {/* Row 1: Audio Reciter + Bookmark Folder + Share Studio + Card Counter */}
+                  {/* Row 1: Single-Line No-Wrap Action Bar */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: 8
+                    gap: 5,
+                    flexWrap: 'nowrap',
+                    width: '100%'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'nowrap', minWidth: 0 }}>
                       {/* 1. Audio Play / Reciter Switcher */}
-                      <div style={{ display: 'inline-flex', alignItems: 'center', position: 'relative' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', position: 'relative', flexShrink: 0 }}>
                         <button
                           onClick={() => handleToggleRecitation(card)}
                           className={`glass-pill ${isCardPlaying ? 'audio-playing-ring' : ''}`}
                           title="Play Synchronized Word-by-Word Recitation"
                           style={{
-                            padding: '8px 12px',
+                            padding: '7px 10px',
                             borderTopLeftRadius: 999,
                             borderBottomLeftRadius: 999,
                             color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: 6,
-                            fontSize: 12,
+                            gap: 5,
+                            fontSize: 11.5,
                             fontWeight: 700,
+                            whiteSpace: 'nowrap',
                             cursor: 'pointer'
                           }}
                         >
-                          {isCardPlaying ? <Pause size={15} /> : <Volume2 size={15} />}
-                          <span>{isCardPlaying ? 'Playing' : 'Recite'}</span>
+                          {isCardPlaying ? <Pause size={13} /> : <Volume2 size={13} />}
+                          <span>{isCardPlaying ? 'Pause' : 'Recite'}</span>
                         </button>
                         <button
                           onClick={() => {
@@ -877,22 +887,22 @@ const App: React.FC = () => {
                             setShowReciterMenuForCard(showReciterMenuForCard === card.id ? null : card.id);
                           }}
                           className="glass-pill"
+                          title="Change Reciter"
                           style={{
-                            padding: '8px 9px',
+                            padding: '7px 7px',
                             borderTopRightRadius: 999,
                             borderBottomRightRadius: 999,
                             borderLeft: 'none',
                             color: 'var(--text-secondary)',
                             fontSize: 11,
                             fontWeight: 600,
+                            whiteSpace: 'nowrap',
                             cursor: 'pointer',
                             display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 3
+                            alignItems: 'center'
                           }}
                         >
-                          <span>{RECITERS.find(r => r.id === userState.reciter)?.short || 'Reciter'}</span>
-                          <ChevronDown size={11} />
+                          <ChevronDown size={12} />
                         </button>
 
                         {/* Reciter Quick-Switcher Popover */}
@@ -902,8 +912,8 @@ const App: React.FC = () => {
                             style={{
                               position: 'absolute',
                               left: 0,
-                              bottom: 42,
-                              width: 220,
+                              bottom: 38,
+                              width: 215,
                               padding: 8,
                               borderRadius: 16,
                               boxShadow: '0 14px 36px rgba(0,0,0,0.45)',
@@ -945,26 +955,28 @@ const App: React.FC = () => {
                       </div>
 
                       {/* 2. Bookmark / Custom Collection Pill */}
-                      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
                         <button
                           onClick={() => handleToggleBookmark(card, 'Favorites', 'toggle')}
                           className="glass-pill"
                           title="Tap to Bookmark"
                           style={{
-                            padding: '8px 11px',
+                            padding: '7px 10px',
                             borderTopLeftRadius: 999,
                             borderBottomLeftRadius: 999,
                             color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
                             borderColor: card.is_bookmarked ? 'var(--border-gold)' : undefined,
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: 5,
-                            fontSize: 12,
+                            gap: 4,
+                            fontSize: 11.5,
                             fontWeight: 600,
+                            whiteSpace: 'nowrap',
                             cursor: 'pointer'
                           }}
                         >
-                          <Bookmark size={14} fill={card.is_bookmarked ? 'currentColor' : 'none'} />
+                          <Bookmark size={13} fill={card.is_bookmarked ? 'currentColor' : 'none'} />
+                          <span>{card.is_bookmarked ? 'Saved' : 'Save'}</span>
                         </button>
                         <button
                           onClick={() => {
@@ -972,18 +984,22 @@ const App: React.FC = () => {
                             setBookmarkFolderModalCard(card);
                           }}
                           className="glass-pill"
+                          title="Choose Collection Folder"
                           style={{
-                            padding: '8px 9px',
+                            padding: '7px 7px',
                             borderTopRightRadius: 999,
                             borderBottomRightRadius: 999,
                             borderLeft: 'none',
                             color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-secondary)',
                             fontSize: 11,
                             fontWeight: 600,
-                            cursor: 'pointer'
+                            whiteSpace: 'nowrap',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center'
                           }}
                         >
-                          {card.bookmark_folders[0] || 'Folder'}
+                          <ChevronDown size={12} />
                         </button>
                       </div>
 
@@ -996,18 +1012,20 @@ const App: React.FC = () => {
                         className="glass-pill"
                         title="Open Studio-Grade Social Share & Video Reel Exporter"
                         style={{
-                          padding: '8px 12px',
+                          padding: '7px 11px',
                           borderRadius: 999,
                           color: 'var(--text-primary)',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: 5,
-                          fontSize: 12,
+                          gap: 4,
+                          fontSize: 11.5,
                           fontWeight: 600,
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
                           cursor: 'pointer'
                         }}
                       >
-                        <Share2 size={14} />
+                        <Share2 size={13} />
                         <span>Share</span>
                       </button>
                     </div>
@@ -1016,16 +1034,17 @@ const App: React.FC = () => {
                     <div
                       className="glass-pill"
                       style={{
-                        padding: '7px 10px',
+                        padding: '6px 9px',
                         borderRadius: 999,
                         fontSize: 11,
                         fontWeight: 700,
                         color: 'var(--text-secondary)',
                         fontVariantNumeric: 'tabular-nums',
+                        whiteSpace: 'nowrap',
                         flexShrink: 0
                       }}
                     >
-                      {cardIdx + 1} / {displayedCards.length}
+                      {cardIdx + 1}/{displayedCards.length}
                     </div>
                   </div>
 
@@ -1038,29 +1057,31 @@ const App: React.FC = () => {
                     className="glass-pill deep-study-cta"
                     style={{
                       width: '100%',
-                      padding: '12px 16px',
+                      padding: '11px 16px',
                       borderRadius: 999,
                       border: '1px solid var(--border-gold)',
                       color: 'var(--text-primary)',
-                      fontSize: 13.5,
+                      fontSize: 13,
                       fontWeight: 700,
+                      whiteSpace: 'nowrap',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between'
                     }}
                   >
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      <Sparkles size={16} style={{ color: 'var(--accent-gold-bright)' }} />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap' }}>
+                      <Sparkles size={15} style={{ color: 'var(--accent-gold-bright)' }} />
                       <span>Deep Study &amp; Tafsir</span>
                     </span>
                     <span style={{
                       fontSize: 11,
-                      padding: '3px 9px',
+                      padding: '2px 8px',
                       borderRadius: 99,
                       background: 'rgba(212, 175, 55, 0.16)',
                       color: 'var(--accent-gold-bright)',
-                      fontWeight: 600
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap'
                     }}>
                       5 Layers ↑
                     </span>
