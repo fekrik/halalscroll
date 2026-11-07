@@ -95,13 +95,13 @@ async function runTests() {
 
   // 5. Test User Preferences Persistence (/api/state)
   const st = await request('POST', '/api/state', {
-    theme: 'andalusian_parchment',
+    theme: 'midnight_sanctuary',
     arabic_script: 'uthmani'
   });
   assert.strictEqual(st.status, 200);
-  assert.strictEqual(st.json.state.theme, 'andalusian_parchment');
-  // Restore default midnight_sanctuary
-  await request('POST', '/api/state', { theme: 'midnight_sanctuary' });
+  assert.strictEqual(st.json.state.theme, 'midnight_sanctuary');
+  // Restore default andalusian_parchment
+  await request('POST', '/api/state', { theme: 'andalusian_parchment' });
   console.log('✓ 5. /api/state verified: Theme, Arabic script & user state persisted');
 
   // 6. Test Dynamic OpenGraph SVG Card & Web Companion Deep Link (/c/:slug & /api/og/:slug.svg)

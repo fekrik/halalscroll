@@ -88,7 +88,8 @@ function seedDatabase() {
   // Ensure default user state exists
   const ensureState = db.prepare(`INSERT OR IGNORE INTO user_state (key, value) VALUES (?, ?)`);
   ensureState.run('streak_count', '12');
-  ensureState.run('theme', 'midnight_sanctuary');
+  ensureState.run('theme', 'andalusian_parchment');
+  db.prepare(`UPDATE user_state SET value = 'andalusian_parchment' WHERE key = 'theme' AND value = 'midnight_sanctuary'`).run();
   ensureState.run('arabic_script', 'uthmani');
   ensureState.run('translation_edition', 'clear');
   ensureState.run('show_transliteration', 'true');

@@ -1,6 +1,5 @@
 /* Halal Scroll — Design System & Tactile UI Styles */
 
-:root,
 [data-theme="midnight_sanctuary"] {
   --bg-canvas-start: #090A0F;
   --bg-canvas-end: #12151E;
@@ -22,6 +21,7 @@
   --shadow-elevated: 0 24px 60px rgba(0, 0, 0, 0.65);
 }
 
+:root,
 [data-theme="andalusian_parchment"] {
   --bg-canvas-start: #FAF6EE;
   --bg-canvas-end: #F2ECE1;

@@ -53,7 +53,7 @@ const App: React.FC = () => {
   const [cards, setCards] = useState<FeedCard[]>([]);
   const [userState, setUserState] = useState<UserState>({
     streak_count: '12',
-    theme: 'midnight_sanctuary',
+    theme: 'andalusian_parchment',
     arabic_script: 'uthmani',
     translation_edition: 'clear',
     show_transliteration: 'true',
@@ -140,7 +140,7 @@ const App: React.FC = () => {
 
   // Sync theme attribute on document root
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', userState.theme || 'midnight_sanctuary');
+    document.documentElement.setAttribute('data-theme', userState.theme || 'andalusian_parchment');
   }, [userState.theme]);
 
   // Filtered Cards based on active Feed Mode

@@ -5,13 +5,13 @@ import seedData from '../server/seed.js';
 const STORAGE_KEYS = {
   BOOKMARKS: 'halalscroll_bookmarks_v1',
   PRACTICED: 'halalscroll_practiced_v1',
-  STATE: 'halalscroll_state_v1',
+  STATE: 'halalscroll_state_v2',
   FOLDERS: 'halalscroll_folders_v1'
 };
 
 const DEFAULT_STATE: UserState = {
   streak_count: '12',
-  theme: 'midnight_sanctuary',
+  theme: 'andalusian_parchment',
   arabic_script: 'uthmani',
   translation_edition: 'clear',
   show_transliteration: 'true',
@@ -154,3 +154,4 @@ export function offlineUpdateState(patch: Partial<UserState>) {
   writeJson(STORAGE_KEYS.STATE, state);
   return state;
 }
+

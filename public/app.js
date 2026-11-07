@@ -27496,7 +27496,7 @@
   }) => {
     const [format, setFormat] = (0, import_react4.useState)("9:16");
     const [mediaMode, setMediaMode] = (0, import_react4.useState)(initialSlide > 0 ? "carousel" : "static");
-    const [backdrop, setBackdrop] = (0, import_react4.useState)("obsidian");
+    const [backdrop, setBackdrop] = (0, import_react4.useState)("linen");
     const [carouselSlide, setCarouselSlide] = (0, import_react4.useState)(initialSlide);
     const [showArabic, setShowArabic] = (0, import_react4.useState)(true);
     const [showTranslit, setShowTranslit] = (0, import_react4.useState)(false);
@@ -28372,12 +28372,12 @@ ${canonicalUrl}`;
   var STORAGE_KEYS = {
     BOOKMARKS: "halalscroll_bookmarks_v1",
     PRACTICED: "halalscroll_practiced_v1",
-    STATE: "halalscroll_state_v1",
+    STATE: "halalscroll_state_v2",
     FOLDERS: "halalscroll_folders_v1"
   };
   var DEFAULT_STATE = {
     streak_count: "12",
-    theme: "midnight_sanctuary",
+    theme: "andalusian_parchment",
     arabic_script: "uthmani",
     translation_edition: "clear",
     show_transliteration: "true",
@@ -28535,7 +28535,7 @@ ${canonicalUrl}`;
     const [cards, setCards] = (0, import_react5.useState)([]);
     const [userState, setUserState] = (0, import_react5.useState)({
       streak_count: "12",
-      theme: "midnight_sanctuary",
+      theme: "andalusian_parchment",
       arabic_script: "uthmani",
       translation_edition: "clear",
       show_transliteration: "true",
@@ -28595,7 +28595,7 @@ ${canonicalUrl}`;
       });
     }, []);
     (0, import_react5.useEffect)(() => {
-      document.documentElement.setAttribute("data-theme", userState.theme || "midnight_sanctuary");
+      document.documentElement.setAttribute("data-theme", userState.theme || "andalusian_parchment");
     }, [userState.theme]);
     const displayedCards = (0, import_react5.useMemo)(() => {
       if (feedMode === "for_you") {

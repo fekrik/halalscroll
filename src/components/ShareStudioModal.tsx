@@ -110,7 +110,7 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
 }) => {
   const [format, setFormat] = useState<ShareFormat>('9:16');
   const [mediaMode, setMediaMode] = useState<ShareMediaMode>(initialSlide > 0 ? 'carousel' : 'static');
-  const [backdrop, setBackdrop] = useState<BackdropStyle>('obsidian');
+  const [backdrop, setBackdrop] = useState<BackdropStyle>('linen');
   const [carouselSlide, setCarouselSlide] = useState<number>(initialSlide);
 
   // Content Toggles
