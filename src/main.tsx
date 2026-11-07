@@ -735,39 +735,70 @@ const App: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Interactive Word-by-Word Arabic Script */}
+                  {/* Complete Canonical Arabic Script (with Interactive Root Word Matching) */}
                   <div
                     className="arabic-sacred-text"
                     style={{
-                      fontSize: card.arabic_text_uthmani.length > 140 ? '1.55rem' : '1.85rem'
+                      fontSize: card.arabic_text_uthmani.length > 160 ? '1.45rem' : card.arabic_text_uthmani.length > 100 ? '1.62rem' : '1.88rem'
                     }}
                   >
-                    {userState.arabic_script === 'indopak' && card.arabic_text_indopak ? (
-                      <span>{card.arabic_text_indopak}</span>
-                    ) : card.words && card.words.length > 0 ? (
-                      <>
-                        {card.words.map((w, wIdx) => {
-                          const isWordActive = isCardPlaying && activeWordIdx === wIdx;
-                          const isPopoverOpen = popoverWord?.word.word_position === w.word_position && popoverWord?.card.id === card.id;
+                    {(() => {
+                      const fullArabic = userState.arabic_script === 'indopak' && card.arabic_text_indopak
+                        ? card.arabic_text_indopak
+                        : card.arabic_text_uthmani;
+                      const tokens = fullArabic.split(/\s+/);
+                      const cleanToken = (s: string) => s.replace(/[،؟:؛.!۝ۚۗۖۙۘ]/g, '').trim();
+
+                      return tokens.map((tok, tIdx) => {
+                        if (tok.includes('۝')) {
                           return (
+                            <React.Fragment key={tIdx}>
+                              <span style={{ color: 'var(--accent-gold)', margin: '0 4px', fontSize: '0.9em' }}>{tok}</span>{' '}
+                            </React.Fragment>
+                          );
+                        }
+
+                        const cleaned = cleanToken(tok);
+                        const matchedIdx = (card.words || []).findIndex((w) => {
+                          const cw = cleanToken(w.arabic_word);
+                          return cw === cleaned || (cleaned.length >= 3 && cw.includes(cleaned));
+                        });
+                        const matchedWord = matchedIdx >= 0 ? card.words[matchedIdx] : null;
+                        const isWordActive = isCardPlaying && matchedIdx >= 0 && activeWordIdx === matchedIdx;
+                        const isPopoverOpen = matchedWord && popoverWord?.word.word_position === matchedWord.word_position && popoverWord?.card.id === card.id;
+
+                        return (
+                          <React.Fragment key={tIdx}>
                             <span
-                              key={w.word_position}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                soundEngine.speakArabicWord(w);
-                                setPopoverWord({ word: w, card });
+                                if (matchedWord) {
+                                  soundEngine.speakArabicWord(matchedWord);
+                                  setPopoverWord({ word: matchedWord, card });
+                                } else if (card.words && card.words.length > 0) {
+                                  soundEngine.speakArabicWord({
+                                    ...card.words[0],
+                                    arabic_word: tok
+                                  });
+                                  setDeepStudyModal({ card, initialTab: 'words' });
+                                }
                               }}
                               className={`arabic-word-token ${isWordActive || isPopoverOpen ? 'active-word-glow' : ''}`}
-                              title={`Tap for root (${w.root_arabic}) & meaning: "${w.translation_en}"`}
+                              style={{
+                                borderBottom: matchedWord ? '1px dotted rgba(168, 125, 32, 0.35)' : undefined
+                              }}
+                              title={
+                                matchedWord
+                                  ? `Tap for root (${matchedWord.root_arabic}) & meaning: "${matchedWord.translation_en}"`
+                                  : 'Tap to hear pronunciation & open Word Explorer'
+                              }
                             >
-                              {w.arabic_word}
-                            </span>
-                          );
-                        })}
-                      </>
-                    ) : (
-                      <span>{card.arabic_text_uthmani}</span>
-                    )}
+                              {tok}
+                            </span>{' '}
+                          </React.Fragment>
+                        );
+                      });
+                    })()}
                   </div>
 
                   {/* Subtle Interactive Hint Pill */}

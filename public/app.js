@@ -2245,7 +2245,7 @@
           var HostPortal = 4;
           var HostComponent = 5;
           var HostText = 6;
-          var Fragment2 = 7;
+          var Fragment = 7;
           var Mode = 8;
           var ContextConsumer = 9;
           var ContextProvider = 10;
@@ -3401,7 +3401,7 @@
                 return "DehydratedFragment";
               case ForwardRef:
                 return getWrappedName$1(type, type.render, "ForwardRef");
-              case Fragment2:
+              case Fragment:
                 return "Fragment";
               case HostComponent:
                 return type;
@@ -11784,7 +11784,7 @@
               }
             }
             function updateFragment2(returnFiber, current2, fragment, lanes, key) {
-              if (current2 === null || current2.tag !== Fragment2) {
+              if (current2 === null || current2.tag !== Fragment) {
                 var created = createFiberFromFragment(fragment, returnFiber.mode, lanes, key);
                 created.return = returnFiber;
                 return created;
@@ -12187,7 +12187,7 @@
                 if (child.key === key) {
                   var elementType = element.type;
                   if (elementType === REACT_FRAGMENT_TYPE) {
-                    if (child.tag === Fragment2) {
+                    if (child.tag === Fragment) {
                       deleteRemainingChildren(returnFiber, child.sibling);
                       var existing = useFiber(child, element.props.children);
                       existing.return = returnFiber;
@@ -17662,7 +17662,7 @@
                 var _resolvedProps2 = workInProgress2.elementType === type ? _unresolvedProps2 : resolveDefaultProps(type, _unresolvedProps2);
                 return updateForwardRef(current2, workInProgress2, type, _resolvedProps2, renderLanes2);
               }
-              case Fragment2:
+              case Fragment:
                 return updateFragment(current2, workInProgress2, renderLanes2);
               case Mode:
                 return updateMode(current2, workInProgress2, renderLanes2);
@@ -17934,7 +17934,7 @@
               case SimpleMemoComponent:
               case FunctionComponent:
               case ForwardRef:
-              case Fragment2:
+              case Fragment:
               case Mode:
               case Profiler:
               case ContextConsumer:
@@ -22185,7 +22185,7 @@
             return fiber;
           }
           function createFiberFromFragment(elements, mode, lanes, key) {
-            var fiber = createFiber(Fragment2, elements, key, mode);
+            var fiber = createFiber(Fragment, elements, key, mode);
             fiber.lanes = lanes;
             return fiber;
           }
@@ -24991,11 +24991,11 @@
           ayah_start: 2,
           ayah_end: 3,
           passage_group_id: "grp-65-2-3",
-          arabic_text_uthmani: "\u0648\u064E\u0645\u064E\u0646 \u064A\u064E\u062A\u0651\u064E\u0642\u0650 \u0671\u0644\u0644\u0651\u064E\u0647\u064E \u064A\u064E\u062C\u0652\u0639\u064E\u0644 \u0644\u0651\u064E\u0647\u064F\u06E5 \u0645\u064E\u062E\u0652\u0631\u064E\u062C\u064B\u0627 \u06DD \u0648\u064E\u064A\u064E\u0631\u0652\u0632\u064F\u0642\u0652\u0647\u064F \u0645\u0650\u0646\u0652 \u062D\u064E\u064A\u0652\u062B\u064F \u0644\u064E\u0627 \u064A\u064E\u062D\u0652\u062A\u064E\u0633\u0650\u0628\u064F \u06DA \u0648\u064E\u0645\u064E\u0646 \u064A\u064E\u062A\u064E\u0648\u064E\u0643\u0651\u064E\u0644\u0652 \u0639\u064E\u0644\u064E\u0649 \u0671\u0644\u0644\u0651\u064E\u0647\u0650 \u0641\u064E\u0647\u064F\u0648\u064E \u062D\u064E\u0633\u0652\u0628\u064F\u0647\u064F\u06E5\u0653",
-          arabic_text_indopak: "\u0648\u064E\u0645\u064E\u0646\u0652 \u064A\u0651\u064E\u062A\u0651\u064E\u0642\u0650 \u0627\u0644\u0644\u0651\u0670\u0647\u064E \u064A\u064E\u062C\u0652\u0639\u064E\u0644\u0652 \u0644\u0651\u064E\u0647\u0657 \u0645\u064E\u062E\u0652\u0631\u064E\u062C\u064B\u0627 \u06D9\u06DD \u0648\u0651\u064E\u064A\u064E\u0631\u0652\u0632\u064F\u0642\u0652\u0647\u064F \u0645\u0650\u0646\u0652 \u062D\u064E\u064A\u0652\u062B\u064F \u0644\u064E\u0627 \u064A\u064E\u062D\u0652\u062A\u064E\u0633\u0650\u0628\u064F \u06D7 \u0648\u064E\u0645\u064E\u0646\u0652 \u064A\u0651\u064E\u062A\u064E\u0648\u064E\u0643\u0651\u064E\u0644\u0652 \u0639\u064E\u0644\u064E\u0649 \u0627\u0644\u0644\u0651\u0670\u0647\u0650 \u0641\u064E\u0647\u064F\u0648\u064E \u062D\u064E\u0633\u0652\u0628\u064F\u0647\u0657 \u06D7",
-          transliteration: "Wa may-yattaqill\u0101ha yaj\u2018al-lah\u016B makhraj\u0101. Wa yarzuqhu min \u1E25aythu l\u0101 ya\u1E25tasib; wa may-yatawakkal \u2018alall\u0101hi fa-huwa \u1E25asbuh.",
-          translation_en_clear: "And whoever is mindful of Allah, He will make a way out for them, and provide for them from sources they could never imagine. And whoever puts their trust in Allah, then He alone is sufficient for them.",
-          translation_en_sahih: "And whoever fears Allah\u2014He will make for him a way out and will provide for him from where he does not expect. And whoever relies upon Allah\u2014then He is sufficient for him.",
+          arabic_text_uthmani: "\u0648\u064E\u0645\u064E\u0646 \u064A\u064E\u062A\u0651\u064E\u0642\u0650 \u0671\u0644\u0644\u0651\u064E\u0647\u064E \u064A\u064E\u062C\u0652\u0639\u064E\u0644 \u0644\u0651\u064E\u0647\u064F\u06E5 \u0645\u064E\u062E\u0652\u0631\u064E\u062C\u064B\u0627 \u06DD \u0648\u064E\u064A\u064E\u0631\u0652\u0632\u064F\u0642\u0652\u0647\u064F \u0645\u0650\u0646\u0652 \u062D\u064E\u064A\u0652\u062B\u064F \u0644\u064E\u0627 \u064A\u064E\u062D\u0652\u062A\u064E\u0633\u0650\u0628\u064F \u06DA \u0648\u064E\u0645\u064E\u0646 \u064A\u064E\u062A\u064E\u0648\u064E\u0643\u0651\u064E\u0644\u0652 \u0639\u064E\u0644\u064E\u0649 \u0671\u0644\u0644\u0651\u064E\u0647\u0650 \u0641\u064E\u0647\u064F\u0648\u064E \u062D\u064E\u0633\u0652\u0628\u064F\u0647\u064F\u06E5\u0653 \u06DA \u0625\u0650\u0646\u0651\u064E \u0671\u0644\u0644\u0651\u064E\u0647\u064E \u0628\u064E\u0670\u0644\u0650\u063A\u064F \u0623\u064E\u0645\u0652\u0631\u0650\u0647\u0650\u06E6 \u06DA \u0642\u064E\u062F\u0652 \u062C\u064E\u0639\u064E\u0644\u064E \u0671\u0644\u0644\u0651\u064E\u0647\u064F \u0644\u0650\u0643\u064F\u0644\u0651\u0650 \u0634\u064E\u0649\u0652\u0621\u064D \u0642\u064E\u062F\u0652\u0631\u064B\u0627",
+          arabic_text_indopak: "\u0648\u064E\u0645\u064E\u0646\u0652 \u064A\u0651\u064E\u062A\u0651\u064E\u0642\u0650 \u0627\u0644\u0644\u0651\u0670\u0647\u064E \u064A\u064E\u062C\u0652\u0639\u064E\u0644\u0652 \u0644\u0651\u064E\u0647\u0657 \u0645\u064E\u062E\u0652\u0631\u064E\u062C\u064B\u0627 \u06D9\u06DD \u0648\u0651\u064E\u064A\u064E\u0631\u0652\u0632\u064F\u0642\u0652\u0647\u064F \u0645\u0650\u0646\u0652 \u062D\u064E\u064A\u0652\u062B\u064F \u0644\u064E\u0627 \u064A\u064E\u062D\u0652\u062A\u064E\u0633\u0650\u0628\u064F \u06D7 \u0648\u064E\u0645\u064E\u0646\u0652 \u064A\u0651\u064E\u062A\u064E\u0648\u064E\u0643\u0651\u064E\u0644\u0652 \u0639\u064E\u0644\u064E\u0649 \u0627\u0644\u0644\u0651\u0670\u0647\u0650 \u0641\u064E\u0647\u064F\u0648\u064E \u062D\u064E\u0633\u0652\u0628\u064F\u0647\u0657 \u06D7 \u0627\u0650\u0646\u0651\u064E \u0627\u0644\u0644\u0651\u0670\u0647\u064E \u0628\u064E\u0627\u0644\u0650\u063A\u064F \u0627\u064E\u0645\u0652\u0631\u0650\u0647\u0656 \u06D7 \u0642\u064E\u062F\u0652 \u062C\u064E\u0639\u064E\u0644\u064E \u0627\u0644\u0644\u0651\u0670\u0647\u064F \u0644\u0650\u0643\u064F\u0644\u0651\u0650 \u0634\u064E\u0649\u0652\u0621\u064D \u0642\u064E\u062F\u0652\u0631\u064B\u0627 \u06DD",
+          transliteration: "Wa may-yattaqill\u0101ha yaj\u2018al-lah\u016B makhraj\u0101. Wa yarzuqhu min \u1E25aythu l\u0101 ya\u1E25tasib; wa may-yatawakkal \u2018alall\u0101hi fa-huwa \u1E25asbuh; innall\u0101ha b\u0101lighu amrih; qad ja\u2018alall\u0101hu likulli shay\u2019in qadr\u0101.",
+          translation_en_clear: "And whoever is mindful of Allah, He will make a way out for them, and provide for them from sources they could never imagine. And whoever puts their trust in Allah, then He alone is sufficient for them. Surely Allah achieves His Will. Allah has already set a destiny for everything.",
+          translation_en_sahih: "And whoever fears Allah\u2014He will make for him a way out and will provide for him from where he does not expect. And whoever relies upon Allah\u2014then He is sufficient for him. Indeed, Allah will accomplish His purpose. Allah has already set for everything a [decreed] extent.",
           source_title: "Surah At-Talaq \u2022 65:2\u20133",
           surah_subtitle: "The Verse of the Way Out (Ayat al-Makhraj)",
           revelation_place: "Medinan",
@@ -25643,11 +25643,11 @@
           ayah_start: 23,
           ayah_end: 24,
           passage_group_id: "grp-17-23-24",
-          arabic_text_uthmani: "\u0648\u064E\u0642\u064E\u0636\u064E\u0649\u0670 \u0631\u064E\u0628\u0651\u064F\u0643\u064E \u0623\u064E\u0644\u0651\u064E\u0627 \u062A\u064E\u0639\u0652\u0628\u064F\u062F\u064F\u0648\u0653\u0627\u06DF \u0625\u0650\u0644\u0651\u064E\u0627\u0653 \u0625\u0650\u064A\u0651\u064E\u0627\u0647\u064F \u0648\u064E\u0628\u0650\u0671\u0644\u0652\u0648\u064E\u0670\u0644\u0650\u062F\u064E\u064A\u0652\u0646\u0650 \u0625\u0650\u062D\u0652\u0633\u064E\u0670\u0646\u064B\u0627 \u06DA \u06DD \u0648\u064E\u0671\u062E\u0652\u0641\u0650\u0636\u0652 \u0644\u064E\u0647\u064F\u0645\u064E\u0627 \u062C\u064E\u0646\u064E\u0627\u062D\u064E \u0671\u0644\u0630\u0651\u064F\u0644\u0651\u0650 \u0645\u0650\u0646\u064E \u0671\u0644\u0631\u0651\u064E\u062D\u0652\u0645\u064E\u0629\u0650 \u0648\u064E\u0642\u064F\u0644 \u0631\u0651\u064E\u0628\u0651\u0650 \u0671\u0631\u0652\u062D\u064E\u0645\u0652\u0647\u064F\u0645\u064E\u0627 \u0643\u064E\u0645\u064E\u0627 \u0631\u064E\u0628\u0651\u064E\u064A\u064E\u0627\u0646\u0650\u0649 \u0635\u064E\u063A\u0650\u064A\u0631\u064B\u0627",
-          arabic_text_indopak: "\u0648\u064E\u0642\u064E\u0636\u0670\u0649 \u0631\u064E\u0628\u0651\u064F\u0643\u064E \u0627\u064E\u0644\u0651\u064E\u0627 \u062A\u064E\u0639\u0652\u0628\u064F\u062F\u064F\u0648\u0652\u0653\u0627 \u0627\u0650\u0644\u0651\u064E\u0627\u0653 \u0627\u0650\u064A\u0651\u064E\u0627\u0647\u064F \u0648\u064E\u0628\u0650\u0627\u0644\u0652\u0648\u064E\u0627\u0644\u0650\u062F\u064E\u064A\u0652\u0646\u0650 \u0627\u0650\u062D\u0652\u0633\u064E\u0627\u0646\u064B\u0627 \u06D7 \u06DD \u0648\u064E\u0627\u062E\u0652\u0641\u0650\u0636\u0652 \u0644\u064E\u0647\u064F\u0645\u064E\u0627 \u062C\u064E\u0646\u064E\u0627\u062D\u064E \u0627\u0644\u0630\u0651\u064F\u0644\u0651\u0650 \u0645\u0650\u0646\u064E \u0627\u0644\u0631\u0651\u064E\u062D\u0652\u0645\u064E\u0629\u0650 \u0648\u064E\u0642\u064F\u0644\u0652 \u0631\u0651\u064E\u0628\u0651\u0650 \u0627\u0631\u0652\u062D\u064E\u0645\u0652\u0647\u064F\u0645\u064E\u0627 \u0643\u064E\u0645\u064E\u0627 \u0631\u064E\u0628\u0651\u064E\u064A\u0670\u0646\u0650\u0649\u0652 \u0635\u064E\u063A\u0650\u064A\u0652\u0631\u064B\u0627 \u06DD",
-          transliteration: "Wa qa\u1E0D\u0101 Rabbuka all\u0101 ta\u2018bud\u016B ill\u0101 iyy\u0101hu wa bil-w\u0101lidayni i\u1E25s\u0101n\u0101... Wakhfi\u1E0D lahum\u0101 jan\u0101\u1E25adh-dhulli minar-ra\u1E25mati wa qur-Rabbir-\u1E25amhum\u0101 kam\u0101 rabbay\u0101n\u012B \u1E63agh\u012Br\u0101.",
-          translation_en_clear: "And your Lord has decreed that you worship none but Him, and that you be excelled in kindness to your parents... And lower to them the wing of humility out of mercy, and pray: \u201CMy Lord! Be merciful to them as they raised me when I was small.\u201D",
-          translation_en_sahih: "And your Lord has decreed that you not worship except Him, and to parents, good treatment... And lower to them the wing of humility out of mercy and say, \u201CMy Lord, have mercy upon them as they brought me up [when I was] small.\u201D",
+          arabic_text_uthmani: "\u0648\u064E\u0642\u064E\u0636\u064E\u0649\u0670 \u0631\u064E\u0628\u0651\u064F\u0643\u064E \u0623\u064E\u0644\u0651\u064E\u0627 \u062A\u064E\u0639\u0652\u0628\u064F\u062F\u064F\u0648\u0653\u0627\u06DF \u0625\u0650\u0644\u0651\u064E\u0627\u0653 \u0625\u0650\u064A\u0651\u064E\u0627\u0647\u064F \u0648\u064E\u0628\u0650\u0671\u0644\u0652\u0648\u064E\u0670\u0644\u0650\u062F\u064E\u064A\u0652\u0646\u0650 \u0625\u0650\u062D\u0652\u0633\u064E\u0670\u0646\u064B\u0627 \u06DA \u0625\u0650\u0645\u0651\u064E\u0627 \u064A\u064E\u0628\u0652\u0644\u064F\u063A\u064E\u0646\u0651\u064E \u0639\u0650\u0646\u062F\u064E\u0643\u064E \u0671\u0644\u0652\u0643\u0650\u0628\u064E\u0631\u064E \u0623\u064E\u062D\u064E\u062F\u064F\u0647\u064F\u0645\u064E\u0627\u0653 \u0623\u064E\u0648\u0652 \u0643\u0650\u0644\u064E\u0627\u0647\u064F\u0645\u064E\u0627 \u0641\u064E\u0644\u064E\u0627 \u062A\u064E\u0642\u064F\u0644 \u0644\u0651\u064E\u0647\u064F\u0645\u064E\u0627\u0653 \u0623\u064F\u0641\u0651\u064D \u0648\u064E\u0644\u064E\u0627 \u062A\u064E\u0646\u0652\u0647\u064E\u0631\u0652\u0647\u064F\u0645\u064E\u0627 \u0648\u064E\u0642\u064F\u0644 \u0644\u0651\u064E\u0647\u064F\u0645\u064E\u0627 \u0642\u064E\u0648\u0652\u0644\u064B\u0627 \u0643\u064E\u0631\u0650\u064A\u0645\u064B\u0627 \u06DD \u0648\u064E\u0671\u062E\u0652\u0641\u0650\u0636\u0652 \u0644\u064E\u0647\u064F\u0645\u064E\u0627 \u062C\u064E\u0646\u064E\u0627\u062D\u064E \u0671\u0644\u0630\u0651\u064F\u0644\u0651\u0650 \u0645\u0650\u0646\u064E \u0671\u0644\u0631\u0651\u064E\u062D\u0652\u0645\u064E\u0629\u0650 \u0648\u064E\u0642\u064F\u0644 \u0631\u0651\u064E\u0628\u0651\u0650 \u0671\u0631\u0652\u062D\u064E\u0645\u0652\u0647\u064F\u0645\u064E\u0627 \u0643\u064E\u0645\u064E\u0627 \u0631\u064E\u0628\u0651\u064E\u064A\u064E\u0627\u0646\u0650\u0649 \u0635\u064E\u063A\u0650\u064A\u0631\u064B\u0627",
+          arabic_text_indopak: "\u0648\u064E\u0642\u064E\u0636\u0670\u0649 \u0631\u064E\u0628\u0651\u064F\u0643\u064E \u0627\u064E\u0644\u0651\u064E\u0627 \u062A\u064E\u0639\u0652\u0628\u064F\u062F\u064F\u0648\u0652\u0653\u0627 \u0627\u0650\u0644\u0651\u064E\u0627\u0653 \u0627\u0650\u064A\u0651\u064E\u0627\u0647\u064F \u0648\u064E\u0628\u0650\u0627\u0644\u0652\u0648\u064E\u0627\u0644\u0650\u062F\u064E\u064A\u0652\u0646\u0650 \u0627\u0650\u062D\u0652\u0633\u064E\u0627\u0646\u064B\u0627 \u06D7 \u0627\u0650\u0645\u0651\u064E\u0627 \u064A\u064E\u0628\u0652\u0644\u064F\u063A\u064E\u0646\u0651\u064E \u0639\u0650\u0646\u0652\u062F\u064E\u0643\u064E \u0627\u0644\u0652\u0643\u0650\u0628\u064E\u0631\u064E \u0627\u064E\u062D\u064E\u062F\u064F\u0647\u064F\u0645\u064E\u0627\u0653 \u0627\u064E\u0648\u0652 \u0643\u0650\u0644\u0670\u0647\u064F\u0645\u064E\u0627 \u0641\u064E\u0644\u064E\u0627 \u062A\u064E\u0642\u064F\u0644\u0652 \u0644\u0651\u064E\u0647\u064F\u0645\u064E\u0627\u0653 \u0627\u064F\u0641\u0651\u064D \u0648\u0651\u064E\u0644\u064E\u0627 \u062A\u064E\u0646\u0652\u0647\u064E\u0631\u0652\u0647\u064F\u0645\u064E\u0627 \u0648\u064E\u0642\u064F\u0644\u0652 \u0644\u0651\u064E\u0647\u064F\u0645\u064E\u0627 \u0642\u064E\u0648\u0652\u0644\u064B\u0627 \u0643\u064E\u0631\u0650\u064A\u0652\u0645\u064B\u0627 \u06DD \u0648\u064E\u0627\u062E\u0652\u0641\u0650\u0636\u0652 \u0644\u064E\u0647\u064F\u0645\u064E\u0627 \u062C\u064E\u0646\u064E\u0627\u062D\u064E \u0627\u0644\u0630\u0651\u064F\u0644\u0651\u0650 \u0645\u0650\u0646\u064E \u0627\u0644\u0631\u0651\u064E\u062D\u0652\u0645\u064E\u0629\u0650 \u0648\u064E\u0642\u064F\u0644\u0652 \u0631\u0651\u064E\u0628\u0651\u0650 \u0627\u0631\u0652\u062D\u064E\u0645\u0652\u0647\u064F\u0645\u064E\u0627 \u0643\u064E\u0645\u064E\u0627 \u0631\u064E\u0628\u0651\u064E\u064A\u0670\u0646\u0650\u0649\u0652 \u0635\u064E\u063A\u0650\u064A\u0652\u0631\u064B\u0627 \u06DD",
+          transliteration: "Wa qa\u1E0D\u0101 Rabbuka all\u0101 ta\u2018bud\u016B ill\u0101 iyy\u0101hu wa bil-w\u0101lidayni i\u1E25s\u0101n\u0101; imm\u0101 yablughanna \u2018indakal-kibara a\u1E25aduhum\u0101 aw kil\u0101hum\u0101 fal\u0101 taqul-lahum\u0101 uffiw-wa l\u0101 tanharhum\u0101 wa qul-lahum\u0101 qawlan kar\u012Bm\u0101. Wakhfi\u1E0D lahum\u0101 jan\u0101\u1E25adh-dhulli minar-ra\u1E25mati wa qur-Rabbir-\u1E25amhum\u0101 kam\u0101 rabbay\u0101n\u012B \u1E63agh\u012Br\u0101.",
+          translation_en_clear: "For your Lord has decreed that you worship none but Him. And honour your parents. If one or both of them reach old age in your care, never say to them \u02F9even\u02FA \u201Cugh,\u201D nor yell at them. Rather, address them respectfully. And be humble with them out of mercy, and pray, \u201CMy Lord! Be merciful to them as they raised me when I was young.\u201D",
+          translation_en_sahih: "And your Lord has decreed that you not worship except Him, and to parents, good treatment. Whether one or both of them reach old age [while] with you, say not to them [so much as], \u201Cuff,\u201D and do not repel them but speak to them a noble word. And lower to them the wing of humility out of mercy and say, \u201CMy Lord, have mercy upon them as they brought me up [when I was] small.\u201D",
           source_title: "Surah Al-Isra \u2022 17:23\u201324",
           surah_subtitle: "Birr al-Walidayn (Honoring Parents)",
           revelation_place: "Meccan",
@@ -25962,11 +25962,11 @@
           ayah_start: 255,
           ayah_end: 255,
           passage_group_id: null,
-          arabic_text_uthmani: "\u0671\u0644\u0644\u0651\u064E\u0647\u064F \u0644\u064E\u0627\u0653 \u0625\u0650\u0644\u064E\u0670\u0647\u064E \u0625\u0650\u0644\u0651\u064E\u0627 \u0647\u064F\u0648\u064E \u0671\u0644\u0652\u062D\u064E\u0649\u0651\u064F \u0671\u0644\u0652\u0642\u064E\u064A\u0651\u064F\u0648\u0645\u064F \u06DA \u0644\u064E\u0627 \u062A\u064E\u0623\u0652\u062E\u064F\u0630\u064F\u0647\u064F\u06E5 \u0633\u0650\u0646\u064E\u0629\u064C \u0648\u064E\u0644\u064E\u0627 \u0646\u064E\u0648\u0652\u0645\u064C \u06DA \u0644\u0651\u064E\u0647\u064F\u06E5 \u0645\u064E\u0627 \u0641\u0650\u0649 \u0671\u0644\u0633\u0651\u064E\u0645\u064E\u0670\u0648\u064E\u0670\u062A\u0650 \u0648\u064E\u0645\u064E\u0627 \u0641\u0650\u0649 \u0671\u0644\u0652\u0623\u064E\u0631\u0652\u0636\u0650 \u06D7 \u0645\u064E\u0646 \u0630\u064E\u0627 \u0671\u0644\u0651\u064E\u0630\u0650\u0649 \u064A\u064E\u0634\u0652\u0641\u064E\u0639\u064F \u0639\u0650\u0646\u062F\u064E\u0647\u064F\u06E5\u0653 \u0625\u0650\u0644\u0651\u064E\u0627 \u0628\u0650\u0625\u0650\u0630\u0652\u0646\u0650\u0647\u0650\u06E6 \u06DA \u064A\u064E\u0639\u0652\u0644\u064E\u0645\u064F \u0645\u064E\u0627 \u0628\u064E\u064A\u0652\u0646\u064E \u0623\u064E\u064A\u0652\u062F\u0650\u064A\u0647\u0650\u0645\u0652 \u0648\u064E\u0645\u064E\u0627 \u062E\u064E\u0644\u0652\u0641\u064E\u0647\u064F\u0645\u0652",
-          arabic_text_indopak: "\u0627\u064E\u0644\u0644\u0651\u0670\u0647\u064F \u0644\u064E\u0627\u0653 \u0627\u0650\u0644\u0670\u0647\u064E \u0627\u0650\u0644\u0651\u064E\u0627 \u0647\u064F\u0648\u064E \u0627\u0644\u0652\u062D\u064E\u0649\u0651\u064F \u0627\u0644\u0652\u0642\u064E\u064A\u0651\u064F\u0648\u0652\u0645\u064F \u06DA \u0644\u064E\u0627 \u062A\u064E\u0627\u0652\u062E\u064F\u0630\u064F\u0647\u0657 \u0633\u0650\u0646\u064E\u0629\u064C \u0648\u0651\u064E\u0644\u064E\u0627 \u0646\u064E\u0648\u0652\u0645\u064C \u06D7 \u0644\u064E\u0647\u0657 \u0645\u064E\u0627 \u0641\u0650\u0649 \u0627\u0644\u0633\u0651\u064E\u0645\u0670\u0648\u0670\u062A\u0650 \u0648\u064E\u0645\u064E\u0627 \u0641\u0650\u0649 \u0627\u0644\u0652\u0627\u064E\u0631\u0652\u0636\u0650 \u06D7 \u0645\u064E\u0646\u0652 \u0630\u064E\u0627 \u0627\u0644\u0651\u064E\u0630\u0650\u0649\u0652 \u064A\u064E\u0634\u0652\u0641\u064E\u0639\u064F \u0639\u0650\u0646\u0652\u062F\u064E\u0647\u0657\u0653 \u0627\u0650\u0644\u0651\u064E\u0627 \u0628\u0650\u0627\u0650\u0630\u0652\u0646\u0650\u0647\u0656 \u06D7 \u064A\u064E\u0639\u0652\u0644\u064E\u0645\u064F \u0645\u064E\u0627 \u0628\u064E\u064A\u0652\u0646\u064E \u0627\u064E\u064A\u0652\u062F\u0650\u064A\u0652\u0647\u0650\u0645\u0652 \u0648\u064E\u0645\u064E\u0627 \u062E\u064E\u0644\u0652\u0641\u064E\u0647\u064F\u0645\u0652",
-          transliteration: "All\u0101hu l\u0101 il\u0101ha ill\u0101 Huwal-\u1E24ayyul-Qayy\u016Bm; l\u0101 ta\u2019khudhuh\u016B sinatuw-wa l\u0101 nawm; lah\u016B m\u0101 fis-sam\u0101w\u0101ti wa m\u0101 fil-ar\u1E0D; man dhal-ladh\u012B yashfa\u2018u \u2018indah\u016B ill\u0101 bi-idhnih; ya\u2018lamu m\u0101 bayna ayd\u012Bhim wa m\u0101 khalfahum...",
-          translation_en_clear: "Allah! There is no god \u02F9worthy of worship\u02FA except Him, the Ever-Living, All-Sustaining. Neither drowsiness nor sleep overtakes Him. To Him belongs whatever is in the heavens and whatever is on the earth. Who could possibly intercede with Him without His permission? He \u02F9fully\u02FA knows what is ahead of them and what is behind them...",
-          translation_en_sahih: "Allah\u2014there is no deity except Him, the Ever-Living, the Sustainer of [all] existence. Neither drowsiness overtakes Him nor sleep. To Him belongs whatever is in the heavens and whatever is on the earth...",
+          arabic_text_uthmani: "\u0671\u0644\u0644\u0651\u064E\u0647\u064F \u0644\u064E\u0627\u0653 \u0625\u0650\u0644\u064E\u0670\u0647\u064E \u0625\u0650\u0644\u0651\u064E\u0627 \u0647\u064F\u0648\u064E \u0671\u0644\u0652\u062D\u064E\u0649\u0651\u064F \u0671\u0644\u0652\u0642\u064E\u064A\u0651\u064F\u0648\u0645\u064F \u06DA \u0644\u064E\u0627 \u062A\u064E\u0623\u0652\u062E\u064F\u0630\u064F\u0647\u064F\u06E5 \u0633\u0650\u0646\u064E\u0629\u064C \u0648\u064E\u0644\u064E\u0627 \u0646\u064E\u0648\u0652\u0645\u064C \u06DA \u0644\u0651\u064E\u0647\u064F\u06E5 \u0645\u064E\u0627 \u0641\u0650\u0649 \u0671\u0644\u0633\u0651\u064E\u0645\u064E\u0670\u0648\u064E\u0670\u062A\u0650 \u0648\u064E\u0645\u064E\u0627 \u0641\u0650\u0649 \u0671\u0644\u0652\u0623\u064E\u0631\u0652\u0636\u0650 \u06D7 \u0645\u064E\u0646 \u0630\u064E\u0627 \u0671\u0644\u0651\u064E\u0630\u0650\u0649 \u064A\u064E\u0634\u0652\u0641\u064E\u0639\u064F \u0639\u0650\u0646\u062F\u064E\u0647\u064F\u06E5\u0653 \u0625\u0650\u0644\u0651\u064E\u0627 \u0628\u0650\u0625\u0650\u0630\u0652\u0646\u0650\u0647\u0650\u06E6 \u06DA \u064A\u064E\u0639\u0652\u0644\u064E\u0645\u064F \u0645\u064E\u0627 \u0628\u064E\u064A\u0652\u0646\u064E \u0623\u064E\u064A\u0652\u062F\u0650\u064A\u0647\u0650\u0645\u0652 \u0648\u064E\u0645\u064E\u0627 \u062E\u064E\u0644\u0652\u0641\u064E\u0647\u064F\u0645\u0652 \u06D6 \u0648\u064E\u0644\u064E\u0627 \u064A\u064F\u062D\u0650\u064A\u0637\u064F\u0648\u0646\u064E \u0628\u0650\u0634\u064E\u0649\u0652\u0621\u064D \u0645\u0651\u0650\u0646\u0652 \u0639\u0650\u0644\u0652\u0645\u0650\u0647\u0650\u06E6\u0653 \u0625\u0650\u0644\u0651\u064E\u0627 \u0628\u0650\u0645\u064E\u0627 \u0634\u064E\u0627\u0653\u0621\u064E \u06DA \u0648\u064E\u0633\u0650\u0639\u064E \u0643\u064F\u0631\u0652\u0633\u0650\u064A\u0651\u064F\u0647\u064F \u0671\u0644\u0633\u0651\u064E\u0645\u064E\u0670\u0648\u064E\u0670\u062A\u0650 \u0648\u064E\u0671\u0644\u0652\u0623\u064E\u0631\u0652\u0636\u064E \u06D6 \u0648\u064E\u0644\u064E\u0627 \u064A\u064E\u0640\u0654\u064F\u0648\u062F\u064F\u0647\u064F\u06E5 \u062D\u0650\u0641\u0652\u0638\u064F\u0647\u064F\u0645\u064E\u0627 \u06DA \u0648\u064E\u0647\u064F\u0648\u064E \u0671\u0644\u0652\u0639\u064E\u0644\u0650\u0649\u0651\u064F \u0671\u0644\u0652\u0639\u064E\u0638\u0650\u064A\u0645\u064F",
+          arabic_text_indopak: "\u0627\u064E\u0644\u0644\u0651\u0670\u0647\u064F \u0644\u064E\u0627\u0653 \u0627\u0650\u0644\u0670\u0647\u064E \u0627\u0650\u0644\u0651\u064E\u0627 \u0647\u064F\u0648\u064E \u0627\u0644\u0652\u062D\u064E\u0649\u0651\u064F \u0627\u0644\u0652\u0642\u064E\u064A\u0651\u064F\u0648\u0652\u0645\u064F \u06DA \u0644\u064E\u0627 \u062A\u064E\u0627\u0652\u062E\u064F\u0630\u064F\u0647\u0657 \u0633\u0650\u0646\u064E\u0629\u064C \u0648\u0651\u064E\u0644\u064E\u0627 \u0646\u064E\u0648\u0652\u0645\u064C \u06D7 \u0644\u064E\u0647\u0657 \u0645\u064E\u0627 \u0641\u0650\u0649 \u0627\u0644\u0633\u0651\u064E\u0645\u0670\u0648\u0670\u062A\u0650 \u0648\u064E\u0645\u064E\u0627 \u0641\u0650\u0649 \u0627\u0644\u0652\u0627\u064E\u0631\u0652\u0636\u0650 \u06D7 \u0645\u064E\u0646\u0652 \u0630\u064E\u0627 \u0627\u0644\u0651\u064E\u0630\u0650\u0649\u0652 \u064A\u064E\u0634\u0652\u0641\u064E\u0639\u064F \u0639\u0650\u0646\u0652\u062F\u064E\u0647\u0657\u0653 \u0627\u0650\u0644\u0651\u064E\u0627 \u0628\u0650\u0627\u0650\u0630\u0652\u0646\u0650\u0647\u0656 \u06D7 \u064A\u064E\u0639\u0652\u0644\u064E\u0645\u064F \u0645\u064E\u0627 \u0628\u064E\u064A\u0652\u0646\u064E \u0627\u064E\u064A\u0652\u062F\u0650\u064A\u0652\u0647\u0650\u0645\u0652 \u0648\u064E\u0645\u064E\u0627 \u062E\u064E\u0644\u0652\u0641\u064E\u0647\u064F\u0645\u0652 \u06DA \u0648\u064E\u0644\u064E\u0627 \u064A\u064F\u062D\u0650\u064A\u0652\u0637\u064F\u0648\u0652\u0646\u064E \u0628\u0650\u0634\u064E\u0649\u0652\u0621\u064D \u0645\u0651\u0650\u0646\u0652 \u0639\u0650\u0644\u0652\u0645\u0650\u0647\u0656\u0653 \u0627\u0650\u0644\u0651\u064E\u0627 \u0628\u0650\u0645\u064E\u0627 \u0634\u064E\u0627\u0653\u0621\u064E \u06DA \u0648\u064E\u0633\u0650\u0639\u064E \u0643\u064F\u0631\u0652\u0633\u0650\u064A\u0651\u064F\u0647\u064F \u0627\u0644\u0633\u0651\u064E\u0645\u0670\u0648\u0670\u062A\u0650 \u0648\u064E\u0627\u0644\u0652\u0627\u064E\u0631\u0652\u0636\u064E \u06DA \u0648\u064E\u0644\u064E\u0627 \u064A\u064E\u0640\u0654\u064F\u0648\u0652\u062F\u064F\u0647\u0657 \u062D\u0650\u0641\u0652\u0638\u064F\u0647\u064F\u0645\u064E\u0627 \u06DA \u0648\u064E\u0647\u064F\u0648\u064E \u0627\u0644\u0652\u0639\u064E\u0644\u0650\u0649\u0651\u064F \u0627\u0644\u0652\u0639\u064E\u0638\u0650\u064A\u0652\u0645\u064F \u06DD",
+          transliteration: "All\u0101hu l\u0101 il\u0101ha ill\u0101 Huwal-\u1E24ayyul-Qayy\u016Bm; l\u0101 ta\u2019khudhuh\u016B sinatuw-wa l\u0101 nawm; lah\u016B m\u0101 fis-sam\u0101w\u0101ti wa m\u0101 fil-ar\u1E0D; man dhal-ladh\u012B yashfa\u2018u \u2018indah\u016B ill\u0101 bi-idhnih; ya\u2018lamu m\u0101 bayna ayd\u012Bhim wa m\u0101 khalfahum wa l\u0101 yu\u1E25\u012B\u1E6D\u016Bna bishay\u2019im-min \u2018ilmih\u012B ill\u0101 bim\u0101 sh\u0101\u2019; wasi\u2018a kursiyyuhus-sam\u0101w\u0101ti wal-ar\u1E0D; wa l\u0101 ya\u2019\u016Bduh\u016B \u1E25if\u1E93uhum\u0101; wa Huwal-\u2018Aliyyul-\u2018A\u1E93\u012Bm.",
+          translation_en_clear: "Allah! There is no god \u02F9worthy of worship\u02FA except Him, the Ever-Living, All-Sustaining. Neither drowsiness nor sleep overtakes Him. To Him belongs whatever is in the heavens and whatever is on the earth. Who could possibly intercede with Him without His permission? He \u02F9fully\u02FA knows what is ahead of them and what is behind them, and no one can grasp any of His knowledge\u2014except what He wills \u02F9to reveal\u02FA. His Seat encompasses the heavens and the earth, and the preservation of both does not tire Him. For He is the Most High, the Greatest.",
+          translation_en_sahih: "Allah\u2014there is no deity except Him, the Ever-Living, the Sustainer of [all] existence. Neither drowsiness overtakes Him nor sleep. To Him belongs whatever is in the heavens and whatever is on the earth. Who is it that can intercede with Him except by His permission? He knows what is [presently] before them and what will be after them, and they encompass not a thing of His knowledge except for what He wills. His Kursi extends over the heavens and the earth, and their preservation tires Him not. And He is the Most High, the Most Great.",
           source_title: "Surah Al-Baqarah \u2022 2:255 (Ayat al-Kursi)",
           surah_subtitle: "The Greatest Verse in the Quran",
           revelation_place: "Medinan",
@@ -29144,26 +29144,56 @@ ${canonicalUrl}`;
                         {
                           className: "arabic-sacred-text",
                           style: {
-                            fontSize: card.arabic_text_uthmani.length > 140 ? "1.55rem" : "1.85rem"
+                            fontSize: card.arabic_text_uthmani.length > 160 ? "1.45rem" : card.arabic_text_uthmani.length > 100 ? "1.62rem" : "1.88rem"
                           },
-                          children: userState.arabic_script === "indopak" && card.arabic_text_indopak ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: card.arabic_text_indopak }) : card.words && card.words.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_jsx_runtime3.Fragment, { children: card.words.map((w, wIdx) => {
-                            const isWordActive = isCardPlaying && activeWordIdx === wIdx;
-                            const isPopoverOpen = popoverWord?.word.word_position === w.word_position && popoverWord?.card.id === card.id;
-                            return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                              "span",
-                              {
-                                onClick: (e) => {
-                                  e.stopPropagation();
-                                  soundEngine.speakArabicWord(w);
-                                  setPopoverWord({ word: w, card });
-                                },
-                                className: `arabic-word-token ${isWordActive || isPopoverOpen ? "active-word-glow" : ""}`,
-                                title: `Tap for root (${w.root_arabic}) & meaning: "${w.translation_en}"`,
-                                children: w.arabic_word
-                              },
-                              w.word_position
-                            );
-                          }) }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: card.arabic_text_uthmani })
+                          children: (() => {
+                            const fullArabic = userState.arabic_script === "indopak" && card.arabic_text_indopak ? card.arabic_text_indopak : card.arabic_text_uthmani;
+                            const tokens = fullArabic.split(/\s+/);
+                            const cleanToken = (s) => s.replace(/[،؟:؛.!۝ۚۗۖۙۘ]/g, "").trim();
+                            return tokens.map((tok, tIdx) => {
+                              if (tok.includes("\u06DD")) {
+                                return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_react5.default.Fragment, { children: [
+                                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { color: "var(--accent-gold)", margin: "0 4px", fontSize: "0.9em" }, children: tok }),
+                                  " "
+                                ] }, tIdx);
+                              }
+                              const cleaned = cleanToken(tok);
+                              const matchedIdx = (card.words || []).findIndex((w) => {
+                                const cw = cleanToken(w.arabic_word);
+                                return cw === cleaned || cleaned.length >= 3 && cw.includes(cleaned);
+                              });
+                              const matchedWord = matchedIdx >= 0 ? card.words[matchedIdx] : null;
+                              const isWordActive = isCardPlaying && matchedIdx >= 0 && activeWordIdx === matchedIdx;
+                              const isPopoverOpen = matchedWord && popoverWord?.word.word_position === matchedWord.word_position && popoverWord?.card.id === card.id;
+                              return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_react5.default.Fragment, { children: [
+                                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                                  "span",
+                                  {
+                                    onClick: (e) => {
+                                      e.stopPropagation();
+                                      if (matchedWord) {
+                                        soundEngine.speakArabicWord(matchedWord);
+                                        setPopoverWord({ word: matchedWord, card });
+                                      } else if (card.words && card.words.length > 0) {
+                                        soundEngine.speakArabicWord({
+                                          ...card.words[0],
+                                          arabic_word: tok
+                                        });
+                                        setDeepStudyModal({ card, initialTab: "words" });
+                                      }
+                                    },
+                                    className: `arabic-word-token ${isWordActive || isPopoverOpen ? "active-word-glow" : ""}`,
+                                    style: {
+                                      borderBottom: matchedWord ? "1px dotted rgba(168, 125, 32, 0.35)" : void 0
+                                    },
+                                    title: matchedWord ? `Tap for root (${matchedWord.root_arabic}) & meaning: "${matchedWord.translation_en}"` : "Tap to hear pronunciation & open Word Explorer",
+                                    children: tok
+                                  }
+                                ),
+                                " "
+                              ] }, tIdx);
+                            });
+                          })()
                         }
                       ),
                       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
