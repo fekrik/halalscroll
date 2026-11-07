@@ -28569,6 +28569,8 @@ ${canonicalUrl}`;
       }
       return null;
     });
+    const [doubleTapBurst, setDoubleTapBurst] = (0, import_react5.useState)(null);
+    const lastTapRef = (0, import_react5.useRef)({ time: 0, cardId: "" });
     const feedContainerRef = (0, import_react5.useRef)(null);
     (0, import_react5.useEffect)(() => {
       const applyBootData = (data) => {
@@ -29099,64 +29101,89 @@ ${canonicalUrl}`;
               return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
                 "div",
                 {
-                  className: "feed-card-snap",
+                  className: `feed-card-snap ${cardIdx === activeCardIndex ? "card-active" : "card-inactive"}`,
+                  onClick: (e) => {
+                    const now = Date.now();
+                    if (lastTapRef.current.cardId === card.id && now - lastTapRef.current.time < 320) {
+                      const burstId = now;
+                      setDoubleTapBurst({ x: e.clientX, y: e.clientY, id: burstId });
+                      if (!card.is_bookmarked) {
+                        handleToggleBookmark(card, "Favorites", "add");
+                      } else {
+                        soundEngine.triggerHaptic("softSuccess");
+                      }
+                      setTimeout(() => {
+                        setDoubleTapBurst((prev) => prev?.id === burstId ? null : prev);
+                      }, 820);
+                      lastTapRef.current = { time: 0, cardId: "" };
+                    } else {
+                      lastTapRef.current = { time: now, cardId: card.id };
+                    }
+                  },
                   children: [
                     /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "card-content-cluster", style: { zIndex: 2 }, children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: 4,
-                        width: "100%"
-                      }, children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", justifyContent: "center", maxWidth: "100%" }, children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: {
-                            fontSize: 9.5,
-                            fontWeight: 800,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.06em",
-                            padding: "3px 8px",
-                            borderRadius: 99,
-                            whiteSpace: "nowrap",
-                            flexShrink: 0,
-                            background: card.card_type === "quran" ? "rgba(212, 175, 55, 0.18)" : card.card_type === "hadith" ? "rgba(16, 185, 129, 0.18)" : card.card_type === "dua" ? "rgba(129, 140, 248, 0.2)" : "rgba(245, 158, 11, 0.2)",
-                            color: card.card_type === "quran" ? "var(--accent-gold-bright)" : card.card_type === "hadith" ? "var(--accent-emerald)" : "var(--text-primary)"
-                          }, children: card.card_type === "quran" ? "Quran" : card.card_type === "hadith" ? "Hadith" : card.card_type === "dua" ? "Dua" : "Seerah" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                            "span",
-                            {
-                              className: "glass-pill",
-                              style: {
-                                padding: "3px 10px",
+                      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                        "div",
+                        {
+                          className: "reel-anim-meta",
+                          style: {
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 4,
+                            width: "100%"
+                          },
+                          children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", justifyContent: "center", maxWidth: "100%" }, children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: {
+                                fontSize: 9.5,
+                                fontWeight: 800,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.06em",
+                                padding: "3px 8px",
                                 borderRadius: 99,
-                                fontSize: 11.5,
-                                fontWeight: 700,
-                                color: "var(--text-primary)",
                                 whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis"
-                              },
-                              children: card.source_title
-                            }
-                          )
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
-                          fontSize: 10.5,
-                          fontWeight: 600,
-                          color: "var(--accent-emerald)",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          maxWidth: "100%"
-                        }, children: [
-                          card.revelation_place ? `${card.revelation_place} \u2022 ${card.authenticity_grade}` : card.authenticity_grade,
-                          card.narrator_chain ? ` \u2022 ${card.narrator_chain}` : ""
-                        ] })
-                      ] }),
+                                flexShrink: 0,
+                                background: card.card_type === "quran" ? "rgba(212, 175, 55, 0.18)" : card.card_type === "hadith" ? "rgba(16, 185, 129, 0.18)" : card.card_type === "dua" ? "rgba(129, 140, 248, 0.2)" : "rgba(245, 158, 11, 0.2)",
+                                color: card.card_type === "quran" ? "var(--accent-gold-bright)" : card.card_type === "hadith" ? "var(--accent-emerald)" : "var(--text-primary)"
+                              }, children: card.card_type === "quran" ? "Quran" : card.card_type === "hadith" ? "Hadith" : card.card_type === "dua" ? "Dua" : "Seerah" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                                "span",
+                                {
+                                  className: "glass-pill",
+                                  style: {
+                                    padding: "3px 10px",
+                                    borderRadius: 99,
+                                    fontSize: 11.5,
+                                    fontWeight: 700,
+                                    color: "var(--text-primary)",
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis"
+                                  },
+                                  children: card.source_title
+                                }
+                              )
+                            ] }),
+                            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
+                              fontSize: 10.5,
+                              fontWeight: 600,
+                              color: "var(--accent-emerald)",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              maxWidth: "100%"
+                            }, children: [
+                              card.revelation_place ? `${card.revelation_place} \u2022 ${card.authenticity_grade}` : card.authenticity_grade,
+                              card.narrator_chain ? ` \u2022 ${card.narrator_chain}` : ""
+                            ] })
+                          ]
+                        }
+                      ),
                       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
                         "div",
                         {
-                          className: "arabic-sacred-text",
+                          className: "arabic-sacred-text reel-anim-arabic",
                           style: {
                             fontSize: card.arabic_text_uthmani.length > 160 ? "1.45rem" : card.arabic_text_uthmani.length > 100 ? "1.62rem" : "1.88rem"
                           },
@@ -29210,19 +29237,26 @@ ${canonicalUrl}`;
                           })()
                         }
                       ),
-                      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
-                        fontSize: 10.5,
-                        color: "var(--text-muted)",
-                        marginBottom: 4,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6
-                      }, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u2726 Tap any highlighted Arabic word for Trilateral Root & Audio" }) }),
-                      userState.show_transliteration === "true" && card.transliteration && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "transliteration-text", style: { marginBottom: 6, maxWidth: 420 }, children: card.transliteration }),
+                      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                        "div",
+                        {
+                          className: "reel-anim-translation",
+                          style: {
+                            fontSize: 10.5,
+                            color: "var(--text-muted)",
+                            marginBottom: 4,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6
+                          },
+                          children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u2726 Tap any highlighted Arabic word for Trilateral Root & Audio" })
+                        }
+                      ),
+                      userState.show_transliteration === "true" && card.transliteration && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "transliteration-text reel-anim-translation", style: { marginBottom: 6, maxWidth: 420 }, children: card.transliteration }),
                       /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
                         "p",
                         {
-                          className: "editorial-translation",
+                          className: "editorial-translation reel-anim-translation",
                           style: {
                             fontSize: translationText.length > 210 ? "1.05rem" : "1.18rem",
                             maxWidth: 430
@@ -29235,173 +29269,229 @@ ${canonicalUrl}`;
                         }
                       )
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
-                      width: "100%",
-                      flexShrink: 0,
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 8,
-                      zIndex: 15
-                    }, children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 5,
-                        flexWrap: "nowrap",
-                        width: "100%"
-                      }, children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 5, flexWrap: "nowrap", minWidth: 0 }, children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "inline-flex", alignItems: "center", position: "relative", flexShrink: 0 }, children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                      "div",
+                      {
+                        className: "reel-anim-dock",
+                        style: {
+                          width: "100%",
+                          flexShrink: 0,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 8,
+                          zIndex: 15
+                        },
+                        children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 5,
+                            flexWrap: "nowrap",
+                            width: "100%"
+                          }, children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 5, flexWrap: "nowrap", minWidth: 0 }, children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "inline-flex", alignItems: "center", position: "relative", flexShrink: 0 }, children: [
+                                /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                                  "button",
+                                  {
+                                    onClick: () => handleToggleRecitation(card),
+                                    className: `glass-pill ${isCardPlaying ? "audio-playing-ring" : ""}`,
+                                    title: "Play Synchronized Word-by-Word Recitation",
+                                    style: {
+                                      padding: "7px 10px",
+                                      borderTopLeftRadius: 999,
+                                      borderBottomLeftRadius: 999,
+                                      color: isCardPlaying ? "var(--accent-gold-bright)" : "var(--text-primary)",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 5,
+                                      fontSize: 11.5,
+                                      fontWeight: 700,
+                                      whiteSpace: "nowrap",
+                                      cursor: "pointer"
+                                    },
+                                    children: [
+                                      isCardPlaying ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Pause, { size: 13 }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Volume2, { size: 13 }),
+                                      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: isCardPlaying ? "Pause" : "Recite" })
+                                    ]
+                                  }
+                                ),
+                                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                                  "button",
+                                  {
+                                    onClick: () => {
+                                      soundEngine.triggerHaptic("selectionTick");
+                                      setShowReciterMenuForCard(showReciterMenuForCard === card.id ? null : card.id);
+                                    },
+                                    className: "glass-pill",
+                                    title: "Change Reciter",
+                                    style: {
+                                      padding: "7px 7px",
+                                      borderTopRightRadius: 999,
+                                      borderBottomRightRadius: 999,
+                                      borderLeft: "none",
+                                      color: "var(--text-secondary)",
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      whiteSpace: "nowrap",
+                                      cursor: "pointer",
+                                      display: "inline-flex",
+                                      alignItems: "center"
+                                    },
+                                    children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ChevronDown, { size: 12 })
+                                  }
+                                ),
+                                showReciterMenuForCard === card.id && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                                  "div",
+                                  {
+                                    className: "glass-pill",
+                                    style: {
+                                      position: "absolute",
+                                      left: 0,
+                                      bottom: 38,
+                                      width: 215,
+                                      padding: 8,
+                                      borderRadius: 16,
+                                      boxShadow: "0 14px 36px rgba(0,0,0,0.45)",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: 4,
+                                      zIndex: 30
+                                    },
+                                    children: [
+                                      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--accent-gold)", padding: "2px 6px" }, children: "Select Qari / Reciter" }),
+                                      RECITERS.map((r) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                                        "button",
+                                        {
+                                          onClick: () => {
+                                            soundEngine.triggerHaptic("selectionTick");
+                                            updateServerState({ reciter: r.id });
+                                            setShowReciterMenuForCard(null);
+                                          },
+                                          style: {
+                                            padding: "6px 8px",
+                                            borderRadius: 10,
+                                            border: "none",
+                                            textAlign: "left",
+                                            cursor: "pointer",
+                                            background: userState.reciter === r.id ? "rgba(212, 175, 55, 0.2)" : "transparent",
+                                            color: userState.reciter === r.id ? "var(--accent-gold-bright)" : "var(--text-primary)",
+                                            fontSize: 11.5,
+                                            fontWeight: userState.reciter === r.id ? 700 : 500
+                                          },
+                                          children: [
+                                            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { children: r.id }),
+                                            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { fontSize: 10, color: "var(--text-muted)" }, children: r.origin })
+                                          ]
+                                        },
+                                        r.id
+                                      ))
+                                    ]
+                                  }
+                                )
+                              ] }),
+                              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "inline-flex", alignItems: "center", flexShrink: 0 }, children: [
+                                /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                                  "button",
+                                  {
+                                    onClick: () => handleToggleBookmark(card, "Favorites", "toggle"),
+                                    className: "glass-pill",
+                                    title: "Tap to Bookmark",
+                                    style: {
+                                      padding: "7px 10px",
+                                      borderTopLeftRadius: 999,
+                                      borderBottomLeftRadius: 999,
+                                      color: card.is_bookmarked ? "var(--accent-gold-bright)" : "var(--text-primary)",
+                                      borderColor: card.is_bookmarked ? "var(--border-gold)" : void 0,
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 4,
+                                      fontSize: 11.5,
+                                      fontWeight: 600,
+                                      whiteSpace: "nowrap",
+                                      cursor: "pointer"
+                                    },
+                                    children: [
+                                      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Bookmark, { size: 13, fill: card.is_bookmarked ? "currentColor" : "none" }),
+                                      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: card.is_bookmarked ? "Saved" : "Save" })
+                                    ]
+                                  }
+                                ),
+                                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                                  "button",
+                                  {
+                                    onClick: () => {
+                                      soundEngine.triggerHaptic("selectionTick");
+                                      setBookmarkFolderModalCard(card);
+                                    },
+                                    className: "glass-pill",
+                                    title: "Choose Collection Folder",
+                                    style: {
+                                      padding: "7px 7px",
+                                      borderTopRightRadius: 999,
+                                      borderBottomRightRadius: 999,
+                                      borderLeft: "none",
+                                      color: card.is_bookmarked ? "var(--accent-gold-bright)" : "var(--text-secondary)",
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      whiteSpace: "nowrap",
+                                      cursor: "pointer",
+                                      display: "inline-flex",
+                                      alignItems: "center"
+                                    },
+                                    children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ChevronDown, { size: 12 })
+                                  }
+                                )
+                              ] }),
+                              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                                "button",
+                                {
+                                  onClick: () => {
+                                    soundEngine.triggerHaptic("lightImpact");
+                                    setShareStudioModal({ card, initialSlide: 0 });
+                                  },
+                                  className: "glass-pill",
+                                  title: "Open Studio-Grade Social Share & Video Reel Exporter",
+                                  style: {
+                                    padding: "7px 11px",
+                                    borderRadius: 999,
+                                    color: "var(--text-primary)",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    fontSize: 11.5,
+                                    fontWeight: 600,
+                                    whiteSpace: "nowrap",
+                                    flexShrink: 0,
+                                    cursor: "pointer"
+                                  },
+                                  children: [
+                                    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Share2, { size: 13 }),
+                                    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "Share" })
+                                  ]
+                                }
+                              )
+                            ] }),
                             /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-                              "button",
-                              {
-                                onClick: () => handleToggleRecitation(card),
-                                className: `glass-pill ${isCardPlaying ? "audio-playing-ring" : ""}`,
-                                title: "Play Synchronized Word-by-Word Recitation",
-                                style: {
-                                  padding: "7px 10px",
-                                  borderTopLeftRadius: 999,
-                                  borderBottomLeftRadius: 999,
-                                  color: isCardPlaying ? "var(--accent-gold-bright)" : "var(--text-primary)",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: 5,
-                                  fontSize: 11.5,
-                                  fontWeight: 700,
-                                  whiteSpace: "nowrap",
-                                  cursor: "pointer"
-                                },
-                                children: [
-                                  isCardPlaying ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Pause, { size: 13 }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Volume2, { size: 13 }),
-                                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: isCardPlaying ? "Pause" : "Recite" })
-                                ]
-                              }
-                            ),
-                            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                              "button",
-                              {
-                                onClick: () => {
-                                  soundEngine.triggerHaptic("selectionTick");
-                                  setShowReciterMenuForCard(showReciterMenuForCard === card.id ? null : card.id);
-                                },
-                                className: "glass-pill",
-                                title: "Change Reciter",
-                                style: {
-                                  padding: "7px 7px",
-                                  borderTopRightRadius: 999,
-                                  borderBottomRightRadius: 999,
-                                  borderLeft: "none",
-                                  color: "var(--text-secondary)",
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  whiteSpace: "nowrap",
-                                  cursor: "pointer",
-                                  display: "inline-flex",
-                                  alignItems: "center"
-                                },
-                                children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ChevronDown, { size: 12 })
-                              }
-                            ),
-                            showReciterMenuForCard === card.id && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
                               "div",
                               {
                                 className: "glass-pill",
                                 style: {
-                                  position: "absolute",
-                                  left: 0,
-                                  bottom: 38,
-                                  width: 215,
-                                  padding: 8,
-                                  borderRadius: 16,
-                                  boxShadow: "0 14px 36px rgba(0,0,0,0.45)",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: 4,
-                                  zIndex: 30
-                                },
-                                children: [
-                                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--accent-gold)", padding: "2px 6px" }, children: "Select Qari / Reciter" }),
-                                  RECITERS.map((r) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-                                    "button",
-                                    {
-                                      onClick: () => {
-                                        soundEngine.triggerHaptic("selectionTick");
-                                        updateServerState({ reciter: r.id });
-                                        setShowReciterMenuForCard(null);
-                                      },
-                                      style: {
-                                        padding: "6px 8px",
-                                        borderRadius: 10,
-                                        border: "none",
-                                        textAlign: "left",
-                                        cursor: "pointer",
-                                        background: userState.reciter === r.id ? "rgba(212, 175, 55, 0.2)" : "transparent",
-                                        color: userState.reciter === r.id ? "var(--accent-gold-bright)" : "var(--text-primary)",
-                                        fontSize: 11.5,
-                                        fontWeight: userState.reciter === r.id ? 700 : 500
-                                      },
-                                      children: [
-                                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { children: r.id }),
-                                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { fontSize: 10, color: "var(--text-muted)" }, children: r.origin })
-                                      ]
-                                    },
-                                    r.id
-                                  ))
-                                ]
-                              }
-                            )
-                          ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "inline-flex", alignItems: "center", flexShrink: 0 }, children: [
-                            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-                              "button",
-                              {
-                                onClick: () => handleToggleBookmark(card, "Favorites", "toggle"),
-                                className: "glass-pill",
-                                title: "Tap to Bookmark",
-                                style: {
-                                  padding: "7px 10px",
-                                  borderTopLeftRadius: 999,
-                                  borderBottomLeftRadius: 999,
-                                  color: card.is_bookmarked ? "var(--accent-gold-bright)" : "var(--text-primary)",
-                                  borderColor: card.is_bookmarked ? "var(--border-gold)" : void 0,
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: 4,
-                                  fontSize: 11.5,
-                                  fontWeight: 600,
-                                  whiteSpace: "nowrap",
-                                  cursor: "pointer"
-                                },
-                                children: [
-                                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Bookmark, { size: 13, fill: card.is_bookmarked ? "currentColor" : "none" }),
-                                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: card.is_bookmarked ? "Saved" : "Save" })
-                                ]
-                              }
-                            ),
-                            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                              "button",
-                              {
-                                onClick: () => {
-                                  soundEngine.triggerHaptic("selectionTick");
-                                  setBookmarkFolderModalCard(card);
-                                },
-                                className: "glass-pill",
-                                title: "Choose Collection Folder",
-                                style: {
-                                  padding: "7px 7px",
-                                  borderTopRightRadius: 999,
-                                  borderBottomRightRadius: 999,
-                                  borderLeft: "none",
-                                  color: card.is_bookmarked ? "var(--accent-gold-bright)" : "var(--text-secondary)",
+                                  padding: "6px 9px",
+                                  borderRadius: 999,
                                   fontSize: 11,
-                                  fontWeight: 600,
+                                  fontWeight: 700,
+                                  color: "var(--text-secondary)",
+                                  fontVariantNumeric: "tabular-nums",
                                   whiteSpace: "nowrap",
-                                  cursor: "pointer",
-                                  display: "inline-flex",
-                                  alignItems: "center"
+                                  flexShrink: 0
                                 },
-                                children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ChevronDown, { size: 12 })
+                                children: [
+                                  cardIdx + 1,
+                                  "/",
+                                  displayedCards.length
+                                ]
                               }
                             )
                           ] }),
@@ -29410,98 +29500,100 @@ ${canonicalUrl}`;
                             {
                               onClick: () => {
                                 soundEngine.triggerHaptic("lightImpact");
-                                setShareStudioModal({ card, initialSlide: 0 });
+                                setDeepStudyModal({ card, initialTab: "summary" });
                               },
-                              className: "glass-pill",
-                              title: "Open Studio-Grade Social Share & Video Reel Exporter",
+                              className: "glass-pill deep-study-cta",
                               style: {
-                                padding: "7px 11px",
+                                width: "100%",
+                                padding: "11px 16px",
                                 borderRadius: 999,
+                                border: "1px solid var(--border-gold)",
                                 color: "var(--text-primary)",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                                fontSize: 11.5,
-                                fontWeight: 600,
+                                fontSize: 13,
+                                fontWeight: 700,
                                 whiteSpace: "nowrap",
-                                flexShrink: 0,
-                                cursor: "pointer"
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between"
                               },
                               children: [
-                                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Share2, { size: 13 }),
-                                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "Share" })
+                                /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { style: { display: "inline-flex", alignItems: "center", gap: 7, whiteSpace: "nowrap" }, children: [
+                                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Sparkles, { size: 15, style: { color: "var(--accent-gold-bright)" } }),
+                                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "Deep Study & Tafsir" })
+                                ] }),
+                                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: {
+                                  fontSize: 11,
+                                  padding: "2px 8px",
+                                  borderRadius: 99,
+                                  background: "rgba(212, 175, 55, 0.16)",
+                                  color: "var(--accent-gold-bright)",
+                                  fontWeight: 600,
+                                  whiteSpace: "nowrap"
+                                }, children: "5 Layers \u2191" })
                               ]
                             }
                           )
-                        ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-                          "div",
-                          {
-                            className: "glass-pill",
-                            style: {
-                              padding: "6px 9px",
-                              borderRadius: 999,
-                              fontSize: 11,
-                              fontWeight: 700,
-                              color: "var(--text-secondary)",
-                              fontVariantNumeric: "tabular-nums",
-                              whiteSpace: "nowrap",
-                              flexShrink: 0
-                            },
-                            children: [
-                              cardIdx + 1,
-                              "/",
-                              displayedCards.length
-                            ]
-                          }
-                        )
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-                        "button",
-                        {
-                          onClick: () => {
-                            soundEngine.triggerHaptic("lightImpact");
-                            setDeepStudyModal({ card, initialTab: "summary" });
-                          },
-                          className: "glass-pill deep-study-cta",
-                          style: {
-                            width: "100%",
-                            padding: "11px 16px",
-                            borderRadius: 999,
-                            border: "1px solid var(--border-gold)",
-                            color: "var(--text-primary)",
-                            fontSize: 13,
-                            fontWeight: 700,
-                            whiteSpace: "nowrap",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between"
-                          },
-                          children: [
-                            /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("span", { style: { display: "inline-flex", alignItems: "center", gap: 7, whiteSpace: "nowrap" }, children: [
-                              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Sparkles, { size: 15, style: { color: "var(--accent-gold-bright)" } }),
-                              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "Deep Study & Tafsir" })
-                            ] }),
-                            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: {
-                              fontSize: 11,
-                              padding: "2px 8px",
-                              borderRadius: 99,
-                              background: "rgba(212, 175, 55, 0.16)",
-                              color: "var(--accent-gold-bright)",
-                              fontWeight: 600,
-                              whiteSpace: "nowrap"
-                            }, children: "5 Layers \u2191" })
-                          ]
-                        }
-                      )
-                    ] })
+                        ]
+                      }
+                    )
                   ]
                 },
                 card.id
               );
             })
           }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          "div",
+          {
+            style: {
+              position: "absolute",
+              right: 6,
+              top: "48%",
+              transform: "translateY(-50%)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 5,
+              zIndex: 20,
+              pointerEvents: "auto"
+            },
+            children: displayedCards.map((c, idx) => {
+              const isActive = idx === activeCardIndex;
+              return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                "button",
+                {
+                  onClick: () => scrollToCardIndex(idx),
+                  title: `Jump to ${c.source_title}`,
+                  style: {
+                    width: 5,
+                    height: isActive ? 18 : 5,
+                    borderRadius: 99,
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                    background: isActive ? "var(--accent-gold-bright)" : "var(--border-specular)",
+                    boxShadow: isActive ? "0 0 8px rgba(212, 175, 55, 0.55)" : "none",
+                    transition: "all 0.32s cubic-bezier(0.22, 1, 0.36, 1)"
+                  }
+                },
+                c.id
+              );
+            })
+          }
+        ),
+        doubleTapBurst && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          "div",
+          {
+            className: "double-tap-burst",
+            style: {
+              left: doubleTapBurst.x,
+              top: doubleTapBurst.y
+            },
+            children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Bookmark, { size: 64, fill: "currentColor" })
+          },
+          doubleTapBurst.id
         ),
         popoverWord && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
           "div",

@@ -101,6 +101,8 @@ const App: React.FC = () => {
     return null;
   });
 
+  const [doubleTapBurst, setDoubleTapBurst] = useState<{ x: number; y: number; id: number } | null>(null);
+  const lastTapRef = useRef<{ time: number; cardId: string }>({ time: 0, cardId: '' });
   const feedContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Load initial data from SQLite backend (with automatic 0ms offline/static fallback for GitHub Pages)
@@ -670,18 +672,39 @@ const App: React.FC = () => {
             return (
               <div
                 key={card.id}
-                className="feed-card-snap"
+                className={`feed-card-snap ${cardIdx === activeCardIndex ? 'card-active' : 'card-inactive'}`}
+                onClick={(e) => {
+                  const now = Date.now();
+                  if (lastTapRef.current.cardId === card.id && now - lastTapRef.current.time < 320) {
+                    const burstId = now;
+                    setDoubleTapBurst({ x: e.clientX, y: e.clientY, id: burstId });
+                    if (!card.is_bookmarked) {
+                      handleToggleBookmark(card, 'Favorites', 'add');
+                    } else {
+                      soundEngine.triggerHaptic('softSuccess');
+                    }
+                    setTimeout(() => {
+                      setDoubleTapBurst(prev => (prev?.id === burstId ? null : prev));
+                    }, 820);
+                    lastTapRef.current = { time: 0, cardId: '' };
+                  } else {
+                    lastTapRef.current = { time: now, cardId: card.id };
+                  }
+                }}
               >
                 {/* UNIFIED CARD CONTENT CLUSTER: Metadata Header + Sacred Text Canvas */}
                 <div className="card-content-cluster" style={{ zIndex: 2 }}>
                   {/* TOP CARD METADATA HEADER (Clean 2-Line Mobile-Friendly Stack) */}
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 4,
-                    width: '100%'
-                  }}>
+                  <div
+                    className="reel-anim-meta"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 4,
+                      width: '100%'
+                    }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', justifyContent: 'center', maxWidth: '100%' }}>
                       {/* Card Type Pill */}
                       <span style={{
@@ -744,7 +767,7 @@ const App: React.FC = () => {
 
                   {/* Complete Canonical Arabic Script (with Interactive Root Word Matching) */}
                   <div
-                    className="arabic-sacred-text"
+                    className="arabic-sacred-text reel-anim-arabic"
                     style={{
                       fontSize: card.arabic_text_uthmani.length > 160 ? '1.45rem' : card.arabic_text_uthmani.length > 100 ? '1.62rem' : '1.88rem'
                     }}
@@ -809,27 +832,30 @@ const App: React.FC = () => {
                   </div>
 
                   {/* Subtle Interactive Hint Pill */}
-                  <div style={{
-                    fontSize: 10.5,
-                    color: 'var(--text-muted)',
-                    marginBottom: 4,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}>
+                  <div
+                    className="reel-anim-translation"
+                    style={{
+                      fontSize: 10.5,
+                      color: 'var(--text-muted)',
+                      marginBottom: 4,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
                     <span>✦ Tap any highlighted Arabic word for Trilateral Root &amp; Audio</span>
                   </div>
 
                   {/* Optional Learner Transliteration */}
                   {userState.show_transliteration === 'true' && card.transliteration && (
-                    <p className="transliteration-text" style={{ marginBottom: 6, maxWidth: 420 }}>
+                    <p className="transliteration-text reel-anim-translation" style={{ marginBottom: 6, maxWidth: 420 }}>
                       {card.transliteration}
                     </p>
                   )}
 
                   {/* Editorial Serif English Translation */}
                   <p
-                    className="editorial-translation"
+                    className="editorial-translation reel-anim-translation"
                     style={{
                       fontSize: translationText.length > 210 ? '1.05rem' : '1.18rem',
                       maxWidth: 430
@@ -840,14 +866,17 @@ const App: React.FC = () => {
                 </div>
 
                 {/* BOTTOM THUMB-ZONE ACTION DOCK (No-Wrap Mobile-First 2-Row Layout) */}
-                <div style={{
-                  width: '100%',
-                  flexShrink: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                  zIndex: 15
-                }}>
+                <div
+                  className="reel-anim-dock"
+                  style={{
+                    width: '100%',
+                    flexShrink: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    zIndex: 15
+                  }}
+                >
                   {/* Row 1: Single-Line No-Wrap Action Bar */}
                   <div style={{
                     display: 'flex',
@@ -1091,6 +1120,58 @@ const App: React.FC = () => {
             );
           })}
         </div>
+
+        {/* TIKTOK / REELS VERTICAL SCROLL PROGRESS DOTS (Right Edge) */}
+        <div
+          style={{
+            position: 'absolute',
+            right: 6,
+            top: '48%',
+            transform: 'translateY(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 5,
+            zIndex: 20,
+            pointerEvents: 'auto'
+          }}
+        >
+          {displayedCards.map((c, idx) => {
+            const isActive = idx === activeCardIndex;
+            return (
+              <button
+                key={c.id}
+                onClick={() => scrollToCardIndex(idx)}
+                title={`Jump to ${c.source_title}`}
+                style={{
+                  width: 5,
+                  height: isActive ? 18 : 5,
+                  borderRadius: 99,
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  background: isActive ? 'var(--accent-gold-bright)' : 'var(--border-specular)',
+                  boxShadow: isActive ? '0 0 8px rgba(212, 175, 55, 0.55)' : 'none',
+                  transition: 'all 0.32s cubic-bezier(0.22, 1, 0.36, 1)'
+                }}
+              />
+            );
+          })}
+        </div>
+
+        {/* DOUBLE-TAP BOOKMARK BURST ANIMATION (TikTok / Instagram Reels Style) */}
+        {doubleTapBurst && (
+          <div
+            key={doubleTapBurst.id}
+            className="double-tap-burst"
+            style={{
+              left: doubleTapBurst.x,
+              top: doubleTapBurst.y
+            }}
+          >
+            <Bookmark size={64} fill="currentColor" />
+          </div>
+        )}
 
         {/* FLOATING GLASS WORD MORPHOLOGY & ROOT POPOVER (When user taps an Arabic word on card) */}
         {popoverWord && (
