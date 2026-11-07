@@ -107,6 +107,7 @@ html, body, #root {
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -131,9 +132,9 @@ html, body, #root {
 .sanctuary-stage {
   position: relative;
   width: 100%;
-  height: 100%;
   max-width: 520px;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -215,10 +216,45 @@ html, body, #root {
   scroll-snap-stop: always;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 118px 24px 96px 24px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+  padding: 72px 18px 88px 18px;
   overflow: hidden;
   user-select: none;
+}
+
+.card-content-cluster {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 4px 52px 16px 8px;
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.card-content-cluster::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .feed-card-snap {
+    padding: 66px 14px 82px 14px;
+    gap: 10px;
+  }
+  .card-content-cluster {
+    justify-content: flex-start;
+    padding: 8px 46px 12px 4px;
+    gap: 12px;
+  }
+  .arabic-sacred-text {
+    line-height: 1.78;
+    margin: 4px 0 8px 0;
+  }
 }
 
 /* Editorial Typography Pairing */

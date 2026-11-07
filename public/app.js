@@ -29095,68 +29095,59 @@ ${canonicalUrl}`;
                 {
                   className: "feed-card-snap",
                   style: {
-                    paddingTop: feedMode === "for_you" ? 84 : 126
+                    paddingTop: feedMode === "for_you" ? 64 : 108
                   },
                   children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 6,
-                      zIndex: 2
-                    }, children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "center" }, children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: {
-                          fontSize: 10,
-                          fontWeight: 800,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.08em",
-                          padding: "3px 9px",
-                          borderRadius: 99,
-                          background: card.card_type === "quran" ? "rgba(212, 175, 55, 0.18)" : card.card_type === "hadith" ? "rgba(16, 185, 129, 0.18)" : card.card_type === "dua" ? "rgba(129, 140, 248, 0.2)" : "rgba(245, 158, 11, 0.2)",
-                          color: card.card_type === "quran" ? "var(--accent-gold-bright)" : card.card_type === "hadith" ? "var(--accent-emerald)" : "var(--text-primary)"
-                        }, children: card.card_type === "quran" ? "Quran Passage" : card.card_type === "hadith" ? "Sahih Hadith" : card.card_type === "dua" ? "Prophetic Dua" : "Seerah Gem" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                          "span",
-                          {
-                            className: "glass-pill",
-                            style: {
-                              padding: "4px 12px",
-                              borderRadius: 99,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              color: "var(--text-primary)"
-                            },
-                            children: card.source_title
-                          }
-                        ),
-                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: {
-                          fontSize: 11,
-                          fontWeight: 600,
-                          padding: "3px 9px",
-                          borderRadius: 99,
-                          background: "rgba(16, 185, 129, 0.12)",
-                          border: "1px solid rgba(16, 185, 129, 0.28)",
-                          color: "var(--accent-emerald)"
-                        }, children: card.revelation_place ? `${card.revelation_place} \u2022 ${card.authenticity_grade}` : card.authenticity_grade })
+                    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "card-content-cluster", style: { zIndex: 2 }, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 5
+                      }, children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "center" }, children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: {
+                            fontSize: 10,
+                            fontWeight: 800,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                            padding: "3px 9px",
+                            borderRadius: 99,
+                            background: card.card_type === "quran" ? "rgba(212, 175, 55, 0.18)" : card.card_type === "hadith" ? "rgba(16, 185, 129, 0.18)" : card.card_type === "dua" ? "rgba(129, 140, 248, 0.2)" : "rgba(245, 158, 11, 0.2)",
+                            color: card.card_type === "quran" ? "var(--accent-gold-bright)" : card.card_type === "hadith" ? "var(--accent-emerald)" : "var(--text-primary)"
+                          }, children: card.card_type === "quran" ? "Quran Passage" : card.card_type === "hadith" ? "Sahih Hadith" : card.card_type === "dua" ? "Prophetic Dua" : "Seerah Gem" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                            "span",
+                            {
+                              className: "glass-pill",
+                              style: {
+                                padding: "4px 12px",
+                                borderRadius: 99,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: "var(--text-primary)"
+                              },
+                              children: card.source_title
+                            }
+                          ),
+                          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: {
+                            fontSize: 11,
+                            fontWeight: 600,
+                            padding: "3px 9px",
+                            borderRadius: 99,
+                            background: "rgba(16, 185, 129, 0.12)",
+                            border: "1px solid rgba(16, 185, 129, 0.28)",
+                            color: "var(--accent-emerald)"
+                          }, children: card.revelation_place ? `${card.revelation_place} \u2022 ${card.authenticity_grade}` : card.authenticity_grade })
+                        ] }),
+                        card.narrator_chain && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { fontSize: 11.5, color: "var(--text-muted)", fontStyle: "italic" }, children: card.narrator_chain })
                       ] }),
-                      card.narrator_chain && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { fontSize: 11.5, color: "var(--text-muted)", fontStyle: "italic" }, children: card.narrator_chain })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
-                      my: "auto",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "12px 44px 12px 8px",
-                      zIndex: 2
-                    }, children: [
                       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
                         "div",
                         {
                           className: "arabic-sacred-text",
                           style: {
-                            fontSize: card.arabic_text_uthmani.length > 140 ? "1.62rem" : "1.92rem"
+                            fontSize: card.arabic_text_uthmani.length > 140 ? "1.55rem" : "1.85rem"
                           },
                           children: userState.arabic_script === "indopak" && card.arabic_text_indopak ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: card.arabic_text_indopak }) : card.words && card.words.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_jsx_runtime3.Fragment, { children: card.words.map((w, wIdx) => {
                             const isWordActive = isCardPlaying && activeWordIdx === wIdx;
@@ -29181,18 +29172,18 @@ ${canonicalUrl}`;
                       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
                         fontSize: 10.5,
                         color: "var(--text-muted)",
-                        marginBottom: 10,
+                        marginBottom: 4,
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 6
                       }, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: "\u2726 Tap any highlighted Arabic word for Trilateral Root & Audio" }) }),
-                      userState.show_transliteration === "true" && card.transliteration && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "transliteration-text", style: { marginBottom: 14, maxWidth: 420 }, children: card.transliteration }),
+                      userState.show_transliteration === "true" && card.transliteration && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "transliteration-text", style: { marginBottom: 6, maxWidth: 420 }, children: card.transliteration }),
                       /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
                         "p",
                         {
                           className: "editorial-translation",
                           style: {
-                            fontSize: translationText.length > 210 ? "1.08rem" : "1.22rem",
+                            fontSize: translationText.length > 210 ? "1.05rem" : "1.18rem",
                             maxWidth: 430
                           },
                           children: [
