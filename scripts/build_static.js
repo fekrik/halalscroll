@@ -74,7 +74,7 @@ async function buildStaticSite() {
   // 3. Write HTML & 404.html with relative paths and cache-busting query param for GitHub Pages / mobile browsers
   const ver = Date.now();
   const html = `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="fajr_dawn">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />

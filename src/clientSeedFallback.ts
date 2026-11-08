@@ -11,7 +11,7 @@ const STORAGE_KEYS = {
 
 const DEFAULT_STATE: UserState = {
   streak_count: '12',
-  theme: 'andalusian_parchment',
+  theme: 'fajr_dawn',
   arabic_script: 'uthmani',
   translation_edition: 'clear',
   show_transliteration: 'true',

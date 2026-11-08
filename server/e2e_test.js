@@ -117,7 +117,7 @@ async function runTests() {
   });
   assert.strictEqual(st.status, 200);
   assert.strictEqual(st.json.state.theme, 'midnight_sanctuary');
-  await request('POST', '/api/state', { theme: 'andalusian_parchment' });
+  await request('POST', '/api/state', { theme: 'fajr_dawn' });
 
   const ogSvg = await request('GET', '/api/og/ash-sharh-5-6.svg');
   assert.strictEqual(ogSvg.status, 200);

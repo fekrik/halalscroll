@@ -111,7 +111,7 @@ function seedDatabase() {
   const upsertState = db.prepare(`INSERT OR IGNORE INTO user_state (key, value) VALUES (?, ?)`);
   upsertState.run('streak_count', '12');
   upsertState.run('last_active_date', new Date().toISOString().slice(0, 10));
-  upsertState.run('theme', 'andalusian_parchment');
+  upsertState.run('theme', 'fajr_dawn');
   upsertState.run('arabic_script', 'uthmani');
   upsertState.run('translation_edition', 'clear');
   upsertState.run('show_transliteration', 'true');
@@ -119,6 +119,11 @@ function seedDatabase() {
   upsertState.run('plus_member', 'false');
   upsertState.run('sequential_quran_card', 'card-quran-94-5');
   upsertState.run('sequential_book_card', 'card-hadith-nawawi-19');
+
+  // Migrate any previous default theme to fajr_dawn
+  try {
+    db.prepare(`UPDATE user_state SET value = 'fajr_dawn' WHERE key = 'theme' AND value = 'andalusian_parchment'`).run();
+  } catch (_) {}
 
   const insertBookmark = db.prepare(`INSERT OR IGNORE INTO user_bookmarks (card_id, folder_name) VALUES (?, ?)`);
   insertBookmark.run('card-quran-94-5', 'Hardship & Sabr');
@@ -779,7 +784,7 @@ const handleRequest = async (req, res) => {
   const inlineBootJson = JSON.stringify(bootPayload).replace(/</g, '\\u003c');
 
   const html = `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="${escapeXml(bootPayload.state?.theme || 'fajr_dawn')}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />

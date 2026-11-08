@@ -64,11 +64,16 @@ const App: React.FC = () => {
     let localState: Partial<UserState> = {};
     try {
       const raw = localStorage.getItem('halalscroll_state_v2');
-      if (raw) localState = JSON.parse(raw);
+      if (raw) {
+        localState = JSON.parse(raw);
+        if (localState.theme === 'andalusian_parchment') {
+          localState.theme = 'fajr_dawn';
+        }
+      }
     } catch { }
     return {
       streak_count: '12',
-      theme: 'andalusian_parchment',
+      theme: 'fajr_dawn',
       arabic_script: 'uthmani',
       translation_edition: 'clear',
       show_transliteration: 'true',
@@ -382,7 +387,7 @@ const App: React.FC = () => {
 
   // Sync theme attribute on document root
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', userState.theme || 'andalusian_parchment');
+    document.documentElement.setAttribute('data-theme', userState.theme || 'fajr_dawn');
   }, [userState.theme]);
 
   // Filtered Cards based on active Feed Mode (when server pagination is active, `cards` already matches the filter)
