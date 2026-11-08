@@ -848,22 +848,20 @@ const App: React.FC = () => {
                   className="glass-pill"
                   title="Install Halal Scroll App on your iPhone or Android"
                   style={{
-                    padding: '4px 8px',
+                    width: 31,
+                    height: 31,
                     borderRadius: 999,
                     color: 'var(--accent-gold-bright)',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    display: 'inline-flex',
+                    display: 'flex',
                     alignItems: 'center',
-                    gap: 3.5,
+                    justifyContent: 'center',
                     cursor: 'pointer',
-                    background: 'rgba(212, 175, 55, 0.15)',
+                    background: 'rgba(212, 175, 55, 0.18)',
                     border: '1px solid var(--border-gold)',
                     flexShrink: 0
                   }}
                 >
-                  <Smartphone size={12} />
-                  <span>Get App</span>
+                  <Smartphone size={14} />
                 </button>
               )}
             </div>
@@ -2064,6 +2062,50 @@ const App: React.FC = () => {
                     {userState.show_transliteration === 'true' ? 'Enabled ✓' : 'Hidden'}
                   </button>
                 </div>
+
+                {/* Install App on Device */}
+                {!isStandalone && (
+                  <div style={{
+                    marginTop: 8,
+                    padding: '12px 14px',
+                    borderRadius: 14,
+                    background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(16, 185, 129, 0.12))',
+                    border: '1px solid var(--border-gold)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Smartphone size={15} style={{ color: 'var(--accent-gold)' }} />
+                        Install as App
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                        Add to Home Screen for full-screen reading on iPhone &amp; Android.
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowSettingsDrawer(false);
+                        handleInstallClick();
+                      }}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: 99,
+                        border: 'none',
+                        background: 'var(--accent-gold)',
+                        color: '#090A0F',
+                        fontWeight: 700,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      Install
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -30,9 +30,9 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        background: 'rgba(3, 7, 18, 0.85)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        background: 'rgba(2, 6, 23, 0.85)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -44,12 +44,12 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
         style={{
           width: '100%',
           maxWidth: 420,
-          background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.98), rgba(6, 19, 26, 0.98))',
-          border: '1px solid var(--border-gold)',
+          background: 'linear-gradient(180deg, #0F172A 0%, #020617 100%)',
+          border: '1.5px solid rgba(212, 175, 55, 0.4)',
           borderRadius: 24,
           padding: 24,
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 40px rgba(212, 175, 55, 0.15)',
-          color: 'var(--text-primary)',
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(212, 175, 55, 0.2)',
+          color: '#F8FAFC',
           position: 'relative'
         }}
         onClick={(e) => e.stopPropagation()}
@@ -64,9 +64,9 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
             width: 32,
             height: 32,
             borderRadius: 999,
-            background: 'rgba(255, 255, 255, 0.08)',
+            background: 'rgba(255, 255, 255, 0.12)',
             border: 'none',
-            color: 'var(--text-secondary)',
+            color: '#E2E8F0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -83,20 +83,20 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
             src="/icons/icon-180.png"
             alt="Halal Scroll App Icon"
             style={{
-              width: 56,
-              height: 56,
+              width: 54,
+              height: 54,
               borderRadius: 14,
-              border: '1px solid var(--border-gold)',
-              boxShadow: '0 4px 14px rgba(212, 175, 55, 0.25)'
+              border: '1px solid rgba(212, 175, 55, 0.6)',
+              boxShadow: '0 4px 16px rgba(212, 175, 55, 0.3)'
             }}
           />
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent-gold-bright)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#FCD34D', display: 'flex', alignItems: 'center', gap: 6 }}>
               Install Halal Scroll
               <Sparkles size={16} />
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-              Fast, offline-ready &amp; zero browser clutter
+            <div style={{ fontSize: 12.5, color: '#94A3B8', marginTop: 2 }}>
+              Fast, full-screen &amp; zero browser clutter
             </div>
           </div>
         </div>
@@ -104,25 +104,25 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
         {/* iOS Specific Instructions */}
         {isIOS ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, margin: '18px 0' }}>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>
-              Follow 3 quick steps in <strong>Safari</strong> on your iPhone:
+            <div style={{ fontSize: 13, color: '#CBD5E1', marginBottom: 2 }}>
+              Follow 3 quick steps in <strong style={{ color: '#FFFFFF' }}>Safari</strong> on your iPhone:
             </div>
 
             <div style={{
               display: 'flex',
               alignItems: 'flex-start',
               gap: 12,
-              padding: '10px 12px',
+              padding: '12px 14px',
               borderRadius: 14,
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.06)'
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
             }}>
               <div style={{
                 width: 28,
                 height: 28,
                 borderRadius: 8,
-                background: 'rgba(212, 175, 55, 0.2)',
-                color: 'var(--accent-gold-bright)',
+                background: 'rgba(212, 175, 55, 0.25)',
+                color: '#FCD34D',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -132,8 +132,8 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
               }}>
                 1
               </div>
-              <div style={{ fontSize: 13, lineHeight: 1.4 }}>
-                Tap the <strong>Share</strong> button <Share2 size={13} style={{ display: 'inline', verticalAlign: 'middle', margin: '0 2px' }} /> in the bottom bar of Safari.
+              <div style={{ fontSize: 13, lineHeight: 1.5, color: '#F8FAFC' }}>
+                Tap the <strong style={{ color: '#FCD34D' }}>Share</strong> button <Share2 size={13} style={{ display: 'inline', verticalAlign: 'middle', margin: '0 2px', color: '#FCD34D' }} /> in the bottom toolbar of Safari.
               </div>
             </div>
 
@@ -141,17 +141,17 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
               display: 'flex',
               alignItems: 'flex-start',
               gap: 12,
-              padding: '10px 12px',
+              padding: '12px 14px',
               borderRadius: 14,
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.06)'
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
             }}>
               <div style={{
                 width: 28,
                 height: 28,
                 borderRadius: 8,
-                background: 'rgba(212, 175, 55, 0.2)',
-                color: 'var(--accent-gold-bright)',
+                background: 'rgba(212, 175, 55, 0.25)',
+                color: '#FCD34D',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -161,8 +161,8 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
               }}>
                 2
               </div>
-              <div style={{ fontSize: 13, lineHeight: 1.4 }}>
-                Scroll down the sheet and select <strong>"Add to Home Screen"</strong> <PlusSquare size={13} style={{ display: 'inline', verticalAlign: 'middle', margin: '0 2px' }} />.
+              <div style={{ fontSize: 13, lineHeight: 1.5, color: '#F8FAFC' }}>
+                Scroll down the menu and select <strong style={{ color: '#FCD34D' }}>"Add to Home Screen"</strong> <PlusSquare size={13} style={{ display: 'inline', verticalAlign: 'middle', margin: '0 2px', color: '#FCD34D' }} />.
               </div>
             </div>
 
@@ -170,17 +170,17 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
               display: 'flex',
               alignItems: 'flex-start',
               gap: 12,
-              padding: '10px 12px',
+              padding: '12px 14px',
               borderRadius: 14,
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.06)'
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
             }}>
               <div style={{
                 width: 28,
                 height: 28,
                 borderRadius: 8,
-                background: 'rgba(16, 185, 129, 0.2)',
-                color: 'var(--accent-emerald)',
+                background: 'rgba(16, 185, 129, 0.25)',
+                color: '#34D399',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -190,8 +190,8 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
               }}>
                 3
               </div>
-              <div style={{ fontSize: 13, lineHeight: 1.4 }}>
-                Tap <strong>"Add"</strong> in the top-right corner. Halal Scroll will appear as a native app on your home screen!
+              <div style={{ fontSize: 13, lineHeight: 1.5, color: '#F8FAFC' }}>
+                Tap <strong style={{ color: '#34D399' }}>"Add"</strong> in the top-right corner. Halal Scroll will appear as a native app on your home screen!
               </div>
             </div>
           </div>
@@ -205,7 +205,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
                   width: '100%',
                   padding: '12px 16px',
                   borderRadius: 14,
-                  background: 'linear-gradient(135deg, var(--accent-gold), #d97706)',
+                  background: 'linear-gradient(135deg, #F59E0B, #D97706)',
                   border: 'none',
                   color: '#090A0F',
                   fontWeight: 700,
@@ -215,15 +215,15 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
                   justifyContent: 'center',
                   gap: 8,
                   cursor: 'pointer',
-                  boxShadow: '0 4px 16px rgba(212, 175, 55, 0.35)'
+                  boxShadow: '0 4px 16px rgba(245, 158, 11, 0.4)'
                 }}
               >
                 <Download size={18} />
                 Install App Now
               </button>
             ) : (
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                Tap the browser menu (<strong>⋮</strong> in Chrome) and select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.
+              <div style={{ fontSize: 13, color: '#E2E8F0', lineHeight: 1.5 }}>
+                Tap the browser menu (<strong style={{ color: '#FCD34D' }}>⋮</strong> in Chrome) and select <strong style={{ color: '#FCD34D' }}>"Install app"</strong> or <strong style={{ color: '#FCD34D' }}>"Add to Home screen"</strong>.
               </div>
             )}
           </div>
@@ -231,23 +231,23 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
 
         {/* Benefits list */}
         <div style={{
-          padding: '10px 14px',
-          borderRadius: 12,
-          background: 'rgba(16, 185, 129, 0.08)',
-          border: '1px solid rgba(16, 185, 129, 0.2)',
+          padding: '12px 14px',
+          borderRadius: 14,
+          background: 'rgba(16, 185, 129, 0.1)',
+          border: '1px solid rgba(16, 185, 129, 0.25)',
           display: 'flex',
           flexDirection: 'column',
           gap: 6,
-          fontSize: 11.5,
-          color: 'var(--text-secondary)'
+          fontSize: 12,
+          color: '#CBD5E1'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-emerald)', fontWeight: 600 }}>
-            <CheckCircle2 size={13} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#34D399', fontWeight: 600 }}>
+            <CheckCircle2 size={14} />
             Why install as an App?
           </div>
-          <div>• Fullscreen immersion — no browser bars or distractions</div>
+          <div>• Fullscreen immersion — no browser address bars</div>
           <div>• Instant opening from your home screen / app library</div>
-          <div>• High fidelity reciter audio &amp; offline reading cache</div>
+          <div>• High-fidelity recitation audio &amp; offline reading cache</div>
         </div>
 
         {/* Action Button */}
@@ -256,12 +256,12 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
           style={{
             marginTop: 18,
             width: '100%',
-            padding: '10px 14px',
-            borderRadius: 12,
-            background: 'rgba(255, 255, 255, 0.08)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            color: 'var(--text-primary)',
-            fontSize: 13,
+            padding: '11px 16px',
+            borderRadius: 14,
+            background: 'rgba(255, 255, 255, 0.12)',
+            border: '1px solid rgba(255, 255, 255, 0.18)',
+            color: '#FFFFFF',
+            fontSize: 13.5,
             fontWeight: 600,
             cursor: 'pointer'
           }}
@@ -272,4 +272,3 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
     </div>
   );
 };
-
