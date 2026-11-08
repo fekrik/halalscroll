@@ -484,24 +484,57 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
     );
   };
 
+  const getRenderedImageBlob = (): Promise<Blob | null> => {
+    const canvas = canvasRef.current;
+    if (!canvas) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), 'image/png');
+    });
+  };
+
   const handleNativePlatformShare = async (platform: 'instagram' | 'tiktok' | 'whatsapp' | 'x') => {
     soundEngine.triggerHaptic('lightImpact');
     const shareText = `“${card.translation_en_clear}” — ${card.source_title}\n\nRead with Word-by-Word Arabic Roots & Classical Tafsir on Halal Scroll:\n${canonicalUrl}`;
 
+    // 1. Try Native Mobile Web Share API with rendered card image if supported (iOS/Android)
+    const blob = await getRenderedImageBlob();
+    if (blob && navigator.share) {
+      try {
+        const file = new File([blob], `halalscroll-${card.share_slug}.png`, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: `${card.source_title} • Halal Scroll`,
+            text: shareText,
+            files: [file]
+          });
+          setShareToast('Shared to system share sheet!');
+          setTimeout(() => setShareToast(null), 3500);
+          return;
+        }
+      } catch (err: any) {
+        if (err.name === 'AbortError') return; // User closed sheet
+      }
+    }
+
+    // 2. Direct Web Deep Links / Platform Fallback
     if (platform === 'whatsapp') {
-      const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+      const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
       window.open(waUrl, '_blank', 'noopener,noreferrer');
-      setShareToast('Opened WhatsApp share sheet with formatted Ayah & deep link!');
+      setShareToast('Opened WhatsApp share with formatted Ayah & deep link!');
     } else if (platform === 'x') {
       const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
       window.open(xUrl, '_blank', 'noopener,noreferrer');
       setShareToast('Opened X / Post composer with OpenGraph card preview!');
     } else if (platform === 'instagram' || platform === 'tiktok') {
+      // For desktop or browsers without file sharing, download Ultra-HD PNG and copy caption
       handleDownloadPng();
+      try {
+        await navigator.clipboard.writeText(shareText);
+      } catch {}
       setShareToast(
         platform === 'instagram'
-          ? 'Exported 9:16 Story asset ready for Instagram Stories / Reels!'
-          : 'Exported high-retention slide ready for TikTok Photo/Reel Mode!'
+          ? 'Downloaded 9:16 Story PNG & copied caption for Instagram Stories / Reels!'
+          : 'Downloaded 9:16 slide & copied caption for TikTok Photo/Reel mode!'
       );
     }
     setTimeout(() => setShareToast(null), 3500);

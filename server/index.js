@@ -355,8 +355,9 @@ function getUserState() {
   return state;
 }
 
-function buildBootstrapPayload(limit = 16) {
-  const initialPage = queryFeedPage({ mode: 'for_you', offset: 0, limit });
+function buildBootstrapPayload(limit = 16, sessionId = null) {
+  const dynamicSeed = sessionId || ('seed_' + Math.random().toString(36).slice(2, 10));
+  const initialPage = queryFeedPage({ mode: 'for_you', session_id: dynamicSeed, offset: 0, limit });
   const counts = getCollectionCounts();
   const state = getUserState();
   const folders = db.prepare(`SELECT DISTINCT folder_name FROM user_bookmarks ORDER BY folder_name ASC`).all().map(r => r.folder_name);
@@ -736,15 +737,12 @@ const handleRequest = async (req, res) => {
     }
   }
   const ogImage = `${baseOrigin}/api/og/${ogSlug}.jpg`;
-  const cachedBoot = getCachedBootstrap(20);
-  let inlineBootJson = cachedBoot.inlineJson;
-  if (deepLinkCard && !cachedBoot.payload.cards.some(c => c.id === deepLinkCard.id)) {
-    const customPayload = {
-      ...cachedBoot.payload,
-      cards: [deepLinkCard, ...cachedBoot.payload.cards]
-    };
-    inlineBootJson = JSON.stringify(customPayload).replace(/</g, '\\u003c');
+  // Dynamic bootstrap payload per request to deliver fresh recommendation on reload
+  const bootPayload = buildBootstrapPayload(20);
+  if (deepLinkCard && !bootPayload.cards.some(c => c.id === deepLinkCard.id)) {
+    bootPayload.cards = [deepLinkCard, ...bootPayload.cards];
   }
+  const inlineBootJson = JSON.stringify(bootPayload).replace(/</g, '\\u003c');
 
   const html = `<!DOCTYPE html>
 <html lang="en">

@@ -140,15 +140,12 @@ const App: React.FC = () => {
   const hasBackendApiRef = useRef<boolean>(initialBoot.fromServer);
   const isFirstFilterEffectRef = useRef<boolean>(true);
   const sessionIdRef = useRef<string>(() => {
+    // Generate a fresh session browse seed so refreshing gives a fresh discover sequence
     try {
-      let id = localStorage.getItem('hs_device_session_id');
-      if (!id) {
-        id = 'user_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-        localStorage.setItem('hs_device_session_id', id);
-      }
-      return id;
+      const freshSeed = 'sess_' + Math.random().toString(36).slice(2, 9) + '_' + Date.now().toString(36);
+      return freshSeed;
     } catch {
-      return 'user_' + Date.now().toString(36);
+      return 'sess_' + Date.now().toString(36);
     }
   });
 
@@ -818,7 +815,6 @@ const App: React.FC = () => {
               >
                 {SEQUENTIAL_COLLECTIONS.map((col) => {
                   const isSel = selectedCollection === col.id;
-                  const countVal = collectionCounts[col.id] ?? cards.filter(c => c.collection_slug === col.id).length;
                   return (
                     <button
                       key={col.id}
@@ -831,7 +827,7 @@ const App: React.FC = () => {
                       }}
                       style={{
                         flexShrink: 0,
-                        padding: '5px 11px',
+                        padding: '6px 14px',
                         borderRadius: 999,
                         fontSize: 11.5,
                         fontWeight: isSel ? 700 : 500,
@@ -840,20 +836,10 @@ const App: React.FC = () => {
                         background: isSel ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255,255,255,0.04)',
                         color: isSel ? 'var(--accent-gold-bright)' : 'var(--text-secondary)',
                         display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6
+                        alignItems: 'center'
                       }}
                     >
                       <span>{col.label}</span>
-                      <span style={{
-                        fontSize: 10,
-                        padding: '1px 6px',
-                        borderRadius: 99,
-                        background: 'rgba(0,0,0,0.25)',
-                        color: 'var(--accent-emerald)'
-                      }}>
-                        {countVal.toLocaleString()}
-                      </span>
                     </button>
                   );
                 })}
@@ -893,10 +879,10 @@ const App: React.FC = () => {
                       outline: 'none'
                     }}
                   >
-                    <option value="">All 114 Surahs ({(collectionCounts.quran || 4186).toLocaleString()} Passages)</option>
+                    <option value="">All 114 Surahs</option>
                     {surahs.map(s => (
                       <option key={s.number} value={s.number}>
-                        {s.number}. {s.name_simple} ({s.name_arabic}) — {s.translated_name} ({s.card_count} cards)
+                        {s.number}. {s.name_simple} ({s.name_arabic}) — {s.translated_name}
                       </option>
                     ))}
                   </select>
@@ -1750,7 +1736,7 @@ const App: React.FC = () => {
                       Personal Sanctuary Vault
                     </div>
                     <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-                      Saved Bookmarks &amp; Collections ({bookmarkedCards.length})
+                      Saved Bookmarks &amp; Collections
                     </h3>
                   </div>
                   <button

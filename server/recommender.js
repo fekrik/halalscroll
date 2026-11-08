@@ -216,9 +216,10 @@ function rankCards(meta, opts) {
     if (window && c.time_window === window) s += 0.8;
 
     const daysAgo = seen.get(c.id);
-    if (daysAgo != null) s -= 2.5 * Math.exp(-daysAgo / 7);
+    if (daysAgo != null) s -= 3.5 * Math.exp(-daysAgo / 10);
 
-    s += seededUnit(seed, c.id) * 1.6; // exploration: reshuffles every session, strong enough to mix tiers
+    // Exploration factor: dynamic per browse session seed, strong enough to surface fresh gems across tiers
+    s += seededUnit(seed, c.id) * 3.2;
     scored.push({ i, s });
   }
   scored.sort((a, b) => b.s - a.s);
