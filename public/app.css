@@ -100,6 +100,8 @@ html, body, #root {
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "SF Pro Text", "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* App Shell & Responsive Viewport */
@@ -117,15 +119,9 @@ html, body, #root {
   transition: background 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Subtle 4% Film Grain Overlay */
+/* Film Grain Overlay Disabled for Crisp Retina Sharpness */
 .film-grain {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 2;
-  opacity: 0.04;
-  background-image: radial-gradient(rgba(255,255,255,0.7) 1px, transparent 0);
-  background-size: 24px 24px;
+  display: none;
 }
 
 /* Main Mobile-First Sanctuary Frame + Optional Desktop Inspector Rail */
@@ -222,7 +218,6 @@ html, body, #root {
   padding: 14px 18px max(18px, calc(10px + env(safe-area-inset-bottom, 0px))) 18px;
   overflow: hidden;
   user-select: none;
-  perspective: 1000px;
 }
 
 /* TikTok / Instagram Reels Scroll Physics & Staggered Card Reveal */
@@ -236,21 +231,18 @@ html, body, #root {
   padding: 4px 4px 8px 4px;
   transform-origin: center top;
   transition:
-    transform 0.52s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.40s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .feed-card-snap.card-inactive .card-content-cluster {
-  transform: scale(0.91) translateY(22px);
-  opacity: 0.28;
-  filter: blur(2.5px);
+  transform: translateY(18px);
+  opacity: 0.35;
 }
 
 .feed-card-snap.card-active .card-content-cluster {
-  transform: scale(1) translateY(0);
+  transform: translateY(0);
   opacity: 1;
-  filter: blur(0px);
 }
 
 /* Staggered inner elements on active snap */
@@ -259,49 +251,48 @@ html, body, #root {
 .reel-anim-translation,
 .reel-anim-dock {
   transition:
-    transform 0.56s cubic-bezier(0.19, 1, 0.22, 1),
-    opacity 0.48s cubic-bezier(0.19, 1, 0.22, 1);
-  will-change: transform, opacity;
+    transform 0.45s cubic-bezier(0.19, 1, 0.22, 1),
+    opacity 0.40s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .feed-card-snap.card-inactive .reel-anim-meta {
-  transform: translateY(14px) scale(0.95);
+  transform: translateY(12px);
   opacity: 0;
 }
 .feed-card-snap.card-active .reel-anim-meta {
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
   opacity: 1;
   transition-delay: 0.03s;
 }
 
 .feed-card-snap.card-inactive .reel-anim-arabic {
-  transform: translateY(20px) scale(0.94);
+  transform: translateY(16px);
   opacity: 0;
 }
 .feed-card-snap.card-active .reel-anim-arabic {
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
   opacity: 1;
-  transition-delay: 0.09s;
+  transition-delay: 0.08s;
 }
 
 .feed-card-snap.card-inactive .reel-anim-translation {
-  transform: translateY(24px);
+  transform: translateY(18px);
   opacity: 0;
 }
 .feed-card-snap.card-active .reel-anim-translation {
   transform: translateY(0);
   opacity: 1;
-  transition-delay: 0.16s;
+  transition-delay: 0.14s;
 }
 
 .feed-card-snap.card-inactive .reel-anim-dock {
-  transform: translateY(28px) scale(0.96);
-  opacity: 0.15;
+  transform: translateY(20px);
+  opacity: 0.25;
 }
 .feed-card-snap.card-active .reel-anim-dock {
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
   opacity: 1;
-  transition-delay: 0.21s;
+  transition-delay: 0.18s;
 }
 
 /* Ambient Swipe Glow Burst on Card Snap */
