@@ -136,3 +136,4 @@ for (const t of targets) {
 fs.copyFileSync(path.join(ICONS_DIR, 'favicon.png'), path.join(__dirname, '..', 'public', 'favicon.png'));
 fs.copyFileSync(path.join(ICONS_DIR, 'favicon.png'), path.join(__dirname, '..', 'public', 'favicon.ico'));
 console.log('Favicons generated.');
+

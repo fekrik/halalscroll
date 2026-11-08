@@ -272,3 +272,4 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
     </div>
   );
 };
+

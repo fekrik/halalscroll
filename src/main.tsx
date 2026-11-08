@@ -176,6 +176,52 @@ const App: React.FC = () => {
     return null;
   });
 
+  // PWA Standalone Detection & Installation Modal State
+  const [isStandalone, setIsStandalone] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const mq = typeof window.matchMedia === 'function' ? window.matchMedia('(display-mode: standalone)') : null;
+      return Boolean((mq && mq.matches) || (window.navigator as any)?.standalone);
+    } catch {
+      return false;
+    }
+  });
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
+  const [showInstallModal, setShowInstallModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const mq = typeof window.matchMedia === 'function' ? window.matchMedia('(display-mode: standalone)') : null;
+        const isStandaloneCheck = Boolean((mq && mq.matches) || (window.navigator as any)?.standalone);
+        setIsStandalone(isStandaloneCheck);
+      } catch { }
+
+      const handleBeforeInstall = (e: any) => {
+        try {
+          e.preventDefault();
+          setDeferredInstallPrompt(e);
+        } catch { }
+      };
+      window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+      if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+        navigator.serviceWorker.register('/sw.js').catch((err) => {
+          console.warn('[PWA] Service worker registration error:', err);
+        });
+      }
+
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      };
+    }
+  }, []);
+
+  const handleInstallClick = () => {
+    soundEngine.triggerHaptic('selectionTick');
+    setShowInstallModal(true);
+  };
+
   const [doubleTapBurst, setDoubleTapBurst] = useState<{ x: number; y: number; id: number } | null>(null);
   const lastTapRef = useRef<{ time: number; cardId: string }>({ time: 0, cardId: '' });
   const feedContainerRef = useRef<HTMLDivElement | null>(null);
@@ -2183,15 +2229,32 @@ class AppErrorBoundary extends React.Component<{ children: React.ReactNode }, { 
   render() {
     if (this.state.error) {
       return (
-        <div className="app-shell">
-          <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-primary)' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Something went wrong loading Halal Scroll.</div>
-            <button
-              onClick={() => window.location.reload()}
-              style={{ padding: '8px 16px', borderRadius: 999, border: '1px solid var(--border-gold)', background: 'transparent', color: 'var(--accent-gold)', cursor: 'pointer' }}
-            >
-              Reload
-            </button>
+        <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ textAlign: 'center', maxWidth: 440, padding: 24, borderRadius: 20, background: 'rgba(17, 24, 39, 0.95)', border: '1px solid var(--border-gold)', color: 'var(--text-primary)' }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent-gold-bright)', marginBottom: 8 }}>Halal Scroll Sanctuary</div>
+            <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>An error occurred while rendering the page.</div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                onClick={() => {
+                  try { localStorage.clear(); } catch {}
+                  window.location.reload();
+                }}
+                style={{ padding: '8px 16px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}
+              >
+                Clear Cache &amp; Reset
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                style={{ padding: '8px 20px', borderRadius: 999, border: 'none', background: 'var(--accent-gold)', color: '#090A0F', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Reload App
+              </button>
+            </div>
+            {this.state.error && (
+              <pre style={{ marginTop: 16, padding: 12, borderRadius: 8, background: 'rgba(0,0,0,0.5)', color: '#f87171', fontSize: 11, textAlign: 'left', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
+                {this.state.error.message}
+              </pre>
+            )}
           </div>
         </div>
       );
