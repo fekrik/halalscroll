@@ -59,28 +59,69 @@ const App: React.FC = () => {
   }, []);
 
   const [cards, setCards] = useState<FeedCard[]>(() => initialBoot.data.cards || []);
-  const [userState, setUserState] = useState<UserState>(() => ({
-    streak_count: '12',
-    theme: 'andalusian_parchment',
-    arabic_script: 'uthmani',
-    translation_edition: 'clear',
-    show_transliteration: 'true',
-    reciter: 'Mishary Rashid Alafasy',
-    plus_member: 'false',
-    sequential_quran_card: 'card-quran-94-5',
-    sequential_book_card: 'card-hadith-nawawi-19',
-    ...(initialBoot.data.state || {})
-  }));
-  const [folders, setFolders] = useState<string[]>(
-    () => initialBoot.data.folders || ['Favorites', 'Duas for Family', 'Hardship & Sabr', 'Daily Memorization']
-  );
+  const [userState, setUserState] = useState<UserState>(() => {
+    let localState: Partial<UserState> = {};
+    try {
+      const raw = localStorage.getItem('halalscroll_state_v2');
+      if (raw) localState = JSON.parse(raw);
+    } catch {}
+    return {
+      streak_count: '12',
+      theme: 'andalusian_parchment',
+      arabic_script: 'uthmani',
+      translation_edition: 'clear',
+      show_transliteration: 'true',
+      reciter: 'Mishary Rashid Alafasy',
+      plus_member: 'false',
+      sequential_quran_card: 'card-quran-94-5',
+      sequential_book_card: 'card-hadith-nawawi-19',
+      ...(initialBoot.data.state || {}),
+      ...localState
+    };
+  });
+  const [folders, setFolders] = useState<string[]>(() => {
+    let localFolders: string[] = [];
+    try {
+      const raw = localStorage.getItem('halalscroll_folders_v1');
+      if (raw) localFolders = JSON.parse(raw);
+    } catch {}
+    return Array.from(new Set([
+      'Favorites', 'Duas for Family', 'Hardship & Sabr', 'Daily Memorization',
+      ...(initialBoot.data.folders || []),
+      ...localFolders
+    ]));
+  });
   const [loading, setLoading] = useState(false);
 
-  // Navigation & Feed Mode State
-  const [feedMode, setFeedMode] = useState<FeedMode>('for_you');
-  const [selectedMood, setSelectedMood] = useState<string>('anxious');
-  const [selectedCollection, setSelectedCollection] = useState<string>('quran');
-  const [selectedSurah, setSelectedSurah] = useState<number | null>(null);
+  // Navigation & Feed Mode State with persistent memory across app reloads
+  const [feedMode, setFeedMode] = useState<FeedMode>(() => {
+    try {
+      const saved = localStorage.getItem('hs_last_feed_mode') as FeedMode;
+      if (saved === 'for_you' || saved === 'sequential' || saved === 'moods') return saved;
+    } catch {}
+    return 'for_you';
+  });
+  const [selectedMood, setSelectedMood] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('hs_last_mood');
+      if (saved) return saved;
+    } catch {}
+    return 'anxious';
+  });
+  const [selectedCollection, setSelectedCollection] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('hs_last_collection');
+      if (saved) return saved;
+    } catch {}
+    return 'quran';
+  });
+  const [selectedSurah, setSelectedSurah] = useState<number | null>(() => {
+    try {
+      const saved = localStorage.getItem('hs_last_surah');
+      if (saved) return Number(saved);
+    } catch {}
+    return null;
+  });
   const [surahs, setSurahs] = useState<SurahInfo[]>(() => initialBoot.data.surahs || []);
   const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>(
     () => initialBoot.data.collection_counts || {}
@@ -100,14 +141,14 @@ const App: React.FC = () => {
   const isFirstFilterEffectRef = useRef<boolean>(true);
   const sessionIdRef = useRef<string>(() => {
     try {
-      let id = sessionStorage.getItem('hs_session_id');
+      let id = localStorage.getItem('hs_device_session_id');
       if (!id) {
-        id = 'sess_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-        sessionStorage.setItem('hs_session_id', id);
+        id = 'user_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+        localStorage.setItem('hs_device_session_id', id);
       }
       return id;
     } catch {
-      return 'sess_' + Date.now().toString(36);
+      return 'user_' + Date.now().toString(36);
     }
   });
 
@@ -283,6 +324,20 @@ const App: React.FC = () => {
       });
   };
 
+  // Persist filter preferences across reloads
+  useEffect(() => {
+    try {
+      localStorage.setItem('hs_last_feed_mode', feedMode);
+      localStorage.setItem('hs_last_mood', selectedMood);
+      localStorage.setItem('hs_last_collection', selectedCollection);
+      if (selectedSurah) {
+        localStorage.setItem('hs_last_surah', String(selectedSurah));
+      } else {
+        localStorage.removeItem('hs_last_surah');
+      }
+    } catch {}
+  }, [feedMode, selectedMood, selectedCollection, selectedSurah]);
+
   // Sync theme attribute on document root
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', userState.theme || 'andalusian_parchment');
@@ -304,7 +359,7 @@ const App: React.FC = () => {
     if (feedMode === 'moods') {
       if (selectedMood === 'all') return cards;
       return cards.filter(
-        c => c.mood_tags.includes(selectedMood) || c.topic_tags.includes(selectedMood)
+        c => (c.mood_tags || []).includes(selectedMood) || (c.topic_tags || []).includes(selectedMood)
       );
     }
     return cards;
@@ -313,7 +368,13 @@ const App: React.FC = () => {
   const activeCard = displayedCards[activeCardIndex] || displayedCards[0] || null;
 
   const updateServerState = async (patch: Partial<UserState>) => {
-    setUserState(prev => ({ ...prev, ...patch }));
+    setUserState(prev => {
+      const next = { ...prev, ...patch };
+      try {
+        localStorage.setItem('halalscroll_state_v2', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     offlineUpdateState(patch);
     try {
       const res = await fetch('/api/state', {
@@ -323,7 +384,15 @@ const App: React.FC = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.state) setUserState(prev => ({ ...prev, ...data.state }));
+        if (data.state) {
+          setUserState(prev => {
+            const next = { ...prev, ...data.state };
+            try {
+              localStorage.setItem('halalscroll_state_v2', JSON.stringify(next));
+            } catch {}
+            return next;
+          });
+        }
       }
     } catch {}
   };
