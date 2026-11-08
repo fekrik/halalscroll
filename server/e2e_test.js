@@ -49,7 +49,7 @@ async function runTests() {
   // 1. Test /api/bootstrap (14,678+ Canonical Cards, 114 Surahs Directory, Word Morphology, 5-Layer Deep Study)
   const boot = await request('GET', '/api/bootstrap');
   assert.strictEqual(boot.status, 200, 'Bootstrap endpoint should return 200');
-  assert(Array.isArray(boot.json.cards) && boot.json.cards.length === 40, 'Should return initial 40 hydrated cards');
+  assert(Array.isArray(boot.json.cards) && boot.json.cards.length === 20, 'Should return initial 20 hydrated cards');
   assert(boot.json.total_corpus_count >= 14000, `Expected 14,000+ total cards, got ${boot.json.total_corpus_count}`);
   assert(Array.isArray(boot.json.surahs) && boot.json.surahs.length === 114, 'Should return all 114 Surahs metadata');
 

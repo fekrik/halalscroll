@@ -50,8 +50,16 @@ const RECITERS = [
 ];
 
 const App: React.FC = () => {
-  const [cards, setCards] = useState<FeedCard[]>([]);
-  const [userState, setUserState] = useState<UserState>({
+  const initialBoot = useMemo(() => {
+    const winBoot = typeof window !== 'undefined' ? (window as any).__HALAL_BOOTSTRAP__ : null;
+    if (winBoot && Array.isArray(winBoot.cards) && winBoot.cards.length > 0) {
+      return { data: winBoot, fromServer: true };
+    }
+    return { data: getOfflineBootstrap(), fromServer: false };
+  }, []);
+
+  const [cards, setCards] = useState<FeedCard[]>(() => initialBoot.data.cards || []);
+  const [userState, setUserState] = useState<UserState>(() => ({
     streak_count: '12',
     theme: 'andalusian_parchment',
     arabic_script: 'uthmani',
@@ -60,24 +68,36 @@ const App: React.FC = () => {
     reciter: 'Mishary Rashid Alafasy',
     plus_member: 'false',
     sequential_quran_card: 'card-quran-94-5',
-    sequential_book_card: 'card-hadith-nawawi-19'
-  });
-  const [folders, setFolders] = useState<string[]>(['Favorites', 'Duas for Family', 'Hardship & Sabr', 'Daily Memorization']);
-  const [loading, setLoading] = useState(true);
+    sequential_book_card: 'card-hadith-nawawi-19',
+    ...(initialBoot.data.state || {})
+  }));
+  const [folders, setFolders] = useState<string[]>(
+    () => initialBoot.data.folders || ['Favorites', 'Duas for Family', 'Hardship & Sabr', 'Daily Memorization']
+  );
+  const [loading, setLoading] = useState(false);
 
   // Navigation & Feed Mode State
   const [feedMode, setFeedMode] = useState<FeedMode>('for_you');
   const [selectedMood, setSelectedMood] = useState<string>('anxious');
   const [selectedCollection, setSelectedCollection] = useState<string>('quran');
   const [selectedSurah, setSelectedSurah] = useState<number | null>(null);
-  const [surahs, setSurahs] = useState<SurahInfo[]>([]);
-  const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
-  const [totalFeedCount, setTotalFeedCount] = useState<number>(0);
-  const [hasMoreFeed, setHasMoreFeed] = useState<boolean>(false);
-  const [savedVaultCards, setSavedVaultCards] = useState<FeedCard[]>([]);
+  const [surahs, setSurahs] = useState<SurahInfo[]>(() => initialBoot.data.surahs || []);
+  const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>(
+    () => initialBoot.data.collection_counts || {}
+  );
+  const [totalFeedCount, setTotalFeedCount] = useState<number>(
+    () => initialBoot.data.total_corpus_count || (initialBoot.data.cards?.length || 16)
+  );
+  const [hasMoreFeed, setHasMoreFeed] = useState<boolean>(
+    () => (initialBoot.data.cards?.length || 0) < (initialBoot.data.total_corpus_count || 0)
+  );
+  const [savedVaultCards, setSavedVaultCards] = useState<FeedCard[]>(
+    () => initialBoot.data.bookmarked_cards || []
+  );
   const [activeCardIndex, setActiveCardIndex] = useState<number>(0);
   const isFetchingMoreRef = useRef<boolean>(false);
-  const hasBackendApiRef = useRef<boolean>(false);
+  const hasBackendApiRef = useRef<boolean>(initialBoot.fromServer);
+  const isFirstFilterEffectRef = useRef<boolean>(true);
 
   // Audio Recitation & Word Highlighting State
   const [playingCardId, setPlayingCardId] = useState<string | null>(null);
@@ -113,7 +133,7 @@ const App: React.FC = () => {
   const lastTapRef = useRef<{ time: number; cardId: string }>({ time: 0, cardId: '' });
   const feedContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Load initial data from SQLite backend (with automatic 0ms offline/static fallback for GitHub Pages)
+  // Load initial data from SQLite backend only if not already inlined in window.__HALAL_BOOTSTRAP__
   useEffect(() => {
     const applyBootData = (data: {
       cards?: FeedCard[];
@@ -146,7 +166,7 @@ const App: React.FC = () => {
       if (slug) {
         const idx = (data.cards || []).findIndex((c: FeedCard) => c.share_slug === slug || c.id === slug);
         if (idx >= 0) {
-          setTimeout(() => scrollToCardIndex(idx), 120);
+          setTimeout(() => scrollToCardIndex(idx), 80);
         } else if (hasBackendApiRef.current) {
           fetch(`/api/cards/${encodeURIComponent(slug)}`)
             .then(r => (r.ok ? r.json() : null))
@@ -161,6 +181,11 @@ const App: React.FC = () => {
       }
     };
 
+    if (initialBoot.fromServer) {
+      applyBootData(initialBoot.data);
+      return;
+    }
+
     fetch('/api/bootstrap')
       .then(r => {
         if (!r.ok) throw new Error('Static mode');
@@ -170,19 +195,21 @@ const App: React.FC = () => {
       .then((data) => applyBootData(data))
       .catch(() => {
         hasBackendApiRef.current = false;
-        const fallback = getOfflineBootstrap();
-        applyBootData(fallback);
       });
   }, []);
 
   // Fetch filtered page from /api/feed when mode, collection, surah, or mood changes
   useEffect(() => {
+    if (isFirstFilterEffectRef.current) {
+      isFirstFilterEffectRef.current = false;
+      return;
+    }
     if (!hasBackendApiRef.current) return;
     const params = new URLSearchParams({
       mode: feedMode,
       collection: selectedCollection,
       offset: '0',
-      limit: '35'
+      limit: '24'
     });
     if (feedMode === 'sequential' && selectedCollection === 'quran' && selectedSurah) {
       params.set('surah', String(selectedSurah));

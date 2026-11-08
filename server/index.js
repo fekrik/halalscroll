@@ -153,6 +153,21 @@ function hydrateRows(rows) {
   });
 }
 
+// Precompute static collection counts once at startup (corpus is immutable at runtime)
+const CACHED_COLLECTION_COUNTS = (() => {
+  const rows = db.prepare(`SELECT collection_slug, COUNT(*) AS cnt FROM feed_cards GROUP BY collection_slug`).all();
+  const counts = { total: 0 };
+  for (const r of rows) {
+    counts[r.collection_slug] = r.cnt;
+    counts.total += r.cnt;
+  }
+  return counts;
+})();
+
+function getCollectionCounts() {
+  return CACHED_COLLECTION_COUNTS;
+}
+
 function queryFeedPage({
   mode = 'for_you',
   collection = 'quran',
@@ -160,9 +175,9 @@ function queryFeedPage({
   mood = null,
   search = null,
   offset = 0,
-  limit = 30
+  limit = 20
 } = {}) {
-  const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 100);
+  const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
   const safeOffset = Math.max(Number(offset) || 0, 0);
 
   const whereClauses = [];
@@ -179,7 +194,7 @@ function queryFeedPage({
       whereClauses.push(`surah_or_book_num = ?`);
       params.push(Number(surah));
     }
-  } else if (mode === 'moods' && mood) {
+  } else if (mode === 'moods' && mood && mood !== 'all') {
     whereClauses.push(`mood_tags LIKE ?`);
     params.push(`%"${mood}"%`);
   }
@@ -189,8 +204,15 @@ function queryFeedPage({
     ? `ORDER BY surah_or_book_num ASC, ayah_start ASC, sequence_order ASC`
     : `ORDER BY discover_weight DESC, sequence_order ASC`;
 
-  const totalRow = db.prepare(`SELECT COUNT(*) AS cnt FROM feed_cards ${whereSql}`).get(...params);
-  const total = totalRow ? totalRow.cnt : 0;
+  let total = 0;
+  if (whereClauses.length === 0) {
+    total = CACHED_COLLECTION_COUNTS.total;
+  } else if (mode === 'sequential' && (!surah || collection !== 'quran')) {
+    total = CACHED_COLLECTION_COUNTS[collection || 'quran'] || 0;
+  } else {
+    const totalRow = db.prepare(`SELECT COUNT(*) AS cnt FROM feed_cards ${whereSql}`).get(...params);
+    total = totalRow ? totalRow.cnt : 0;
+  }
 
   const rows = db.prepare(`
     SELECT * FROM feed_cards
@@ -207,16 +229,6 @@ function queryFeedPage({
     limit: safeLimit,
     has_more: safeOffset + cards.length < total
   };
-}
-
-function getCollectionCounts() {
-  const rows = db.prepare(`SELECT collection_slug, COUNT(*) AS cnt FROM feed_cards GROUP BY collection_slug`).all();
-  const counts = { total: 0 };
-  for (const r of rows) {
-    counts[r.collection_slug] = r.cnt;
-    counts.total += r.cnt;
-  }
-  return counts;
 }
 
 function getBookmarkedCards() {
@@ -245,7 +257,71 @@ function getUserState() {
   return state;
 }
 
-// Build Frontend Bundle with esbuild
+function buildBootstrapPayload(limit = 16) {
+  const initialPage = queryFeedPage({ mode: 'for_you', offset: 0, limit });
+  const counts = getCollectionCounts();
+  const state = getUserState();
+  const folders = db.prepare(`SELECT DISTINCT folder_name FROM user_bookmarks ORDER BY folder_name ASC`).all().map(r => r.folder_name);
+  const allFolders = Array.from(new Set(['Favorites', 'Duas for Family', 'Hardship & Sabr', 'Daily Memorization', ...folders]));
+  return {
+    cards: initialPage.cards,
+    total_corpus_count: counts.total,
+    collection_counts: counts,
+    surahs: SURAH_DIRECTORY,
+    bookmarked_cards: getBookmarkedCards(),
+    state,
+    folders: allFolders
+  };
+}
+
+let BOOTSTRAP_CACHE = null;
+
+function invalidateBootstrapCache() {
+  BOOTSTRAP_CACHE = null;
+}
+
+function getCachedBootstrap(limit = 20) {
+  if (!BOOTSTRAP_CACHE || BOOTSTRAP_CACHE.limit !== limit) {
+    const payload = buildBootstrapPayload(limit);
+    const jsonStr = JSON.stringify(payload);
+    BOOTSTRAP_CACHE = {
+      limit,
+      payload,
+      jsonStr,
+      inlineJson: jsonStr.replace(/</g, '\\u003c'),
+      gzipBuf: zlib.gzipSync(Buffer.from(jsonStr, 'utf8'))
+    };
+  }
+  return BOOTSTRAP_CACHE;
+}
+
+// Pre-warm bootstrap cache at startup
+getCachedBootstrap(20);
+const ASSET_CACHE = {
+  jsRaw: null,
+  jsGzip: null,
+  cssRaw: null,
+  cssGzip: null,
+  version: String(Date.now())
+};
+
+function refreshAssetCache() {
+  const jsPath = path.join(PUBLIC_DIR, 'app.js');
+  const cssPath = path.join(PUBLIC_DIR, 'app.css');
+  if (fs.existsSync(jsPath)) {
+    ASSET_CACHE.jsRaw = fs.readFileSync(jsPath);
+    ASSET_CACHE.jsGzip = zlib.gzipSync(ASSET_CACHE.jsRaw);
+  }
+  if (fs.existsSync(cssPath)) {
+    ASSET_CACHE.cssRaw = fs.readFileSync(cssPath);
+    ASSET_CACHE.cssGzip = zlib.gzipSync(ASSET_CACHE.cssRaw);
+  }
+  ASSET_CACHE.version = String(Date.now());
+}
+
+refreshAssetCache();
+
+// Build Frontend Bundle with esbuild (minified production bundle)
 async function buildFrontend() {
   const entry = path.join(__dirname, '..', 'src', 'main.tsx');
   if (!fs.existsSync(entry)) return;
@@ -256,12 +332,14 @@ async function buildFrontend() {
     format: 'iife',
     target: ['es2020'],
     jsx: 'automatic',
-    sourcemap: true,
+    minify: true,
+    sourcemap: false,
     define: {
-      'process.env.NODE_ENV': '"development"'
+      'process.env.NODE_ENV': '"production"'
     }
   });
-  console.log('[esbuild] Built public/app.js successfully.');
+  refreshAssetCache();
+  console.log('[esbuild] Built minified public/app.js successfully.');
 }
 
 function parseBody(req) {
@@ -278,12 +356,28 @@ function parseBody(req) {
   });
 }
 
-function sendJson(res, status, payload) {
+function acceptsGzip(req) {
+  const enc = (req && req.headers && req.headers['accept-encoding']) || '';
+  return enc.includes('gzip');
+}
+
+function sendJson(req, res, status, payload) {
+  const jsonStr = JSON.stringify(payload);
+  if (acceptsGzip(req) && jsonStr.length > 1024) {
+    const gz = zlib.gzipSync(Buffer.from(jsonStr, 'utf8'));
+    res.writeHead(status, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Encoding': 'gzip',
+      'Vary': 'Accept-Encoding',
+      'Cache-Control': 'no-store'
+    });
+    return res.end(gz);
+  }
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store'
   });
-  res.end(JSON.stringify(payload));
+  return res.end(jsonStr);
 }
 
 function escapeXml(str = '') {
@@ -330,20 +424,21 @@ const handleRequest = async (req, res) => {
 
   // API: GET /api/bootstrap (Initial fast page + corpus metadata + 114 Surahs directory)
   if (pathname === '/api/bootstrap' && req.method === 'GET') {
-    const initialPage = queryFeedPage({ mode: 'for_you', offset: 0, limit: 40 });
-    const counts = getCollectionCounts();
-    const state = getUserState();
-    const folders = db.prepare(`SELECT DISTINCT folder_name FROM user_bookmarks ORDER BY folder_name ASC`).all().map(r => r.folder_name);
-    const allFolders = Array.from(new Set(['Favorites', 'Duas for Family', 'Hardship & Sabr', 'Daily Memorization', ...folders]));
-    return sendJson(res, 200, {
-      cards: initialPage.cards,
-      total_corpus_count: counts.total,
-      collection_counts: counts,
-      surahs: SURAH_DIRECTORY,
-      bookmarked_cards: getBookmarkedCards(),
-      state,
-      folders: allFolders
+    const cached = getCachedBootstrap(20);
+    if (acceptsGzip(req)) {
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Encoding': 'gzip',
+        'Vary': 'Accept-Encoding',
+        'Cache-Control': 'no-store'
+      });
+      return res.end(cached.gzipBuf);
+    }
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store'
     });
+    return res.end(cached.jsonStr);
   }
 
   // API: GET /api/feed (Cursor/Offset Paginated Feed across 14,678+ cards)
@@ -354,30 +449,30 @@ const handleRequest = async (req, res) => {
     const mood = url.searchParams.get('mood') || null;
     const search = url.searchParams.get('search') || null;
     const offset = Number(url.searchParams.get('offset') || 0);
-    const limit = Number(url.searchParams.get('limit') || 30);
+    const limit = Number(url.searchParams.get('limit') || 24);
 
     const page = queryFeedPage({ mode, collection, surah, mood, search, offset, limit });
-    return sendJson(res, 200, page);
+    return sendJson(req, res, 200, page);
   }
 
   // API: GET /api/surahs (114 Surahs Directory)
   if (pathname === '/api/surahs' && req.method === 'GET') {
-    return sendJson(res, 200, { surahs: SURAH_DIRECTORY });
+    return sendJson(req, res, 200, { surahs: SURAH_DIRECTORY });
   }
 
   // API: GET /api/cards/:slug
   if (pathname.startsWith('/api/cards/') && req.method === 'GET') {
     const slug = decodeURIComponent(pathname.replace('/api/cards/', ''));
     const found = getCardBySlugOrId(slug);
-    if (!found) return sendJson(res, 404, { error: 'Card not found' });
-    return sendJson(res, 200, { card: found });
+    if (!found) return sendJson(req, res, 404, { error: 'Card not found' });
+    return sendJson(req, res, 200, { card: found });
   }
 
   // API: POST /api/bookmarks
   if (pathname === '/api/bookmarks' && req.method === 'POST') {
     const body = await parseBody(req);
     const { card_id, folder_name = 'Favorites', action = 'toggle' } = body;
-    if (!card_id) return sendJson(res, 400, { error: 'Missing card_id' });
+    if (!card_id) return sendJson(req, res, 400, { error: 'Missing card_id' });
 
     const exists = db.prepare(`SELECT 1 FROM user_bookmarks WHERE card_id = ? AND folder_name = ?`).get(card_id, folder_name);
     if (action === 'remove' || (action === 'toggle' && exists)) {
@@ -386,16 +481,14 @@ const handleRequest = async (req, res) => {
       db.prepare(`INSERT OR IGNORE INTO user_bookmarks (card_id, folder_name) VALUES (?, ?)`).run(card_id, folder_name);
     }
 
+    invalidateBootstrapCache();
     const updatedCard = getCardBySlugOrId(card_id);
-    const bookmarkedCards = getBookmarkedCards();
-    const initialPage = queryFeedPage({ mode: 'for_you', offset: 0, limit: 40 });
-    const folders = db.prepare(`SELECT DISTINCT folder_name FROM user_bookmarks ORDER BY folder_name ASC`).all().map(r => r.folder_name);
-    const allFolders = Array.from(new Set(['Favorites', 'Duas for Family', 'Hardship & Sabr', 'Daily Memorization', ...folders]));
-    return sendJson(res, 200, {
+    const cached = getCachedBootstrap(20).payload;
+    return sendJson(req, res, 200, {
       card: updatedCard,
-      bookmarked_cards: bookmarkedCards,
-      cards: initialPage.cards,
-      folders: allFolders
+      bookmarked_cards: cached.bookmarked_cards,
+      cards: cached.cards,
+      folders: cached.folders
     });
   }
 
@@ -403,7 +496,7 @@ const handleRequest = async (req, res) => {
   if (pathname === '/api/practice' && req.method === 'POST') {
     const body = await parseBody(req);
     const { card_id, reflection_note = '', practiced = true } = body;
-    if (!card_id) return sendJson(res, 400, { error: 'Missing card_id' });
+    if (!card_id) return sendJson(req, res, 400, { error: 'Missing card_id' });
 
     const existing = db.prepare(`SELECT * FROM user_practiced_actions WHERE card_id = ?`).get(card_id);
     if (practiced) {
@@ -420,12 +513,13 @@ const handleRequest = async (req, res) => {
       db.prepare(`DELETE FROM user_practiced_actions WHERE card_id = ?`).run(card_id);
     }
 
+    invalidateBootstrapCache();
     const updatedCard = getCardBySlugOrId(card_id);
-    const initialPage = queryFeedPage({ mode: 'for_you', offset: 0, limit: 40 });
-    return sendJson(res, 200, {
+    const cached = getCachedBootstrap(20).payload;
+    return sendJson(req, res, 200, {
       card: updatedCard,
-      cards: initialPage.cards,
-      state: getUserState()
+      cards: cached.cards,
+      state: cached.state
     });
   }
 
@@ -436,7 +530,8 @@ const handleRequest = async (req, res) => {
     for (const [k, v] of Object.entries(body)) {
       upsert.run(k, String(v));
     }
-    return sendJson(res, 200, { state: getUserState() });
+    invalidateBootstrapCache();
+    return sendJson(req, res, 200, { state: getUserState() });
   }
 
   // Dynamic OpenGraph Raster JPG Card Preview: /api/og/:slug.jpg
@@ -462,23 +557,47 @@ const handleRequest = async (req, res) => {
     return res.end(svg);
   }
 
-  // Static JS/CSS assets
+  // Static JS/CSS assets served from pre-compressed RAM cache
   if (pathname === '/app.js') {
-    const p = path.join(PUBLIC_DIR, 'app.js');
-    if (fs.existsSync(p)) {
-      res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
-      return res.end(fs.readFileSync(p));
+    if (!ASSET_CACHE.jsRaw) refreshAssetCache();
+    if (ASSET_CACHE.jsRaw) {
+      if (acceptsGzip(req) && ASSET_CACHE.jsGzip) {
+        res.writeHead(200, {
+          'Content-Type': 'application/javascript; charset=utf-8',
+          'Content-Encoding': 'gzip',
+          'Vary': 'Accept-Encoding',
+          'Cache-Control': 'public, max-age=3600'
+        });
+        return res.end(ASSET_CACHE.jsGzip);
+      }
+      res.writeHead(200, {
+        'Content-Type': 'application/javascript; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600'
+      });
+      return res.end(ASSET_CACHE.jsRaw);
     }
   }
   if (pathname === '/app.css') {
-    const p = path.join(PUBLIC_DIR, 'app.css');
-    if (fs.existsSync(p)) {
-      res.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-cache' });
-      return res.end(fs.readFileSync(p));
+    if (!ASSET_CACHE.cssRaw) refreshAssetCache();
+    if (ASSET_CACHE.cssRaw) {
+      if (acceptsGzip(req) && ASSET_CACHE.cssGzip) {
+        res.writeHead(200, {
+          'Content-Type': 'text/css; charset=utf-8',
+          'Content-Encoding': 'gzip',
+          'Vary': 'Accept-Encoding',
+          'Cache-Control': 'public, max-age=3600'
+        });
+        return res.end(ASSET_CACHE.cssGzip);
+      }
+      res.writeHead(200, {
+        'Content-Type': 'text/css; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600'
+      });
+      return res.end(ASSET_CACHE.cssRaw);
     }
   }
 
-  // Serve HTML with dynamic OpenGraph metadata for /c/:slug or root /
+  // Serve HTML with dynamic OpenGraph metadata + inlined initial bootstrap payload for 0ms first render
   const proto = (req.headers && req.headers['x-forwarded-proto']) || 'https';
   const host = (req.headers && req.headers.host) || 'halalscroll-production.up.railway.app';
   const baseOrigin = `${proto}://${host}`;
@@ -486,16 +605,26 @@ const handleRequest = async (req, res) => {
   let ogTitle = 'Halal Scroll: Quran & Sunnah — Daily Ayah, Hadith & Tadabbur';
   let ogDesc = 'Replace mindless social media doom-scrolling with a serene, tactile vertical feed of 14,600+ canonical Quran passages, Sahih Hadith, Prophetic Duas, and Seerah reflections.';
   let ogSlug = 'ash-sharh-5-6';
+  let deepLinkCard = null;
   if (pathname.startsWith('/c/')) {
     const slug = decodeURIComponent(pathname.replace('/c/', ''));
-    const card = getCardBySlugOrId(slug);
-    if (card) {
-      ogTitle = `${card.source_title} • Halal Scroll`;
-      ogDesc = `“${card.translation_en_clear}” — Tap to explore Word-by-Word Arabic Roots, Classical Tafsir & Daily Sunnah.`;
-      ogSlug = card.share_slug;
+    deepLinkCard = getCardBySlugOrId(slug);
+    if (deepLinkCard) {
+      ogTitle = `${deepLinkCard.source_title} • Halal Scroll`;
+      ogDesc = `“${deepLinkCard.translation_en_clear}” — Tap to explore Word-by-Word Arabic Roots, Classical Tafsir & Daily Sunnah.`;
+      ogSlug = deepLinkCard.share_slug;
     }
   }
   const ogImage = `${baseOrigin}/api/og/${ogSlug}.jpg`;
+  const cachedBoot = getCachedBootstrap(20);
+  let inlineBootJson = cachedBoot.inlineJson;
+  if (deepLinkCard && !cachedBoot.payload.cards.some(c => c.id === deepLinkCard.id)) {
+    const customPayload = {
+      ...cachedBoot.payload,
+      cards: [deepLinkCard, ...cachedBoot.payload.cards]
+    };
+    inlineBootJson = JSON.stringify(customPayload).replace(/</g, '\\u003c');
+  }
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -519,14 +648,25 @@ const handleRequest = async (req, res) => {
   <meta name="twitter:title" content="${escapeXml(ogTitle)}" />
   <meta name="twitter:description" content="${escapeXml(ogDesc)}" />
   <meta name="twitter:image" content="${escapeXml(ogImage)}" />
-  <link rel="stylesheet" href="/app.css" />
+  <link rel="stylesheet" href="/app.css?v=${ASSET_CACHE.version}" />
 </head>
 <body>
   <div id="root"></div>
-  <script src="/app.js"></script>
+  <script>window.__HALAL_BOOTSTRAP__ = ${inlineBootJson};</script>
+  <script src="/app.js?v=${ASSET_CACHE.version}"></script>
 </body>
 </html>`;
 
+  if (acceptsGzip(req)) {
+    const gzHtml = zlib.gzipSync(Buffer.from(html, 'utf8'));
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Encoding': 'gzip',
+      'Vary': 'Accept-Encoding',
+      'Cache-Control': 'no-cache'
+    });
+    return res.end(gzHtml);
+  }
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
   return res.end(html);
 };

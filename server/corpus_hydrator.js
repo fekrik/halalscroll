@@ -172,30 +172,46 @@ function getCrossReferencesForCard(card) {
   }));
 }
 
+const HYDRATED_STATIC_CACHE = new Map();
+
 function hydrateCardDetails(card) {
-  const seed = SEED_BY_ID.get(card.id);
-  const words = seed && seed.words
-    ? seed.words.map(w => ({
-        word_position: w.pos,
-        arabic_word: w.arabic,
-        transliteration: w.translit,
-        translation_en: w.en,
-        root_arabic: w.root_arabic,
-        root_translit: w.root_translit,
-        root_meaning: w.root_meaning,
-        root_occurrences: w.occ,
-        root_examples: w.examples || [],
-        grammar_pos: w.grammar,
-        start_ms: w.start_ms,
-        end_ms: w.end_ms
-      }))
-    : extractSpotlightWords(card.arabic_text_uthmani, card.transliteration, card.translation_en_clear);
+  let staticDetails = HYDRATED_STATIC_CACHE.get(card.id);
+  if (!staticDetails) {
+    const seed = SEED_BY_ID.get(card.id);
+    const words = seed && seed.words
+      ? seed.words.map(w => ({
+          word_position: w.pos,
+          arabic_word: w.arabic,
+          transliteration: w.translit,
+          translation_en: w.en,
+          root_arabic: w.root_arabic,
+          root_translit: w.root_translit,
+          root_meaning: w.root_meaning,
+          root_occurrences: w.occ,
+          root_examples: w.examples || [],
+          grammar_pos: w.grammar,
+          start_ms: w.start_ms,
+          end_ms: w.end_ms
+        }))
+      : extractSpotlightWords(card.arabic_text_uthmani, card.transliteration, card.translation_en_clear);
+
+    staticDetails = {
+      words,
+      deep_study: buildDeepStudy(card),
+      cross_references: getCrossReferencesForCard(card)
+    };
+    if (HYDRATED_STATIC_CACHE.size > 2500) {
+      const oldestKey = HYDRATED_STATIC_CACHE.keys().next().value;
+      HYDRATED_STATIC_CACHE.delete(oldestKey);
+    }
+    HYDRATED_STATIC_CACHE.set(card.id, staticDetails);
+  }
 
   return {
     ...card,
-    words,
-    deep_study: buildDeepStudy(card),
-    cross_references: getCrossReferencesForCard(card)
+    words: staticDetails.words,
+    deep_study: staticDetails.deep_study,
+    cross_references: staticDetails.cross_references
   };
 }
 
@@ -206,3 +222,4 @@ module.exports = {
   getCrossReferencesForCard,
   hydrateCardDetails
 };
+

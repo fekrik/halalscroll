@@ -95,3 +95,4 @@ main().catch(err => {
   console.error('Corpus fetch failed:', err);
   process.exit(1);
 });
+
