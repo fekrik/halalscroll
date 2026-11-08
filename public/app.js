@@ -26535,6 +26535,14 @@
   ]);
 
   // src/audioEngine.ts
+  function pad3(n) {
+    return String(n).padStart(3, "0");
+  }
+  function getEveryAyahReciterFolder(reciterName = "Mishary Rashid Alafasy") {
+    if (reciterName.includes("Husary")) return "Husary_128kbps";
+    if (reciterName.includes("AbdulBaset")) return "Abdul_Basit_Murattal_192kbps";
+    return "Alafasy_128kbps";
+  }
   var SoundAndHapticsEngine = class {
     constructor() {
       __publicField(this, "ctx", null);
@@ -26542,6 +26550,7 @@
       __publicField(this, "rafId", null);
       __publicField(this, "startTime", 0);
       __publicField(this, "activeNodes", []);
+      __publicField(this, "activeHtmlAudio", null);
     }
     getContext() {
       if (typeof window === "undefined") return null;
@@ -26626,10 +26635,63 @@
       } catch {
       }
     }
-    // Full Card Synchronized Word-by-Word Recitation
-    startCardRecitation(card, onTick, onComplete) {
+    // Full Card Synchronized Word-by-Word Recitation (Streams Real Studio Qari MP3 for Quran Passages)
+    startCardRecitation(card, onTick, onComplete, reciterOverride) {
       this.stopRecitation();
       this.isPlaying = true;
+      const words = card.words && card.words.length > 0 ? card.words : [];
+      if (typeof window !== "undefined" && card.card_type === "quran" && card.surah_or_book_num && card.ayah_start) {
+        const folder = getEveryAyahReciterFolder(reciterOverride || card.reciter_name);
+        const sNum = card.surah_or_book_num;
+        const aStart = card.ayah_start;
+        const aEnd = card.ayah_end && card.ayah_end >= aStart ? card.ayah_end : aStart;
+        const urls = [];
+        for (let a = aStart; a <= aEnd; a++) {
+          urls.push(`https://everyayah.com/data/${folder}/${pad3(sNum)}${pad3(a)}.mp3`);
+        }
+        let currentTrack = 0;
+        const playNextTrack = () => {
+          if (!this.isPlaying || currentTrack >= urls.length) {
+            this.isPlaying = false;
+            onTick(-1, 1);
+            onComplete();
+            return;
+          }
+          const audio = new Audio(urls[currentTrack]);
+          this.activeHtmlAudio = audio;
+          const updateProgress = () => {
+            if (!this.isPlaying || this.activeHtmlAudio !== audio) return;
+            const dur = audio.duration && isFinite(audio.duration) ? audio.duration : 6;
+            const trackRatio = Math.min(1, audio.currentTime / dur);
+            const overallRatio = (currentTrack + trackRatio) / urls.length;
+            if (words.length > 0) {
+              const wIdx = Math.min(words.length - 1, Math.floor(overallRatio * words.length));
+              onTick(wIdx, overallRatio);
+            } else {
+              onTick(-1, overallRatio);
+            }
+            this.rafId = requestAnimationFrame(updateProgress);
+          };
+          audio.onplay = () => {
+            this.rafId = requestAnimationFrame(updateProgress);
+          };
+          audio.onended = () => {
+            currentTrack++;
+            playNextTrack();
+          };
+          audio.onerror = () => {
+            this.startSynthesizedRecitation(card, onTick, onComplete);
+          };
+          audio.play().catch(() => {
+            this.startSynthesizedRecitation(card, onTick, onComplete);
+          });
+        };
+        playNextTrack();
+        return;
+      }
+      this.startSynthesizedRecitation(card, onTick, onComplete);
+    }
+    startSynthesizedRecitation(card, onTick, onComplete) {
       const words = card.words && card.words.length > 0 ? card.words : [];
       const totalDurationMs = words.length > 0 ? Math.max(...words.map((w) => w.end_ms), words.length * 900) : 5500;
       try {
@@ -26671,7 +26733,6 @@
         });
       }
       this.startTime = performance.now();
-      let lastWordIdx = -1;
       const loop = (nowMs) => {
         if (!this.isPlaying) return;
         const elapsed = nowMs - this.startTime;
@@ -26694,9 +26755,6 @@
             Math.floor(elapsed / totalDurationMs * words.length)
           );
         }
-        if (currentWordIdx !== lastWordIdx && currentWordIdx >= 0) {
-          lastWordIdx = currentWordIdx;
-        }
         onTick(currentWordIdx, elapsed / totalDurationMs);
         this.rafId = requestAnimationFrame(loop);
       };
@@ -26707,6 +26765,14 @@
       if (this.rafId !== null) {
         cancelAnimationFrame(this.rafId);
         this.rafId = null;
+      }
+      if (this.activeHtmlAudio) {
+        try {
+          this.activeHtmlAudio.pause();
+          this.activeHtmlAudio.src = "";
+        } catch {
+        }
+        this.activeHtmlAudio = null;
       }
       try {
         if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -28549,7 +28615,15 @@ ${canonicalUrl}`;
     const [feedMode, setFeedMode] = (0, import_react5.useState)("for_you");
     const [selectedMood, setSelectedMood] = (0, import_react5.useState)("anxious");
     const [selectedCollection, setSelectedCollection] = (0, import_react5.useState)("quran");
+    const [selectedSurah, setSelectedSurah] = (0, import_react5.useState)(null);
+    const [surahs, setSurahs] = (0, import_react5.useState)([]);
+    const [collectionCounts, setCollectionCounts] = (0, import_react5.useState)({});
+    const [totalFeedCount, setTotalFeedCount] = (0, import_react5.useState)(0);
+    const [hasMoreFeed, setHasMoreFeed] = (0, import_react5.useState)(false);
+    const [savedVaultCards, setSavedVaultCards] = (0, import_react5.useState)([]);
     const [activeCardIndex, setActiveCardIndex] = (0, import_react5.useState)(0);
+    const isFetchingMoreRef = (0, import_react5.useRef)(false);
+    const hasBackendApiRef = (0, import_react5.useRef)(false);
     const [playingCardId, setPlayingCardId] = (0, import_react5.useState)(null);
     const [activeWordIdx, setActiveWordIdx] = (0, import_react5.useState)(-1);
     const [popoverWord, setPopoverWord] = (0, import_react5.useState)(null);
@@ -28575,6 +28649,13 @@ ${canonicalUrl}`;
     (0, import_react5.useEffect)(() => {
       const applyBootData = (data) => {
         if (data.cards) setCards(data.cards);
+        if (data.surahs) setSurahs(data.surahs);
+        if (data.collection_counts) setCollectionCounts(data.collection_counts);
+        if (data.total_corpus_count) {
+          setTotalFeedCount(data.total_corpus_count);
+          setHasMoreFeed((data.cards?.length || 0) < data.total_corpus_count);
+        }
+        if (data.bookmarked_cards) setSavedVaultCards(data.bookmarked_cards);
         if (data.state) setUserState((prev) => ({ ...prev, ...data.state }));
         if (data.folders) setFolders(data.folders);
         setLoading(false);
@@ -28585,26 +28666,96 @@ ${canonicalUrl}`;
           const idx = (data.cards || []).findIndex((c) => c.share_slug === slug || c.id === slug);
           if (idx >= 0) {
             setTimeout(() => scrollToCardIndex(idx), 120);
+          } else if (hasBackendApiRef.current) {
+            fetch(`/api/cards/${encodeURIComponent(slug)}`).then((r) => r.ok ? r.json() : null).then((res) => {
+              if (res?.card) {
+                setCards((prev) => [res.card, ...prev.filter((c) => c.id !== res.card.id)]);
+                setActiveCardIndex(0);
+              }
+            }).catch(() => {
+            });
           }
         }
       };
       fetch("/api/bootstrap").then((r) => {
         if (!r.ok) throw new Error("Static mode");
+        hasBackendApiRef.current = true;
         return r.json();
       }).then((data) => applyBootData(data)).catch(() => {
+        hasBackendApiRef.current = false;
         const fallback = getOfflineBootstrap();
         applyBootData(fallback);
       });
     }, []);
     (0, import_react5.useEffect)(() => {
+      if (!hasBackendApiRef.current) return;
+      const params = new URLSearchParams({
+        mode: feedMode,
+        collection: selectedCollection,
+        offset: "0",
+        limit: "35"
+      });
+      if (feedMode === "sequential" && selectedCollection === "quran" && selectedSurah) {
+        params.set("surah", String(selectedSurah));
+      }
+      if (feedMode === "moods" && selectedMood !== "all") {
+        params.set("mood", selectedMood);
+      }
+      fetch(`/api/feed?${params.toString()}`).then((r) => r.ok ? r.json() : null).then((page) => {
+        if (page && Array.isArray(page.cards)) {
+          setCards(page.cards);
+          setTotalFeedCount(page.total || page.cards.length);
+          setHasMoreFeed(Boolean(page.has_more));
+          setActiveCardIndex(0);
+          if (feedContainerRef.current) feedContainerRef.current.scrollTop = 0;
+        }
+      }).catch(() => {
+      });
+    }, [feedMode, selectedCollection, selectedSurah, selectedMood]);
+    const fetchNextFeedPage = () => {
+      if (!hasBackendApiRef.current || !hasMoreFeed || isFetchingMoreRef.current) return;
+      isFetchingMoreRef.current = true;
+      const params = new URLSearchParams({
+        mode: feedMode,
+        collection: selectedCollection,
+        offset: String(cards.length),
+        limit: "35"
+      });
+      if (feedMode === "sequential" && selectedCollection === "quran" && selectedSurah) {
+        params.set("surah", String(selectedSurah));
+      }
+      if (feedMode === "moods" && selectedMood !== "all") {
+        params.set("mood", selectedMood);
+      }
+      fetch(`/api/feed?${params.toString()}`).then((r) => r.ok ? r.json() : null).then((page) => {
+        if (page && Array.isArray(page.cards) && page.cards.length > 0) {
+          setCards((prev) => {
+            const seen = new Set(prev.map((c) => c.id));
+            const fresh = page.cards.filter((c) => !seen.has(c.id));
+            return [...prev, ...fresh];
+          });
+          setTotalFeedCount(page.total || cards.length);
+          setHasMoreFeed(Boolean(page.has_more));
+        } else {
+          setHasMoreFeed(false);
+        }
+      }).catch(() => {
+      }).finally(() => {
+        isFetchingMoreRef.current = false;
+      });
+    };
+    (0, import_react5.useEffect)(() => {
       document.documentElement.setAttribute("data-theme", userState.theme || "andalusian_parchment");
     }, [userState.theme]);
     const displayedCards = (0, import_react5.useMemo)(() => {
+      if (hasBackendApiRef.current) {
+        return cards;
+      }
       if (feedMode === "for_you") {
         return cards;
       }
       if (feedMode === "sequential") {
-        return cards.filter((c) => c.collection_slug === selectedCollection).sort((a, b) => a.sequence_order - b.sequence_order);
+        return cards.filter((c) => c.collection_slug === selectedCollection && (!selectedSurah || c.surah_or_book_num === selectedSurah)).sort((a, b) => a.sequence_order - b.sequence_order);
       }
       if (feedMode === "moods") {
         if (selectedMood === "all") return cards;
@@ -28613,7 +28764,7 @@ ${canonicalUrl}`;
         );
       }
       return cards;
-    }, [cards, feedMode, selectedCollection, selectedMood]);
+    }, [cards, feedMode, selectedCollection, selectedSurah, selectedMood]);
     const activeCard = displayedCards[activeCardIndex] || displayedCards[0] || null;
     const updateServerState = async (patch) => {
       setUserState((prev) => ({ ...prev, ...patch }));
@@ -28647,6 +28798,14 @@ ${canonicalUrl}`;
       const inCurrent = displayedCards.findIndex((c) => c.id === idOrSlug || c.share_slug === idOrSlug);
       if (inCurrent >= 0) {
         scrollToCardIndex(inCurrent);
+      } else if (hasBackendApiRef.current) {
+        fetch(`/api/cards/${encodeURIComponent(idOrSlug)}`).then((r) => r.ok ? r.json() : null).then((res) => {
+          if (res?.card) {
+            setCards((prev) => [res.card, ...prev.filter((c) => c.id !== res.card.id)]);
+            scrollToCardIndex(0);
+          }
+        }).catch(() => {
+        });
       } else {
         setFeedMode("for_you");
         setTimeout(() => {
@@ -28667,6 +28826,9 @@ ${canonicalUrl}`;
           soundEngine.stopRecitation();
           setPlayingCardId(null);
           setActiveWordIdx(-1);
+        }
+        if (newIndex >= displayedCards.length - 6 && hasMoreFeed) {
+          fetchNextFeedPage();
         }
         const current = displayedCards[newIndex];
         if (current && feedMode === "sequential") {
@@ -28694,20 +28856,23 @@ ${canonicalUrl}`;
           () => {
             setPlayingCardId(null);
             setActiveWordIdx(-1);
-          }
+          },
+          userState.reciter
         );
       }
     };
     const handleToggleBookmark = async (card, folderName = "Favorites", action = "toggle") => {
       soundEngine.triggerHaptic("softSuccess");
       const applyBookmarkData = (data) => {
-        if (data.cards) {
-          setCards(data.cards);
-          if (bookmarkFolderModalCard) {
-            const updated = data.cards.find((c) => c.id === bookmarkFolderModalCard.id);
-            if (updated) setBookmarkFolderModalCard(updated);
+        if (data.card) {
+          setCards((prev) => prev.map((c) => c.id === data.card.id ? data.card : c));
+          if (bookmarkFolderModalCard && bookmarkFolderModalCard.id === data.card.id) {
+            setBookmarkFolderModalCard(data.card);
           }
+        } else if (data.cards) {
+          setCards(data.cards);
         }
+        if (data.bookmarked_cards) setSavedVaultCards(data.bookmarked_cards);
         if (data.folders) setFolders(data.folders);
       };
       try {
@@ -28726,7 +28891,12 @@ ${canonicalUrl}`;
     };
     const handleMarkPracticed = async (cardId, practiced, reflectionNote) => {
       const applyPracticeData = (data) => {
-        if (data.cards) {
+        if (data.card) {
+          setCards((prev) => prev.map((c) => c.id === data.card.id ? data.card : c));
+          if (deepStudyModal && deepStudyModal.card.id === cardId) {
+            setDeepStudyModal({ ...deepStudyModal, card: data.card });
+          }
+        } else if (data.cards) {
           setCards(data.cards);
           const updated = data.cards.find((c) => c.id === cardId);
           if (updated && deepStudyModal) {
@@ -28750,12 +28920,13 @@ ${canonicalUrl}`;
       }
     };
     const bookmarkedCards = (0, import_react5.useMemo)(() => {
-      return cards.filter((c) => {
+      const sourceList = savedVaultCards.length > 0 ? savedVaultCards : cards.filter((c) => c.is_bookmarked);
+      return sourceList.filter((c) => {
         if (!c.is_bookmarked) return false;
         if (vaultFilterFolder === "All") return true;
         return c.bookmark_folders.includes(vaultFilterFolder);
       });
-    }, [cards, vaultFilterFolder]);
+    }, [savedVaultCards, cards, vaultFilterFolder]);
     if (loading) {
       return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "app-shell", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { textAlign: "center", color: "var(--accent-gold)" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(Sparkles, { size: 28 }),
@@ -28993,60 +29164,121 @@ ${canonicalUrl}`;
               )
             ] })
           ] }),
-          feedMode === "sequential" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-            "div",
-            {
-              className: "glass-pill no-scrollbar",
-              style: {
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "7px 10px",
-                borderRadius: 16,
-                overflowX: "auto"
-              },
-              children: SEQUENTIAL_COLLECTIONS.map((col) => {
-                const isSel = selectedCollection === col.id;
-                const colCards = cards.filter((c) => c.collection_slug === col.id);
-                return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
-                  "button",
-                  {
-                    onClick: () => {
-                      soundEngine.triggerHaptic("selectionTick");
-                      setSelectedCollection(col.id);
-                      setActiveCardIndex(0);
-                      if (feedContainerRef.current) feedContainerRef.current.scrollTop = 0;
+          feedMode === "sequential" && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: 5 }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+              "div",
+              {
+                className: "glass-pill no-scrollbar",
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 10px",
+                  borderRadius: 16,
+                  overflowX: "auto"
+                },
+                children: SEQUENTIAL_COLLECTIONS.map((col) => {
+                  const isSel = selectedCollection === col.id;
+                  const countVal = collectionCounts[col.id] ?? cards.filter((c) => c.collection_slug === col.id).length;
+                  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                    "button",
+                    {
+                      onClick: () => {
+                        soundEngine.triggerHaptic("selectionTick");
+                        setSelectedCollection(col.id);
+                        setSelectedSurah(null);
+                        setActiveCardIndex(0);
+                        if (feedContainerRef.current) feedContainerRef.current.scrollTop = 0;
+                      },
+                      style: {
+                        flexShrink: 0,
+                        padding: "5px 11px",
+                        borderRadius: 999,
+                        fontSize: 11.5,
+                        fontWeight: isSel ? 700 : 500,
+                        cursor: "pointer",
+                        border: isSel ? "1px solid var(--border-gold)" : "1px solid transparent",
+                        background: isSel ? "rgba(212, 175, 55, 0.2)" : "rgba(255,255,255,0.04)",
+                        color: isSel ? "var(--accent-gold-bright)" : "var(--text-secondary)",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6
+                      },
+                      children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: col.label }),
+                        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: {
+                          fontSize: 10,
+                          padding: "1px 6px",
+                          borderRadius: 99,
+                          background: "rgba(0,0,0,0.25)",
+                          color: "var(--accent-emerald)"
+                        }, children: countVal.toLocaleString() })
+                      ]
                     },
-                    style: {
-                      flexShrink: 0,
-                      padding: "5px 11px",
-                      borderRadius: 999,
-                      fontSize: 11.5,
-                      fontWeight: isSel ? 700 : 500,
-                      cursor: "pointer",
-                      border: isSel ? "1px solid var(--border-gold)" : "1px solid transparent",
-                      background: isSel ? "rgba(212, 175, 55, 0.2)" : "rgba(255,255,255,0.04)",
-                      color: isSel ? "var(--accent-gold-bright)" : "var(--text-secondary)",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6
-                    },
-                    children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: col.label }),
-                      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: {
-                        fontSize: 10,
-                        padding: "1px 6px",
-                        borderRadius: 99,
-                        background: "rgba(0,0,0,0.25)",
-                        color: "var(--accent-emerald)"
-                      }, children: colCards.length })
-                    ]
-                  },
-                  col.id
-                );
-              })
-            }
-          ),
+                    col.id
+                  );
+                })
+              }
+            ),
+            selectedCollection === "quran" && surahs.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+              "div",
+              {
+                className: "glass-pill",
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  padding: "5px 12px",
+                  borderRadius: 14
+                },
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: 11, fontWeight: 700, color: "var(--accent-gold-bright)", whiteSpace: "nowrap" }, children: "Jump to Surah:" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+                    "select",
+                    {
+                      value: selectedSurah || "",
+                      onChange: (e) => {
+                        soundEngine.triggerHaptic("selectionTick");
+                        const val = e.target.value ? Number(e.target.value) : null;
+                        setSelectedSurah(val);
+                      },
+                      style: {
+                        flex: 1,
+                        background: "transparent",
+                        color: "var(--text-primary)",
+                        border: "1px solid var(--border-specular)",
+                        borderRadius: 8,
+                        padding: "4px 8px",
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        outline: "none"
+                      },
+                      children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("option", { value: "", children: [
+                          "All 114 Surahs (",
+                          (collectionCounts.quran || 4186).toLocaleString(),
+                          " Passages)"
+                        ] }),
+                        surahs.map((s) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("option", { value: s.number, children: [
+                          s.number,
+                          ". ",
+                          s.name_simple,
+                          " (",
+                          s.name_arabic,
+                          ") \u2014 ",
+                          s.translated_name,
+                          " (",
+                          s.card_count,
+                          " cards)"
+                        ] }, s.number))
+                      ]
+                    }
+                  )
+                ]
+              }
+            )
+          ] }),
           feedMode === "moods" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
             "div",
             {
@@ -29096,6 +29328,9 @@ ${canonicalUrl}`;
             onScroll: handleFeedScroll,
             className: "vertical-feed",
             children: displayedCards.map((card, cardIdx) => {
+              if (Math.abs(cardIdx - activeCardIndex) > 8) {
+                return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "feed-card-snap card-inactive", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "card-content-cluster", style: { opacity: 0.2 }, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "glass-pill", style: { padding: "4px 10px", borderRadius: 99, fontSize: 11 }, children: card.source_title }) }) }, card.id);
+              }
               const isCardPlaying = playingCardId === card.id;
               const translationText = userState.translation_edition === "sahih" ? card.translation_en_sahih || card.translation_en_clear : card.translation_en_clear;
               return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
@@ -29488,9 +29723,9 @@ ${canonicalUrl}`;
                                   flexShrink: 0
                                 },
                                 children: [
-                                  cardIdx + 1,
+                                  (cardIdx + 1).toLocaleString(),
                                   "/",
-                                  displayedCards.length
+                                  (totalFeedCount || displayedCards.length).toLocaleString()
                                 ]
                               }
                             )
@@ -29559,28 +29794,33 @@ ${canonicalUrl}`;
               zIndex: 20,
               pointerEvents: "auto"
             },
-            children: displayedCards.map((c, idx) => {
-              const isActive = idx === activeCardIndex;
-              return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-                "button",
-                {
-                  onClick: () => scrollToCardIndex(idx),
-                  title: `Jump to ${c.source_title}`,
-                  style: {
-                    width: 5,
-                    height: isActive ? 18 : 5,
-                    borderRadius: 99,
-                    border: "none",
-                    padding: 0,
-                    cursor: "pointer",
-                    background: isActive ? "var(--accent-gold-bright)" : "var(--border-specular)",
-                    boxShadow: isActive ? "0 0 8px rgba(212, 175, 55, 0.55)" : "none",
-                    transition: "all 0.32s cubic-bezier(0.22, 1, 0.36, 1)"
-                  }
-                },
-                c.id
-              );
-            })
+            children: (() => {
+              const winStart = Math.max(0, activeCardIndex - 5);
+              const winEnd = Math.min(displayedCards.length, winStart + 11);
+              return displayedCards.slice(winStart, winEnd).map((c, relIdx) => {
+                const idx = winStart + relIdx;
+                const isActive = idx === activeCardIndex;
+                return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+                  "button",
+                  {
+                    onClick: () => scrollToCardIndex(idx),
+                    title: `Jump to ${c.source_title}`,
+                    style: {
+                      width: 5,
+                      height: isActive ? 18 : 5,
+                      borderRadius: 99,
+                      border: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                      background: isActive ? "var(--accent-gold-bright)" : "var(--border-specular)",
+                      boxShadow: isActive ? "0 0 8px rgba(212, 175, 55, 0.55)" : "none",
+                      transition: "all 0.32s cubic-bezier(0.22, 1, 0.36, 1)"
+                    }
+                  },
+                  c.id
+                );
+              });
+            })()
           }
         ),
         doubleTapBurst && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(

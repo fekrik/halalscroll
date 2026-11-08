@@ -75,12 +75,23 @@ export interface FeedCard {
   time_window: string;
   discover_weight: number;
   reciter_name: string;
+  audio_url?: string | null;
   words: CardWord[];
   deep_study: DeepStudy | null;
   cross_references: CrossReference[];
   bookmark_folders: string[];
   is_bookmarked: boolean;
   practiced: PracticedAction | null;
+}
+
+export interface SurahInfo {
+  number: number;
+  name_simple: string;
+  name_arabic: string;
+  translated_name: string;
+  verses_count: number;
+  revelation_place: string;
+  card_count: number;
 }
 
 export interface UserState {

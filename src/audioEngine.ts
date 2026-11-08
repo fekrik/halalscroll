@@ -1,11 +1,22 @@
 import { CardWord, FeedCard } from './types';
 
+function pad3(n: number): string {
+  return String(n).padStart(3, '0');
+}
+
+function getEveryAyahReciterFolder(reciterName = 'Mishary Rashid Alafasy'): string {
+  if (reciterName.includes('Husary')) return 'Husary_128kbps';
+  if (reciterName.includes('AbdulBaset')) return 'Abdul_Basit_Murattal_192kbps';
+  return 'Alafasy_128kbps';
+}
+
 class SoundAndHapticsEngine {
   private ctx: AudioContext | null = null;
   private isPlaying = false;
   private rafId: number | null = null;
   private startTime = 0;
   private activeNodes: AudioNode[] = [];
+  private activeHtmlAudio: HTMLAudioElement | null = null;
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -44,7 +55,6 @@ class SoundAndHapticsEngine {
         osc.start(now);
         osc.stop(now + 0.03);
       } else if (type === 'softSuccess') {
-        // Warm emerald-goldfifth chord chime
         const freqs = [440, 554.37, 659.25];
         freqs.forEach((f, idx) => {
           const osc = ctx.createOscillator();
@@ -75,7 +85,6 @@ class SoundAndHapticsEngine {
         utter.rate = 0.82;
         window.speechSynthesis.speak(utter);
       }
-      // Subtle warm harmonic tone accompanying the word
       const ctx = this.getContext();
       if (!ctx) return;
       const now = ctx.currentTime;
@@ -95,20 +104,87 @@ class SoundAndHapticsEngine {
     } catch {}
   }
 
-  // Full Card Synchronized Word-by-Word Recitation
+  // Full Card Synchronized Word-by-Word Recitation (Streams Real Studio Qari MP3 for Quran Passages)
   public startCardRecitation(
+    card: FeedCard,
+    onTick: (activeWordIndex: number, progressRatio: number) => void,
+    onComplete: () => void,
+    reciterOverride?: string
+  ) {
+    this.stopRecitation();
+    this.isPlaying = true;
+    const words = card.words && card.words.length > 0 ? card.words : [];
+
+    // If Quran card with surah/ayah numbers, stream real Qari MP3 queue from EveryAyah CDN
+    if (typeof window !== 'undefined' && card.card_type === 'quran' && card.surah_or_book_num && card.ayah_start) {
+      const folder = getEveryAyahReciterFolder(reciterOverride || card.reciter_name);
+      const sNum = card.surah_or_book_num;
+      const aStart = card.ayah_start;
+      const aEnd = card.ayah_end && card.ayah_end >= aStart ? card.ayah_end : aStart;
+
+      const urls: string[] = [];
+      for (let a = aStart; a <= aEnd; a++) {
+        urls.push(`https://everyayah.com/data/${folder}/${pad3(sNum)}${pad3(a)}.mp3`);
+      }
+
+      let currentTrack = 0;
+      const playNextTrack = () => {
+        if (!this.isPlaying || currentTrack >= urls.length) {
+          this.isPlaying = false;
+          onTick(-1, 1);
+          onComplete();
+          return;
+        }
+        const audio = new Audio(urls[currentTrack]);
+        this.activeHtmlAudio = audio;
+
+        const updateProgress = () => {
+          if (!this.isPlaying || this.activeHtmlAudio !== audio) return;
+          const dur = audio.duration && isFinite(audio.duration) ? audio.duration : 6;
+          const trackRatio = Math.min(1, audio.currentTime / dur);
+          const overallRatio = (currentTrack + trackRatio) / urls.length;
+          if (words.length > 0) {
+            const wIdx = Math.min(words.length - 1, Math.floor(overallRatio * words.length));
+            onTick(wIdx, overallRatio);
+          } else {
+            onTick(-1, overallRatio);
+          }
+          this.rafId = requestAnimationFrame(updateProgress);
+        };
+
+        audio.onplay = () => {
+          this.rafId = requestAnimationFrame(updateProgress);
+        };
+        audio.onended = () => {
+          currentTrack++;
+          playNextTrack();
+        };
+        audio.onerror = () => {
+          // Fallback to synthesized recitation if offline or CDN blocked
+          this.startSynthesizedRecitation(card, onTick, onComplete);
+        };
+        audio.play().catch(() => {
+          this.startSynthesizedRecitation(card, onTick, onComplete);
+        });
+      };
+
+      playNextTrack();
+      return;
+    }
+
+    this.startSynthesizedRecitation(card, onTick, onComplete);
+  }
+
+  private startSynthesizedRecitation(
     card: FeedCard,
     onTick: (activeWordIndex: number, progressRatio: number) => void,
     onComplete: () => void
   ) {
-    this.stopRecitation();
-    this.isPlaying = true;
     const words = card.words && card.words.length > 0 ? card.words : [];
     const totalDurationMs = words.length > 0
       ? Math.max(...words.map(w => w.end_ms), words.length * 900)
       : 5500;
 
-    // Optional Arabic speech synthesis
     try {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
@@ -119,7 +195,6 @@ class SoundAndHapticsEngine {
       }
     } catch {}
 
-    // Schedule gentle meditative Nahawand / Hijaz cadence notes per word
     const ctx = this.getContext();
     if (ctx) {
       const now = ctx.currentTime;
@@ -155,8 +230,6 @@ class SoundAndHapticsEngine {
     }
 
     this.startTime = performance.now();
-    let lastWordIdx = -1;
-
     const loop = (nowMs: number) => {
       if (!this.isPlaying) return;
       const elapsed = nowMs - this.startTime;
@@ -181,10 +254,6 @@ class SoundAndHapticsEngine {
         );
       }
 
-      if (currentWordIdx !== lastWordIdx && currentWordIdx >= 0) {
-        lastWordIdx = currentWordIdx;
-      }
-
       onTick(currentWordIdx, elapsed / totalDurationMs);
       this.rafId = requestAnimationFrame(loop);
     };
@@ -197,6 +266,13 @@ class SoundAndHapticsEngine {
     if (this.rafId !== null) {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
+    }
+    if (this.activeHtmlAudio) {
+      try {
+        this.activeHtmlAudio.pause();
+        this.activeHtmlAudio.src = '';
+      } catch {}
+      this.activeHtmlAudio = null;
     }
     try {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -216,4 +292,3 @@ class SoundAndHapticsEngine {
 }
 
 export const soundEngine = new SoundAndHapticsEngine();
-

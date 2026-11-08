@@ -1,163 +1,241 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const zlib = require('node:zlib');
 const { DatabaseSync } = require('node:sqlite');
 const esbuild = require('esbuild');
-const { SEED_CARDS, CROSS_REFERENCES } = require('./seed');
+const { SEED_CARDS } = require('./seed');
+const { hydrateCardDetails } = require('./corpus_hydrator');
 
 const PORT = process.env.PORT || 3456;
-const SOCKET_PATH = process.env.SOCKET_PATH || null;
 const DB_PATH = path.join(__dirname, '..', 'halalscroll.db');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
+const CORPUS_GZ_PATH = path.join(__dirname, 'canonical_corpus.json.gz');
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 fs.mkdirSync(PUBLIC_DIR, { recursive: true });
 
-// 1. Initialize & Seed SQLite Database
+// 1. Initialize & Seed SQLite Database with 14,678+ Canonical Cards
 const db = new DatabaseSync(DB_PATH);
+db.exec('PRAGMA journal_mode = WAL;');
+db.exec('PRAGMA synchronous = NORMAL;');
 db.exec('PRAGMA foreign_keys = ON;');
 const schemaSql = fs.readFileSync(SCHEMA_PATH, 'utf8');
 db.exec(schemaSql);
 
+let SURAH_DIRECTORY = [];
+
+function loadCorpusPayload() {
+  if (fs.existsSync(CORPUS_GZ_PATH)) {
+    try {
+      const gz = fs.readFileSync(CORPUS_GZ_PATH);
+      const parsed = JSON.parse(zlib.gunzipSync(gz).toString('utf8'));
+      SURAH_DIRECTORY = parsed.surahs || [];
+      return parsed.cards || SEED_CARDS;
+    } catch (e) {
+      console.warn('Warning loading canonical_corpus.json.gz, falling back to SEED_CARDS:', e.message);
+    }
+  }
+  return SEED_CARDS;
+}
+
 function seedDatabase() {
-  const insertCard = db.prepare(`
-    INSERT OR REPLACE INTO feed_cards (
-      id, card_type, canonical_ref, share_slug, collection_slug, sequence_order,
-      surah_or_book_num, ayah_start, ayah_end, passage_group_id,
-      arabic_text_uthmani, arabic_text_indopak, transliteration,
-      translation_en_clear, translation_en_sahih, source_title, surah_subtitle,
-      revelation_place, narrator_chain, authenticity_grade, theme_palette,
-      mood_tags, topic_tags, time_window, discover_weight, reciter_name
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  const allCards = loadCorpusPayload();
+  const existingCount = db.prepare(`SELECT COUNT(*) AS cnt FROM feed_cards`).get().cnt;
 
-  const deleteWords = db.prepare(`DELETE FROM card_words WHERE card_id = ?`);
-  const insertWord = db.prepare(`
-    INSERT INTO card_words (
-      card_id, word_position, arabic_word, transliteration, translation_en,
-      root_arabic, root_translit, root_meaning, root_occurrences, root_examples,
-      grammar_pos, start_ms, end_ms
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  if (existingCount !== allCards.length) {
+    console.log(`Seeding SQLite database with ${allCards.length} canonical cards...`);
+    const t0 = Date.now();
+    const insertCard = db.prepare(`
+      INSERT OR REPLACE INTO feed_cards (
+        id, card_type, canonical_ref, share_slug, collection_slug, sequence_order,
+        surah_or_book_num, ayah_start, ayah_end, passage_group_id,
+        arabic_text_uthmani, arabic_text_indopak, transliteration,
+        translation_en_clear, translation_en_sahih, source_title, surah_subtitle,
+        revelation_place, narrator_chain, authenticity_grade, theme_palette,
+        mood_tags, topic_tags, time_window, discover_weight, reciter_name, audio_url
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
-  const insertDeepStudy = db.prepare(`
-    INSERT OR REPLACE INTO card_deep_study (
-      card_id, plain_summary, key_takeaway, asbab_al_nuzul,
-      tafsir_saadi, tafsir_ibn_kathir, tafsir_maariful, actionable_sunnah, source_citation
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  for (const c of SEED_CARDS) {
-    insertCard.run(
-      c.id, c.card_type, c.canonical_ref, c.share_slug, c.collection_slug, c.sequence_order,
-      c.surah_or_book_num, c.ayah_start, c.ayah_end, c.passage_group_id,
-      c.arabic_text_uthmani, c.arabic_text_indopak, c.transliteration,
-      c.translation_en_clear, c.translation_en_sahih, c.source_title, c.surah_subtitle,
-      c.revelation_place, c.narrator_chain, c.authenticity_grade, c.theme_palette,
-      JSON.stringify(c.mood_tags), JSON.stringify(c.topic_tags), c.time_window, c.discover_weight, c.reciter_name
-    );
-
-    deleteWords.run(c.id);
-    for (const w of c.words || []) {
-      insertWord.run(
-        c.id, w.word_position, w.arabic_word, w.transliteration, w.translation_en,
-        w.root_arabic, w.root_translit, w.root_meaning, w.root_occurrences,
-        JSON.stringify(w.root_examples || []), w.grammar_pos, w.start_ms, w.end_ms
-      );
+    db.exec('BEGIN IMMEDIATE TRANSACTION;');
+    try {
+      for (const c of allCards) {
+        insertCard.run(
+          c.id,
+          c.card_type,
+          c.canonical_ref,
+          c.share_slug,
+          c.collection_slug,
+          c.sequence_order,
+          c.surah_or_book_num ?? null,
+          c.ayah_start ?? null,
+          c.ayah_end ?? null,
+          c.passage_group_id ?? null,
+          c.arabic_text_uthmani,
+          c.arabic_text_indopak || c.arabic_text_uthmani,
+          c.transliteration ?? null,
+          c.translation_en_clear,
+          c.translation_en_sahih || c.translation_en_clear,
+          c.source_title,
+          c.surah_subtitle ?? null,
+          c.revelation_place ?? null,
+          c.narrator_chain ?? null,
+          c.authenticity_grade ?? 'Verified Canonical',
+          c.theme_palette || 'andalusian_parchment',
+          JSON.stringify(c.mood_tags || ['hopeful']),
+          JSON.stringify(c.topic_tags || ['Tadabbur']),
+          c.time_window || 'any',
+          c.discover_weight ?? 1.0,
+          c.reciter_name || 'Mishary Rashid Alafasy',
+          c.audio_url ?? null
+        );
+      }
+      db.exec('COMMIT;');
+      console.log(`✓ Seeded ${allCards.length} canonical cards in ${Date.now() - t0}ms.`);
+    } catch (err) {
+      db.exec('ROLLBACK;');
+      throw err;
     }
-
-    if (c.deep_study) {
-      const ds = c.deep_study;
-      insertDeepStudy.run(
-        c.id, ds.plain_summary, ds.key_takeaway, ds.asbab_al_nuzul,
-        ds.tafsir_saadi, ds.tafsir_ibn_kathir, ds.tafsir_maariful,
-        ds.actionable_sunnah, ds.source_citation
-      );
-    }
+  } else {
+    console.log(`✓ SQLite database already contains ${existingCount} canonical cards.`);
   }
 
-  db.exec(`DELETE FROM card_cross_references;`);
-  const insertRef = db.prepare(`
-    INSERT INTO card_cross_references (source_card_id, target_card_id, relationship_note)
-    VALUES (?, ?, ?)
-  `);
-  for (const ref of CROSS_REFERENCES) {
-    insertRef.run(ref.source_card_id, ref.target_card_id, ref.relationship_note);
-  }
+  // Default user state & starter bookmarks
+  const upsertState = db.prepare(`INSERT OR IGNORE INTO user_state (key, value) VALUES (?, ?)`);
+  upsertState.run('streak_count', '12');
+  upsertState.run('last_active_date', new Date().toISOString().slice(0, 10));
+  upsertState.run('theme', 'andalusian_parchment');
+  upsertState.run('arabic_script', 'uthmani');
+  upsertState.run('translation_edition', 'clear');
+  upsertState.run('show_transliteration', 'true');
+  upsertState.run('reciter', 'Mishary Rashid Alafasy');
+  upsertState.run('plus_member', 'false');
+  upsertState.run('sequential_quran_card', 'card-quran-94-5');
+  upsertState.run('sequential_book_card', 'card-hadith-nawawi-19');
 
-  // Ensure default user state exists
-  const ensureState = db.prepare(`INSERT OR IGNORE INTO user_state (key, value) VALUES (?, ?)`);
-  ensureState.run('streak_count', '12');
-  ensureState.run('theme', 'andalusian_parchment');
-  db.prepare(`UPDATE user_state SET value = 'andalusian_parchment' WHERE key = 'theme' AND value = 'midnight_sanctuary'`).run();
-  ensureState.run('arabic_script', 'uthmani');
-  ensureState.run('translation_edition', 'clear');
-  ensureState.run('show_transliteration', 'true');
-  ensureState.run('reciter', 'Mishary Rashid Alafasy');
-  ensureState.run('plus_member', 'false');
-  ensureState.run('sequential_quran_card', 'card-quran-94-5');
-  ensureState.run('sequential_book_card', 'card-hadith-nawawi-19');
-
-  // Seed 2 initial bookmarks so the Bookmarks Vault has immediate examples
-  const countBookmarks = db.prepare(`SELECT COUNT(*) as c FROM user_bookmarks`).get();
-  if (countBookmarks.c === 0) {
-    const insBm = db.prepare(`INSERT OR IGNORE INTO user_bookmarks (card_id, folder_name) VALUES (?, ?)`);
-    insBm.run('card-quran-94-5', 'Favorites');
-    insBm.run('card-dua-hisn-anxiety', 'Hardship & Sabr');
-  }
+  const insertBookmark = db.prepare(`INSERT OR IGNORE INTO user_bookmarks (card_id, folder_name) VALUES (?, ?)`);
+  insertBookmark.run('card-quran-94-5', 'Hardship & Sabr');
+  insertBookmark.run('card-dua-hisn-anxiety', 'Hardship & Sabr');
+  insertBookmark.run('card-quran-17-23', 'Duas for Family');
 }
 
 seedDatabase();
 
-// Helper to hydrate cards with words, deep_study, cross_references, bookmarks, and practiced state
-function getHydratedCards() {
-  const cards = db.prepare(`SELECT * FROM feed_cards ORDER BY sequence_order ASC, id ASC`).all();
-  const words = db.prepare(`SELECT * FROM card_words ORDER BY word_position ASC`).all();
-  const deepStudies = db.prepare(`SELECT * FROM card_deep_study`).all();
-  const crossRefs = db.prepare(`
-    SELECT r.*, c.source_title, c.card_type, c.share_slug, c.arabic_text_uthmani, c.translation_en_clear, c.authenticity_grade
-    FROM card_cross_references r
-    JOIN feed_cards c ON c.id = r.target_card_id
+// 2. Helper Functions for Fast Paginated Queries & Row Hydration
+function getBookmarkAndPracticeMaps() {
+  const allBookmarks = db.prepare(`SELECT card_id, folder_name, created_at FROM user_bookmarks ORDER BY created_at DESC`).all();
+  const allPracticed = db.prepare(`SELECT card_id, reflection_note, practiced_at FROM user_practiced_actions`).all();
+
+  const bookmarksByCard = {};
+  for (const b of allBookmarks) {
+    if (!bookmarksByCard[b.card_id]) bookmarksByCard[b.card_id] = [];
+    bookmarksByCard[b.card_id].push(b.folder_name);
+  }
+  const practicedByCard = {};
+  for (const p of allPracticed) {
+    practicedByCard[p.card_id] = p;
+  }
+  return { bookmarksByCard, practicedByCard };
+}
+
+function hydrateRows(rows) {
+  const { bookmarksByCard, practicedByCard } = getBookmarkAndPracticeMaps();
+  return rows.map(c => {
+    const parsed = {
+      ...c,
+      mood_tags: JSON.parse(c.mood_tags || '[]'),
+      topic_tags: JSON.parse(c.topic_tags || '[]'),
+      bookmark_folders: bookmarksByCard[c.id] || [],
+      is_bookmarked: Boolean(bookmarksByCard[c.id] && bookmarksByCard[c.id].length > 0),
+      practiced: practicedByCard[c.id] || null
+    };
+    return hydrateCardDetails(parsed);
+  });
+}
+
+function queryFeedPage({
+  mode = 'for_you',
+  collection = 'quran',
+  surah = null,
+  mood = null,
+  search = null,
+  offset = 0,
+  limit = 30
+} = {}) {
+  const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 100);
+  const safeOffset = Math.max(Number(offset) || 0, 0);
+
+  const whereClauses = [];
+  const params = [];
+
+  if (search && String(search).trim().length > 0) {
+    const q = `%${String(search).trim()}%`;
+    whereClauses.push(`(source_title LIKE ? OR translation_en_clear LIKE ? OR canonical_ref LIKE ? OR surah_subtitle LIKE ?)`);
+    params.push(q, q, q, q);
+  } else if (mode === 'sequential') {
+    whereClauses.push(`collection_slug = ?`);
+    params.push(collection || 'quran');
+    if (collection === 'quran' && surah && Number(surah) >= 1 && Number(surah) <= 114) {
+      whereClauses.push(`surah_or_book_num = ?`);
+      params.push(Number(surah));
+    }
+  } else if (mode === 'moods' && mood) {
+    whereClauses.push(`mood_tags LIKE ?`);
+    params.push(`%"${mood}"%`);
+  }
+
+  const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+  const orderSql = mode === 'sequential'
+    ? `ORDER BY surah_or_book_num ASC, ayah_start ASC, sequence_order ASC`
+    : `ORDER BY discover_weight DESC, sequence_order ASC`;
+
+  const totalRow = db.prepare(`SELECT COUNT(*) AS cnt FROM feed_cards ${whereSql}`).get(...params);
+  const total = totalRow ? totalRow.cnt : 0;
+
+  const rows = db.prepare(`
+    SELECT * FROM feed_cards
+    ${whereSql}
+    ${orderSql}
+    LIMIT ? OFFSET ?
+  `).all(...params, safeLimit, safeOffset);
+
+  const cards = hydrateRows(rows);
+  return {
+    cards,
+    total,
+    offset: safeOffset,
+    limit: safeLimit,
+    has_more: safeOffset + cards.length < total
+  };
+}
+
+function getCollectionCounts() {
+  const rows = db.prepare(`SELECT collection_slug, COUNT(*) AS cnt FROM feed_cards GROUP BY collection_slug`).all();
+  const counts = { total: 0 };
+  for (const r of rows) {
+    counts[r.collection_slug] = r.cnt;
+    counts.total += r.cnt;
+  }
+  return counts;
+}
+
+function getBookmarkedCards() {
+  const rows = db.prepare(`
+    SELECT fc.* FROM feed_cards fc
+    INNER JOIN (SELECT DISTINCT card_id FROM user_bookmarks) ub ON ub.card_id = fc.id
+    ORDER BY fc.discover_weight DESC, fc.sequence_order ASC
   `).all();
-  const bookmarks = db.prepare(`SELECT * FROM user_bookmarks`).all();
-  const practiced = db.prepare(`SELECT * FROM user_practiced_actions`).all();
+  return hydrateRows(rows);
+}
 
-  const wordsByCard = new Map();
-  for (const w of words) {
-    w.root_examples = JSON.parse(w.root_examples || '[]');
-    if (!wordsByCard.has(w.card_id)) wordsByCard.set(w.card_id, []);
-    wordsByCard.get(w.card_id).push(w);
-  }
-
-  const dsByCard = new Map();
-  for (const ds of deepStudies) dsByCard.set(ds.card_id, ds);
-
-  const refsByCard = new Map();
-  for (const r of crossRefs) {
-    if (!refsByCard.has(r.source_card_id)) refsByCard.set(r.source_card_id, []);
-    refsByCard.get(r.source_card_id).push(r);
-  }
-
-  const bmByCard = new Map();
-  for (const b of bookmarks) {
-    if (!bmByCard.has(b.card_id)) bmByCard.set(b.card_id, []);
-    bmByCard.get(b.card_id).push(b.folder_name);
-  }
-
-  const pracByCard = new Map();
-  for (const p of practiced) pracByCard.set(p.card_id, p);
-
-  return cards.map(c => ({
-    ...c,
-    mood_tags: JSON.parse(c.mood_tags || '[]'),
-    topic_tags: JSON.parse(c.topic_tags || '[]'),
-    words: wordsByCard.get(c.id) || [],
-    deep_study: dsByCard.get(c.id) || null,
-    cross_references: refsByCard.get(c.id) || [],
-    bookmark_folders: bmByCard.get(c.id) || [],
-    is_bookmarked: (bmByCard.get(c.id) || []).length > 0,
-    practiced: pracByCard.get(c.id) || null
-  }));
+function getCardBySlugOrId(slugOrId) {
+  const row = db.prepare(`
+    SELECT * FROM feed_cards
+    WHERE share_slug = ? OR id = ? OR canonical_ref = ?
+    LIMIT 1
+  `).get(slugOrId, slugOrId, slugOrId);
+  if (!row) return null;
+  return hydrateRows([row])[0];
 }
 
 function getUserState() {
@@ -250,20 +328,47 @@ const handleRequest = async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const pathname = url.pathname;
 
-  // API: GET /api/bootstrap
+  // API: GET /api/bootstrap (Initial fast page + corpus metadata + 114 Surahs directory)
   if (pathname === '/api/bootstrap' && req.method === 'GET') {
-    const cards = getHydratedCards();
+    const initialPage = queryFeedPage({ mode: 'for_you', offset: 0, limit: 40 });
+    const counts = getCollectionCounts();
     const state = getUserState();
     const folders = db.prepare(`SELECT DISTINCT folder_name FROM user_bookmarks ORDER BY folder_name ASC`).all().map(r => r.folder_name);
     const allFolders = Array.from(new Set(['Favorites', 'Duas for Family', 'Hardship & Sabr', 'Daily Memorization', ...folders]));
-    return sendJson(res, 200, { cards, state, folders: allFolders });
+    return sendJson(res, 200, {
+      cards: initialPage.cards,
+      total_corpus_count: counts.total,
+      collection_counts: counts,
+      surahs: SURAH_DIRECTORY,
+      bookmarked_cards: getBookmarkedCards(),
+      state,
+      folders: allFolders
+    });
+  }
+
+  // API: GET /api/feed (Cursor/Offset Paginated Feed across 14,678+ cards)
+  if (pathname === '/api/feed' && req.method === 'GET') {
+    const mode = url.searchParams.get('mode') || 'for_you';
+    const collection = url.searchParams.get('collection') || 'quran';
+    const surah = url.searchParams.get('surah') || null;
+    const mood = url.searchParams.get('mood') || null;
+    const search = url.searchParams.get('search') || null;
+    const offset = Number(url.searchParams.get('offset') || 0);
+    const limit = Number(url.searchParams.get('limit') || 30);
+
+    const page = queryFeedPage({ mode, collection, surah, mood, search, offset, limit });
+    return sendJson(res, 200, page);
+  }
+
+  // API: GET /api/surahs (114 Surahs Directory)
+  if (pathname === '/api/surahs' && req.method === 'GET') {
+    return sendJson(res, 200, { surahs: SURAH_DIRECTORY });
   }
 
   // API: GET /api/cards/:slug
   if (pathname.startsWith('/api/cards/') && req.method === 'GET') {
     const slug = decodeURIComponent(pathname.replace('/api/cards/', ''));
-    const cards = getHydratedCards();
-    const found = cards.find(c => c.share_slug === slug || c.id === slug || c.canonical_ref === slug);
+    const found = getCardBySlugOrId(slug);
     if (!found) return sendJson(res, 404, { error: 'Card not found' });
     return sendJson(res, 200, { card: found });
   }
@@ -281,10 +386,17 @@ const handleRequest = async (req, res) => {
       db.prepare(`INSERT OR IGNORE INTO user_bookmarks (card_id, folder_name) VALUES (?, ?)`).run(card_id, folder_name);
     }
 
-    const cards = getHydratedCards();
+    const updatedCard = getCardBySlugOrId(card_id);
+    const bookmarkedCards = getBookmarkedCards();
+    const initialPage = queryFeedPage({ mode: 'for_you', offset: 0, limit: 40 });
     const folders = db.prepare(`SELECT DISTINCT folder_name FROM user_bookmarks ORDER BY folder_name ASC`).all().map(r => r.folder_name);
     const allFolders = Array.from(new Set(['Favorites', 'Duas for Family', 'Hardship & Sabr', 'Daily Memorization', ...folders]));
-    return sendJson(res, 200, { cards, folders: allFolders });
+    return sendJson(res, 200, {
+      card: updatedCard,
+      bookmarked_cards: bookmarkedCards,
+      cards: initialPage.cards,
+      folders: allFolders
+    });
   }
 
   // API: POST /api/practice
@@ -308,8 +420,11 @@ const handleRequest = async (req, res) => {
       db.prepare(`DELETE FROM user_practiced_actions WHERE card_id = ?`).run(card_id);
     }
 
+    const updatedCard = getCardBySlugOrId(card_id);
+    const initialPage = queryFeedPage({ mode: 'for_you', offset: 0, limit: 40 });
     return sendJson(res, 200, {
-      cards: getHydratedCards(),
+      card: updatedCard,
+      cards: initialPage.cards,
       state: getUserState()
     });
   }
@@ -327,20 +442,21 @@ const handleRequest = async (req, res) => {
   // Dynamic OpenGraph Raster JPG Card Preview: /api/og/:slug.jpg
   if (pathname.startsWith('/api/og/') && pathname.endsWith('.jpg')) {
     const slug = decodeURIComponent(pathname.replace('/api/og/', '').replace('.jpg', ''));
-    const cards = getHydratedCards();
-    const card = cards.find(c => c.share_slug === slug || c.id === slug) || cards[0];
-    const jpgPath = path.join(PUBLIC_DIR, 'og', `${card.share_slug}.jpg`);
-    if (fs.existsSync(jpgPath)) {
+    const card = getCardBySlugOrId(slug);
+    const jpgSlug = card ? card.share_slug : 'ash-sharh-5-6';
+    const jpgPath = path.join(PUBLIC_DIR, 'og', `${jpgSlug}.jpg`);
+    const fallbackJpgPath = path.join(PUBLIC_DIR, 'og', 'ash-sharh-5-6.jpg');
+    const targetPath = fs.existsSync(jpgPath) ? jpgPath : fallbackJpgPath;
+    if (fs.existsSync(targetPath)) {
       res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=86400' });
-      return res.end(fs.readFileSync(jpgPath));
+      return res.end(fs.readFileSync(targetPath));
     }
   }
 
   // Dynamic OpenGraph SVG Card Preview: /api/og/:slug.svg
   if (pathname.startsWith('/api/og/') && pathname.endsWith('.svg')) {
     const slug = decodeURIComponent(pathname.replace('/api/og/', '').replace('.svg', ''));
-    const cards = getHydratedCards();
-    const card = cards.find(c => c.share_slug === slug || c.id === slug) || cards[0];
+    const card = getCardBySlugOrId(slug) || getCardBySlugOrId('ash-sharh-5-6');
     const svg = renderOgSvg(card);
     res.writeHead(200, { 'Content-Type': 'image/svg+xml; charset=utf-8' });
     return res.end(svg);
@@ -368,12 +484,11 @@ const handleRequest = async (req, res) => {
   const baseOrigin = `${proto}://${host}`;
 
   let ogTitle = 'Halal Scroll: Quran & Sunnah — Daily Ayah, Hadith & Tadabbur';
-  let ogDesc = 'Replace mindless social media doom-scrolling with a serene, tactile vertical feed of the Quran, Sahih Hadith, Prophetic Duas, and Seerah reflections.';
+  let ogDesc = 'Replace mindless social media doom-scrolling with a serene, tactile vertical feed of 14,600+ canonical Quran passages, Sahih Hadith, Prophetic Duas, and Seerah reflections.';
   let ogSlug = 'ash-sharh-5-6';
   if (pathname.startsWith('/c/')) {
     const slug = decodeURIComponent(pathname.replace('/c/', ''));
-    const cards = getHydratedCards();
-    const card = cards.find(c => c.share_slug === slug || c.id === slug);
+    const card = getCardBySlugOrId(slug);
     if (card) {
       ogTitle = `${card.source_title} • Halal Scroll`;
       ogDesc = `“${card.translation_en_clear}” — Tap to explore Word-by-Word Arabic Roots, Classical Tafsir & Daily Sunnah.`;

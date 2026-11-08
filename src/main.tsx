@@ -5,7 +5,7 @@ import {
   Crown, FolderPlus, Check, X, Compass, BookOpen, Heart, Sun, Moon,
   ChevronDown, ArrowUpRight, ShieldCheck, GraduationCap
 } from 'lucide-react';
-import { CardWord, DeepStudyTab, FeedCard, FeedMode, UserState } from './types';
+import { CardWord, DeepStudyTab, FeedCard, FeedMode, SurahInfo, UserState } from './types';
 import { soundEngine } from './audioEngine';
 import { DeepStudyDrawer } from './components/DeepStudyDrawer';
 import { ShareStudioModal } from './components/ShareStudioModal';
@@ -69,7 +69,15 @@ const App: React.FC = () => {
   const [feedMode, setFeedMode] = useState<FeedMode>('for_you');
   const [selectedMood, setSelectedMood] = useState<string>('anxious');
   const [selectedCollection, setSelectedCollection] = useState<string>('quran');
+  const [selectedSurah, setSelectedSurah] = useState<number | null>(null);
+  const [surahs, setSurahs] = useState<SurahInfo[]>([]);
+  const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
+  const [totalFeedCount, setTotalFeedCount] = useState<number>(0);
+  const [hasMoreFeed, setHasMoreFeed] = useState<boolean>(false);
+  const [savedVaultCards, setSavedVaultCards] = useState<FeedCard[]>([]);
   const [activeCardIndex, setActiveCardIndex] = useState<number>(0);
+  const isFetchingMoreRef = useRef<boolean>(false);
+  const hasBackendApiRef = useRef<boolean>(false);
 
   // Audio Recitation & Word Highlighting State
   const [playingCardId, setPlayingCardId] = useState<string | null>(null);
@@ -107,8 +115,23 @@ const App: React.FC = () => {
 
   // Load initial data from SQLite backend (with automatic 0ms offline/static fallback for GitHub Pages)
   useEffect(() => {
-    const applyBootData = (data: { cards?: FeedCard[]; state?: Partial<UserState>; folders?: string[] }) => {
+    const applyBootData = (data: {
+      cards?: FeedCard[];
+      total_corpus_count?: number;
+      collection_counts?: Record<string, number>;
+      surahs?: SurahInfo[];
+      bookmarked_cards?: FeedCard[];
+      state?: Partial<UserState>;
+      folders?: string[];
+    }) => {
       if (data.cards) setCards(data.cards);
+      if (data.surahs) setSurahs(data.surahs);
+      if (data.collection_counts) setCollectionCounts(data.collection_counts);
+      if (data.total_corpus_count) {
+        setTotalFeedCount(data.total_corpus_count);
+        setHasMoreFeed((data.cards?.length || 0) < data.total_corpus_count);
+      }
+      if (data.bookmarked_cards) setSavedVaultCards(data.bookmarked_cards);
       if (data.state) setUserState(prev => ({ ...prev, ...data.state }));
       if (data.folders) setFolders(data.folders);
       setLoading(false);
@@ -124,6 +147,16 @@ const App: React.FC = () => {
         const idx = (data.cards || []).findIndex((c: FeedCard) => c.share_slug === slug || c.id === slug);
         if (idx >= 0) {
           setTimeout(() => scrollToCardIndex(idx), 120);
+        } else if (hasBackendApiRef.current) {
+          fetch(`/api/cards/${encodeURIComponent(slug)}`)
+            .then(r => (r.ok ? r.json() : null))
+            .then(res => {
+              if (res?.card) {
+                setCards(prev => [res.card, ...prev.filter(c => c.id !== res.card.id)]);
+                setActiveCardIndex(0);
+              }
+            })
+            .catch(() => {});
         }
       }
     };
@@ -131,28 +164,100 @@ const App: React.FC = () => {
     fetch('/api/bootstrap')
       .then(r => {
         if (!r.ok) throw new Error('Static mode');
+        hasBackendApiRef.current = true;
         return r.json();
       })
       .then((data) => applyBootData(data))
       .catch(() => {
+        hasBackendApiRef.current = false;
         const fallback = getOfflineBootstrap();
         applyBootData(fallback);
       });
   }, []);
+
+  // Fetch filtered page from /api/feed when mode, collection, surah, or mood changes
+  useEffect(() => {
+    if (!hasBackendApiRef.current) return;
+    const params = new URLSearchParams({
+      mode: feedMode,
+      collection: selectedCollection,
+      offset: '0',
+      limit: '35'
+    });
+    if (feedMode === 'sequential' && selectedCollection === 'quran' && selectedSurah) {
+      params.set('surah', String(selectedSurah));
+    }
+    if (feedMode === 'moods' && selectedMood !== 'all') {
+      params.set('mood', selectedMood);
+    }
+
+    fetch(`/api/feed?${params.toString()}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(page => {
+        if (page && Array.isArray(page.cards)) {
+          setCards(page.cards);
+          setTotalFeedCount(page.total || page.cards.length);
+          setHasMoreFeed(Boolean(page.has_more));
+          setActiveCardIndex(0);
+          if (feedContainerRef.current) feedContainerRef.current.scrollTop = 0;
+        }
+      })
+      .catch(() => {});
+  }, [feedMode, selectedCollection, selectedSurah, selectedMood]);
+
+  const fetchNextFeedPage = () => {
+    if (!hasBackendApiRef.current || !hasMoreFeed || isFetchingMoreRef.current) return;
+    isFetchingMoreRef.current = true;
+    const params = new URLSearchParams({
+      mode: feedMode,
+      collection: selectedCollection,
+      offset: String(cards.length),
+      limit: '35'
+    });
+    if (feedMode === 'sequential' && selectedCollection === 'quran' && selectedSurah) {
+      params.set('surah', String(selectedSurah));
+    }
+    if (feedMode === 'moods' && selectedMood !== 'all') {
+      params.set('mood', selectedMood);
+    }
+
+    fetch(`/api/feed?${params.toString()}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(page => {
+        if (page && Array.isArray(page.cards) && page.cards.length > 0) {
+          setCards(prev => {
+            const seen = new Set(prev.map(c => c.id));
+            const fresh = page.cards.filter((c: FeedCard) => !seen.has(c.id));
+            return [...prev, ...fresh];
+          });
+          setTotalFeedCount(page.total || cards.length);
+          setHasMoreFeed(Boolean(page.has_more));
+        } else {
+          setHasMoreFeed(false);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        isFetchingMoreRef.current = false;
+      });
+  };
 
   // Sync theme attribute on document root
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', userState.theme || 'andalusian_parchment');
   }, [userState.theme]);
 
-  // Filtered Cards based on active Feed Mode
+  // Filtered Cards based on active Feed Mode (when server pagination is active, `cards` already matches the filter)
   const displayedCards = useMemo(() => {
+    if (hasBackendApiRef.current) {
+      return cards;
+    }
     if (feedMode === 'for_you') {
       return cards;
     }
     if (feedMode === 'sequential') {
       return cards
-        .filter(c => c.collection_slug === selectedCollection)
+        .filter(c => c.collection_slug === selectedCollection && (!selectedSurah || c.surah_or_book_num === selectedSurah))
         .sort((a, b) => a.sequence_order - b.sequence_order);
     }
     if (feedMode === 'moods') {
@@ -162,7 +267,7 @@ const App: React.FC = () => {
       );
     }
     return cards;
-  }, [cards, feedMode, selectedCollection, selectedMood]);
+  }, [cards, feedMode, selectedCollection, selectedSurah, selectedMood]);
 
   const activeCard = displayedCards[activeCardIndex] || displayedCards[0] || null;
 
@@ -196,10 +301,19 @@ const App: React.FC = () => {
   const handleJumpToCardByIdOrSlug = (idOrSlug: string) => {
     setDeepStudyModal(null);
     setShowBookmarksVault(false);
-    // Ensure mode shows all cards if not in current filter
     const inCurrent = displayedCards.findIndex(c => c.id === idOrSlug || c.share_slug === idOrSlug);
     if (inCurrent >= 0) {
       scrollToCardIndex(inCurrent);
+    } else if (hasBackendApiRef.current) {
+      fetch(`/api/cards/${encodeURIComponent(idOrSlug)}`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(res => {
+          if (res?.card) {
+            setCards(prev => [res.card, ...prev.filter(c => c.id !== res.card.id)]);
+            scrollToCardIndex(0);
+          }
+        })
+        .catch(() => {});
     } else {
       setFeedMode('for_you');
       setTimeout(() => {
@@ -221,6 +335,10 @@ const App: React.FC = () => {
         soundEngine.stopRecitation();
         setPlayingCardId(null);
         setActiveWordIdx(-1);
+      }
+      // Automatically prefetch next page when within 6 cards of the end
+      if (newIndex >= displayedCards.length - 6 && hasMoreFeed) {
+        fetchNextFeedPage();
       }
       // Save reading progress in Sequential mode
       const current = displayedCards[newIndex];
@@ -250,21 +368,24 @@ const App: React.FC = () => {
         () => {
           setPlayingCardId(null);
           setActiveWordIdx(-1);
-        }
+        },
+        userState.reciter
       );
     }
   };
 
   const handleToggleBookmark = async (card: FeedCard, folderName = 'Favorites', action: 'toggle' | 'add' | 'remove' = 'toggle') => {
     soundEngine.triggerHaptic('softSuccess');
-    const applyBookmarkData = (data: { cards?: FeedCard[]; folders?: string[] }) => {
-      if (data.cards) {
-        setCards(data.cards);
-        if (bookmarkFolderModalCard) {
-          const updated = data.cards.find((c: FeedCard) => c.id === bookmarkFolderModalCard.id);
-          if (updated) setBookmarkFolderModalCard(updated);
+    const applyBookmarkData = (data: { card?: FeedCard; bookmarked_cards?: FeedCard[]; cards?: FeedCard[]; folders?: string[] }) => {
+      if (data.card) {
+        setCards(prev => prev.map(c => (c.id === data.card!.id ? data.card! : c)));
+        if (bookmarkFolderModalCard && bookmarkFolderModalCard.id === data.card.id) {
+          setBookmarkFolderModalCard(data.card);
         }
+      } else if (data.cards) {
+        setCards(data.cards);
       }
+      if (data.bookmarked_cards) setSavedVaultCards(data.bookmarked_cards);
       if (data.folders) setFolders(data.folders);
     };
 
@@ -284,8 +405,13 @@ const App: React.FC = () => {
   };
 
   const handleMarkPracticed = async (cardId: string, practiced: boolean, reflectionNote: string) => {
-    const applyPracticeData = (data: { cards?: FeedCard[]; state?: Partial<UserState> }) => {
-      if (data.cards) {
+    const applyPracticeData = (data: { card?: FeedCard; cards?: FeedCard[]; state?: Partial<UserState> }) => {
+      if (data.card) {
+        setCards(prev => prev.map(c => (c.id === data.card!.id ? data.card! : c)));
+        if (deepStudyModal && deepStudyModal.card.id === cardId) {
+          setDeepStudyModal({ ...deepStudyModal, card: data.card });
+        }
+      } else if (data.cards) {
         setCards(data.cards);
         const updated = data.cards.find((c: FeedCard) => c.id === cardId);
         if (updated && deepStudyModal) {
@@ -311,12 +437,13 @@ const App: React.FC = () => {
   };
 
   const bookmarkedCards = useMemo(() => {
-    return cards.filter(c => {
+    const sourceList = savedVaultCards.length > 0 ? savedVaultCards : cards.filter(c => c.is_bookmarked);
+    return sourceList.filter(c => {
       if (!c.is_bookmarked) return false;
       if (vaultFilterFolder === 'All') return true;
       return c.bookmark_folders.includes(vaultFilterFolder);
     });
-  }, [cards, vaultFilterFolder]);
+  }, [savedVaultCards, cards, vaultFilterFolder]);
 
   if (loading) {
     return (
@@ -557,59 +684,106 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* SUB-BAR FOR MODE B: SEQUENTIAL (Khatmah & Book Reader) */}
+          {/* SUB-BAR FOR MODE B: SEQUENTIAL (Khatmah & Book Reader + 114 Surahs Picker) */}
           {feedMode === 'sequential' && (
-            <div
-              className="glass-pill no-scrollbar"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '7px 10px',
-                borderRadius: 16,
-                overflowX: 'auto'
-              }}
-            >
-              {SEQUENTIAL_COLLECTIONS.map((col) => {
-                const isSel = selectedCollection === col.id;
-                const colCards = cards.filter(c => c.collection_slug === col.id);
-                return (
-                  <button
-                    key={col.id}
-                    onClick={() => {
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div
+                className="glass-pill no-scrollbar"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 10px',
+                  borderRadius: 16,
+                  overflowX: 'auto'
+                }}
+              >
+                {SEQUENTIAL_COLLECTIONS.map((col) => {
+                  const isSel = selectedCollection === col.id;
+                  const countVal = collectionCounts[col.id] ?? cards.filter(c => c.collection_slug === col.id).length;
+                  return (
+                    <button
+                      key={col.id}
+                      onClick={() => {
+                        soundEngine.triggerHaptic('selectionTick');
+                        setSelectedCollection(col.id);
+                        setSelectedSurah(null);
+                        setActiveCardIndex(0);
+                        if (feedContainerRef.current) feedContainerRef.current.scrollTop = 0;
+                      }}
+                      style={{
+                        flexShrink: 0,
+                        padding: '5px 11px',
+                        borderRadius: 999,
+                        fontSize: 11.5,
+                        fontWeight: isSel ? 700 : 500,
+                        cursor: 'pointer',
+                        border: isSel ? '1px solid var(--border-gold)' : '1px solid transparent',
+                        background: isSel ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255,255,255,0.04)',
+                        color: isSel ? 'var(--accent-gold-bright)' : 'var(--text-secondary)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <span>{col.label}</span>
+                      <span style={{
+                        fontSize: 10,
+                        padding: '1px 6px',
+                        borderRadius: 99,
+                        background: 'rgba(0,0,0,0.25)',
+                        color: 'var(--accent-emerald)'
+                      }}>
+                        {countVal.toLocaleString()}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedCollection === 'quran' && surahs.length > 0 && (
+                <div
+                  className="glass-pill"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    padding: '5px 12px',
+                    borderRadius: 14
+                  }}
+                >
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-gold-bright)', whiteSpace: 'nowrap' }}>
+                    Jump to Surah:
+                  </span>
+                  <select
+                    value={selectedSurah || ''}
+                    onChange={(e) => {
                       soundEngine.triggerHaptic('selectionTick');
-                      setSelectedCollection(col.id);
-                      setActiveCardIndex(0);
-                      if (feedContainerRef.current) feedContainerRef.current.scrollTop = 0;
+                      const val = e.target.value ? Number(e.target.value) : null;
+                      setSelectedSurah(val);
                     }}
                     style={{
-                      flexShrink: 0,
-                      padding: '5px 11px',
-                      borderRadius: 999,
+                      flex: 1,
+                      background: 'transparent',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border-specular)',
+                      borderRadius: 8,
+                      padding: '4px 8px',
                       fontSize: 11.5,
-                      fontWeight: isSel ? 700 : 500,
-                      cursor: 'pointer',
-                      border: isSel ? '1px solid var(--border-gold)' : '1px solid transparent',
-                      background: isSel ? 'rgba(212, 175, 55, 0.2)' : 'rgba(255,255,255,0.04)',
-                      color: isSel ? 'var(--accent-gold-bright)' : 'var(--text-secondary)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6
+                      fontWeight: 600,
+                      outline: 'none'
                     }}
                   >
-                    <span>{col.label}</span>
-                    <span style={{
-                      fontSize: 10,
-                      padding: '1px 6px',
-                      borderRadius: 99,
-                      background: 'rgba(0,0,0,0.25)',
-                      color: 'var(--accent-emerald)'
-                    }}>
-                      {colCards.length}
-                    </span>
-                  </button>
-                );
-              })}
+                    <option value="">All 114 Surahs ({(collectionCounts.quran || 4186).toLocaleString()} Passages)</option>
+                    {surahs.map(s => (
+                      <option key={s.number} value={s.number}>
+                        {s.number}. {s.name_simple} ({s.name_arabic}) — {s.translated_name} ({s.card_count} cards)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           )}
 
@@ -664,6 +838,19 @@ const App: React.FC = () => {
           className="vertical-feed"
         >
           {displayedCards.map((card, cardIdx) => {
+            // Virtual windowing: keep only cards within +/- 8 of activeCardIndex fully mounted for 60fps scrolling across 14,678 cards
+            if (Math.abs(cardIdx - activeCardIndex) > 8) {
+              return (
+                <div key={card.id} className="feed-card-snap card-inactive">
+                  <div className="card-content-cluster" style={{ opacity: 0.2 }}>
+                    <span className="glass-pill" style={{ padding: '4px 10px', borderRadius: 99, fontSize: 11 }}>
+                      {card.source_title}
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+
             const isCardPlaying = playingCardId === card.id;
             const translationText = userState.translation_edition === 'sahih'
               ? (card.translation_en_sahih || card.translation_en_clear)
@@ -1073,7 +1260,7 @@ const App: React.FC = () => {
                         flexShrink: 0
                       }}
                     >
-                      {cardIdx + 1}/{displayedCards.length}
+                      {(cardIdx + 1).toLocaleString()}/{(totalFeedCount || displayedCards.length).toLocaleString()}
                     </div>
                   </div>
 
@@ -1121,7 +1308,7 @@ const App: React.FC = () => {
           })}
         </div>
 
-        {/* TIKTOK / REELS VERTICAL SCROLL PROGRESS DOTS (Right Edge) */}
+        {/* TIKTOK / REELS VERTICAL SCROLL PROGRESS DOTS (Right Edge Sliding Window) */}
         <div
           style={{
             position: 'absolute',
@@ -1136,27 +1323,32 @@ const App: React.FC = () => {
             pointerEvents: 'auto'
           }}
         >
-          {displayedCards.map((c, idx) => {
-            const isActive = idx === activeCardIndex;
-            return (
-              <button
-                key={c.id}
-                onClick={() => scrollToCardIndex(idx)}
-                title={`Jump to ${c.source_title}`}
-                style={{
-                  width: 5,
-                  height: isActive ? 18 : 5,
-                  borderRadius: 99,
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  background: isActive ? 'var(--accent-gold-bright)' : 'var(--border-specular)',
-                  boxShadow: isActive ? '0 0 8px rgba(212, 175, 55, 0.55)' : 'none',
-                  transition: 'all 0.32s cubic-bezier(0.22, 1, 0.36, 1)'
-                }}
-              />
-            );
-          })}
+          {(() => {
+            const winStart = Math.max(0, activeCardIndex - 5);
+            const winEnd = Math.min(displayedCards.length, winStart + 11);
+            return displayedCards.slice(winStart, winEnd).map((c, relIdx) => {
+              const idx = winStart + relIdx;
+              const isActive = idx === activeCardIndex;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => scrollToCardIndex(idx)}
+                  title={`Jump to ${c.source_title}`}
+                  style={{
+                    width: 5,
+                    height: isActive ? 18 : 5,
+                    borderRadius: 99,
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    background: isActive ? 'var(--accent-gold-bright)' : 'var(--border-specular)',
+                    boxShadow: isActive ? '0 0 8px rgba(212, 175, 55, 0.55)' : 'none',
+                    transition: 'all 0.32s cubic-bezier(0.22, 1, 0.36, 1)'
+                  }}
+                />
+              );
+            });
+          })()}
         </div>
 
         {/* DOUBLE-TAP BOOKMARK BURST ANIMATION (TikTok / Instagram Reels Style) */}

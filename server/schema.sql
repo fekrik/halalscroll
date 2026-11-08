@@ -98,3 +98,9 @@ CREATE TABLE IF NOT EXISTS user_state (
     value TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_feed_cards_discover ON feed_cards(discover_weight DESC, sequence_order ASC);
+CREATE INDEX IF NOT EXISTS idx_feed_cards_collection ON feed_cards(collection_slug, surah_or_book_num, sequence_order ASC);
+CREATE INDEX IF NOT EXISTS idx_feed_cards_slug ON feed_cards(share_slug);
+CREATE INDEX IF NOT EXISTS idx_feed_cards_type ON feed_cards(card_type);
+
+
