@@ -98,6 +98,18 @@ CREATE TABLE IF NOT EXISTS user_state (
     value TEXT NOT NULL
 );
 
+-- Impressions: which cards the user has already scrolled past (drives "don't show me the same thing" ranking)
+CREATE TABLE IF NOT EXISTS user_seen (
+    card_id TEXT PRIMARY KEY,
+    seen_count INTEGER NOT NULL DEFAULT 1,
+    last_seen_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS app_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_feed_cards_discover ON feed_cards(discover_weight DESC, sequence_order ASC);
 CREATE INDEX IF NOT EXISTS idx_feed_cards_collection ON feed_cards(collection_slug, surah_or_book_num, sequence_order ASC);
 CREATE INDEX IF NOT EXISTS idx_feed_cards_slug ON feed_cards(share_slug);

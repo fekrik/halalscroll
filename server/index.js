@@ -6,6 +6,7 @@ const { DatabaseSync } = require('node:sqlite');
 const esbuild = require('esbuild');
 const { SEED_CARDS } = require('./seed');
 const { hydrateCardDetails } = require('./corpus_hydrator');
+const { rankCards } = require('./recommender');
 
 const PORT = process.env.PORT || 3456;
 const DB_PATH = path.join(__dirname, '..', 'halalscroll.db');
@@ -43,8 +44,13 @@ function seedDatabase() {
   const allCards = loadCorpusPayload();
   const existingCount = db.prepare(`SELECT COUNT(*) AS cnt FROM feed_cards`).get().cnt;
 
-  if (existingCount !== allCards.length) {
-    console.log(`Seeding SQLite database with ${allCards.length} canonical cards...`);
+  // Track corpus version in app_meta so mood tag updates trigger re-seeding
+  const CORPUS_VERSION = 'v2_mood_taxonomy';
+  const dbVersionRow = db.prepare(`SELECT value FROM app_meta WHERE key = 'corpus_version'`).get();
+  const dbVersion = dbVersionRow ? dbVersionRow.value : null;
+
+  if (existingCount !== allCards.length || dbVersion !== CORPUS_VERSION) {
+    console.log(`Seeding SQLite database with ${allCards.length} canonical cards (version: ${CORPUS_VERSION})...`);
     const t0 = Date.now();
     const insertCard = db.prepare(`
       INSERT OR REPLACE INTO feed_cards (
@@ -90,6 +96,7 @@ function seedDatabase() {
           c.audio_url ?? null
         );
       }
+      db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('corpus_version', ?)`).run(CORPUS_VERSION);
       db.exec('COMMIT;');
       console.log(`✓ Seeded ${allCards.length} canonical cards in ${Date.now() - t0}ms.`);
     } catch (err) {
@@ -168,60 +175,151 @@ function getCollectionCounts() {
   return CACHED_COLLECTION_COUNTS;
 }
 
+// In-memory feed metadata and ranking session cache
+let CORPUS_META = null;
+const SESSION_ORDER_CACHE = new Map();
+
+function getCorpusMeta() {
+  if (!CORPUS_META) {
+    CORPUS_META = db.prepare(`
+      SELECT id, card_type, collection_slug, surah_or_book_num, discover_weight, time_window, mood_tags
+      FROM feed_cards
+    `).all().map(r => ({
+      ...r,
+      moods: Object.fromEntries((JSON.parse(r.mood_tags || '[]')).map(m => [m, 3]))
+    }));
+  }
+  return CORPUS_META;
+}
+
+function getUserAffinity() {
+  const bookmarks = db.prepare(`SELECT card_id FROM user_bookmarks`).all();
+  const practiced = db.prepare(`SELECT card_id FROM user_practiced_actions`).all();
+  const idSet = new Set([...bookmarks.map(b => b.card_id), ...practiced.map(p => p.card_id)]);
+  if (idSet.size === 0) return null;
+
+  const affinity = { moods: {}, collections: {}, types: {} };
+  const meta = getCorpusMeta();
+  for (const c of meta) {
+    if (idSet.has(c.id)) {
+      affinity.types[c.card_type] = (affinity.types[c.card_type] || 0) + 1;
+      affinity.collections[c.collection_slug] = (affinity.collections[c.collection_slug] || 0) + 1;
+      for (const m of Object.keys(c.moods)) {
+        affinity.moods[m] = (affinity.moods[m] || 0) + 1;
+      }
+    }
+  }
+  return affinity;
+}
+
+function getUserSeenMap() {
+  const rows = db.prepare(`SELECT card_id, last_seen_at FROM user_seen`).all();
+  const now = Date.now();
+  const map = new Map();
+  for (const r of rows) {
+    const daysAgo = (now - new Date(r.last_seen_at).getTime()) / (1000 * 60 * 60 * 24);
+    map.set(r.card_id, Math.max(0, daysAgo));
+  }
+  return map;
+}
+
+function getRankedOrderForSession(sessionId = 'default', mood = null) {
+  const cacheKey = `${sessionId}:${mood || 'all'}`;
+  let order = SESSION_ORDER_CACHE.get(cacheKey);
+  if (!order) {
+    const meta = getCorpusMeta();
+    const affinity = getUserAffinity();
+    const seen = getUserSeenMap();
+    const hour = new Date().getHours();
+    order = rankCards(meta, {
+      seed: sessionId,
+      mood: mood && mood !== 'all' ? mood : null,
+      affinity,
+      seen,
+      hour
+    });
+    if (SESSION_ORDER_CACHE.size > 200) {
+      const oldest = SESSION_ORDER_CACHE.keys().next().value;
+      SESSION_ORDER_CACHE.delete(oldest);
+    }
+    SESSION_ORDER_CACHE.set(cacheKey, order);
+  }
+  return order;
+}
+
 function queryFeedPage({
   mode = 'for_you',
   collection = 'quran',
   surah = null,
   mood = null,
   search = null,
+  session_id = 'default',
   offset = 0,
   limit = 20
 } = {}) {
   const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
   const safeOffset = Math.max(Number(offset) || 0, 0);
 
-  const whereClauses = [];
-  const params = [];
-
+  // Mode: Search
   if (search && String(search).trim().length > 0) {
     const q = `%${String(search).trim()}%`;
-    whereClauses.push(`(source_title LIKE ? OR translation_en_clear LIKE ? OR canonical_ref LIKE ? OR surah_subtitle LIKE ?)`);
-    params.push(q, q, q, q);
-  } else if (mode === 'sequential') {
-    whereClauses.push(`collection_slug = ?`);
-    params.push(collection || 'quran');
+    const whereSql = `WHERE (source_title LIKE ? OR translation_en_clear LIKE ? OR canonical_ref LIKE ? OR surah_subtitle LIKE ?)`;
+    const totalRow = db.prepare(`SELECT COUNT(*) AS cnt FROM feed_cards ${whereSql}`).get(q, q, q, q);
+    const total = totalRow ? totalRow.cnt : 0;
+    const rows = db.prepare(`
+      SELECT * FROM feed_cards
+      ${whereSql}
+      ORDER BY discover_weight DESC, sequence_order ASC
+      LIMIT ? OFFSET ?
+    `).all(q, q, q, q, safeLimit, safeOffset);
+    const cards = hydrateRows(rows);
+    return { cards, total, offset: safeOffset, limit: safeLimit, has_more: safeOffset + cards.length < total };
+  }
+
+  // Mode: Sequential Khatmah / Book reading
+  if (mode === 'sequential') {
+    const whereClauses = [`collection_slug = ?`];
+    const params = [collection || 'quran'];
     if (collection === 'quran' && surah && Number(surah) >= 1 && Number(surah) <= 114) {
       whereClauses.push(`surah_or_book_num = ?`);
       params.push(Number(surah));
     }
-  } else if (mode === 'moods' && mood && mood !== 'all') {
-    whereClauses.push(`mood_tags LIKE ?`);
-    params.push(`%"${mood}"%`);
+    const whereSql = `WHERE ${whereClauses.join(' AND ')}`;
+    let total = 0;
+    if (!surah || collection !== 'quran') {
+      total = CACHED_COLLECTION_COUNTS[collection || 'quran'] || 0;
+    } else {
+      const totalRow = db.prepare(`SELECT COUNT(*) AS cnt FROM feed_cards ${whereSql}`).get(...params);
+      total = totalRow ? totalRow.cnt : 0;
+    }
+    const rows = db.prepare(`
+      SELECT * FROM feed_cards
+      ${whereSql}
+      ORDER BY surah_or_book_num ASC, ayah_start ASC, sequence_order ASC
+      LIMIT ? OFFSET ?
+    `).all(...params, safeLimit, safeOffset);
+    const cards = hydrateRows(rows);
+    return { cards, total, offset: safeOffset, limit: safeLimit, has_more: safeOffset + cards.length < total };
   }
 
-  const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-  const orderSql = mode === 'sequential'
-    ? `ORDER BY surah_or_book_num ASC, ayah_start ASC, sequence_order ASC`
-    : `ORDER BY discover_weight DESC, sequence_order ASC`;
+  // Mode: Personalized "For You" or "Moods" using Recommendation Engine
+  const effectiveMood = (mode === 'moods' && mood && mood !== 'all') ? mood : null;
+  const order = getRankedOrderForSession(session_id, effectiveMood);
+  const total = order.length;
+  const pageIndices = order.slice(safeOffset, safeOffset + safeLimit);
 
-  let total = 0;
-  if (whereClauses.length === 0) {
-    total = CACHED_COLLECTION_COUNTS.total;
-  } else if (mode === 'sequential' && (!surah || collection !== 'quran')) {
-    total = CACHED_COLLECTION_COUNTS[collection || 'quran'] || 0;
-  } else {
-    const totalRow = db.prepare(`SELECT COUNT(*) AS cnt FROM feed_cards ${whereSql}`).get(...params);
-    total = totalRow ? totalRow.cnt : 0;
+  if (pageIndices.length === 0) {
+    return { cards: [], total, offset: safeOffset, limit: safeLimit, has_more: false };
   }
 
-  const rows = db.prepare(`
-    SELECT * FROM feed_cards
-    ${whereSql}
-    ${orderSql}
-    LIMIT ? OFFSET ?
-  `).all(...params, safeLimit, safeOffset);
+  const meta = getCorpusMeta();
+  const pageIds = pageIndices.map(idx => meta[idx].id);
+  const placeholders = pageIds.map(() => '?').join(',');
+  const fetchedRows = db.prepare(`SELECT * FROM feed_cards WHERE id IN (${placeholders})`).all(...pageIds);
+  const rowMap = new Map(fetchedRows.map(r => [r.id, r]));
+  const orderedRows = pageIds.map(id => rowMap.get(id)).filter(Boolean);
 
-  const cards = hydrateRows(rows);
+  const cards = hydrateRows(orderedRows);
   return {
     cards,
     total,
@@ -448,11 +546,33 @@ const handleRequest = async (req, res) => {
     const surah = url.searchParams.get('surah') || null;
     const mood = url.searchParams.get('mood') || null;
     const search = url.searchParams.get('search') || null;
+    const session_id = url.searchParams.get('session_id') || 'default';
     const offset = Number(url.searchParams.get('offset') || 0);
     const limit = Number(url.searchParams.get('limit') || 24);
 
-    const page = queryFeedPage({ mode, collection, surah, mood, search, offset, limit });
+    const page = queryFeedPage({ mode, collection, surah, mood, search, session_id, offset, limit });
     return sendJson(req, res, 200, page);
+  }
+
+  // API: POST /api/seen (Record impressions to avoid repeats and refine ranking)
+  if (pathname === '/api/seen' && req.method === 'POST') {
+    const body = await parseBody(req);
+    const { card_ids = [] } = body;
+    if (Array.isArray(card_ids) && card_ids.length > 0) {
+      const upsertSeen = db.prepare(`
+        INSERT INTO user_seen (card_id, seen_count, last_seen_at)
+        VALUES (?, 1, CURRENT_TIMESTAMP)
+        ON CONFLICT(card_id) DO UPDATE SET
+          seen_count = seen_count + 1,
+          last_seen_at = CURRENT_TIMESTAMP
+      `);
+      db.exec('BEGIN IMMEDIATE TRANSACTION;');
+      for (const id of card_ids.slice(0, 50)) {
+        if (id) upsertSeen.run(String(id));
+      }
+      db.exec('COMMIT;');
+    }
+    return sendJson(req, res, 200, { ok: true, count: card_ids.length });
   }
 
   // API: GET /api/surahs (114 Surahs Directory)

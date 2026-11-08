@@ -98,6 +98,18 @@ const App: React.FC = () => {
   const isFetchingMoreRef = useRef<boolean>(false);
   const hasBackendApiRef = useRef<boolean>(initialBoot.fromServer);
   const isFirstFilterEffectRef = useRef<boolean>(true);
+  const sessionIdRef = useRef<string>(() => {
+    try {
+      let id = sessionStorage.getItem('hs_session_id');
+      if (!id) {
+        id = 'sess_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+        sessionStorage.setItem('hs_session_id', id);
+      }
+      return id;
+    } catch {
+      return 'sess_' + Date.now().toString(36);
+    }
+  });
 
   // Audio Recitation & Word Highlighting State
   const [playingCardId, setPlayingCardId] = useState<string | null>(null);
@@ -208,6 +220,7 @@ const App: React.FC = () => {
     const params = new URLSearchParams({
       mode: feedMode,
       collection: selectedCollection,
+      session_id: typeof sessionIdRef.current === 'function' ? (sessionIdRef.current as any)() : sessionIdRef.current,
       offset: '0',
       limit: '24'
     });
@@ -238,6 +251,7 @@ const App: React.FC = () => {
     const params = new URLSearchParams({
       mode: feedMode,
       collection: selectedCollection,
+      session_id: typeof sessionIdRef.current === 'function' ? (sessionIdRef.current as any)() : sessionIdRef.current,
       offset: String(cards.length),
       limit: '35'
     });
@@ -367,8 +381,16 @@ const App: React.FC = () => {
       if (newIndex >= displayedCards.length - 6 && hasMoreFeed) {
         fetchNextFeedPage();
       }
-      // Save reading progress in Sequential mode
+      // Track seen cards in backend for smart exploration
       const current = displayedCards[newIndex];
+      if (current && hasBackendApiRef.current) {
+        fetch('/api/seen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ card_ids: [current.id] })
+        }).catch(() => {});
+      }
+      // Save reading progress in Sequential mode
       if (current && feedMode === 'sequential') {
         if (selectedCollection === 'quran') {
           updateServerState({ sequential_quran_card: current.id });
