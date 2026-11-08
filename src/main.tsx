@@ -1139,7 +1139,12 @@ const App: React.FC = () => {
                   <div
                     className="arabic-sacred-text reel-anim-arabic"
                     style={{
-                      fontSize: card.arabic_text_uthmani.length > 160 ? '1.45rem' : card.arabic_text_uthmani.length > 100 ? '1.62rem' : '1.88rem'
+                      fontSize:
+                        card.arabic_text_uthmani.length > 500 ? '1.20rem' :
+                        card.arabic_text_uthmani.length > 280 ? '1.34rem' :
+                        card.arabic_text_uthmani.length > 160 ? '1.48rem' :
+                        card.arabic_text_uthmani.length > 80 ? '1.65rem' : '1.88rem',
+                      lineHeight: card.arabic_text_uthmani.length > 280 ? 1.7 : 1.82
                     }}
                   >
                     {(() => {
@@ -1227,7 +1232,11 @@ const App: React.FC = () => {
                   <p
                     className="editorial-translation reel-anim-translation"
                     style={{
-                      fontSize: translationText.length > 210 ? '1.05rem' : '1.18rem',
+                      fontSize:
+                        translationText.length > 600 ? '0.92rem' :
+                        translationText.length > 300 ? '1.02rem' :
+                        translationText.length > 160 ? '1.10rem' : '1.18rem',
+                      lineHeight: translationText.length > 300 ? 1.48 : 1.56,
                       maxWidth: 430
                     }}
                   >
@@ -1244,7 +1253,9 @@ const App: React.FC = () => {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 8,
-                    zIndex: 15
+                    zIndex: 15,
+                    marginTop: 'auto',
+                    paddingTop: 8
                   }}
                 >
                   {/* Row 1: Single-Line No-Wrap Action Bar */}
