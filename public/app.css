@@ -219,7 +219,7 @@ html, body, #root {
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px 18px 18px;
+  padding: 14px 18px max(18px, calc(10px + env(safe-area-inset-bottom, 0px))) 18px;
   overflow: hidden;
   user-select: none;
   perspective: 1000px;
@@ -494,6 +494,7 @@ html, body, #root {
   flex-direction: column;
   overflow: hidden;
   transition: height 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
 }
 
 /* Custom Scrollbars inside Drawers */

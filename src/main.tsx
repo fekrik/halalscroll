@@ -629,7 +629,10 @@ const App: React.FC = () => {
           <div style={{
             position: 'relative',
             zIndex: 30,
-            padding: '8px 14px',
+            paddingTop: 'calc(8px + env(safe-area-inset-top, 0px))',
+            paddingBottom: '8px',
+            paddingLeft: 'calc(14px + env(safe-area-inset-left, 0px))',
+            paddingRight: 'calc(14px + env(safe-area-inset-right, 0px))',
             background: 'linear-gradient(90deg, rgba(212, 175, 55, 0.22), rgba(16, 185, 129, 0.18))',
             borderBottom: '1px solid var(--border-gold)',
             display: 'flex',
@@ -677,7 +680,10 @@ const App: React.FC = () => {
         <div style={{
           position: 'relative',
           flexShrink: 0,
-          padding: '8px 10px 6px 10px',
+          paddingTop: webCompanionSlug && activeCard ? '8px' : 'calc(8px + env(safe-area-inset-top, 0px))',
+          paddingBottom: '6px',
+          paddingLeft: 'calc(10px + env(safe-area-inset-left, 0px))',
+          paddingRight: 'calc(10px + env(safe-area-inset-right, 0px))',
           borderBottom: '1px solid var(--border-specular)',
           zIndex: 25,
           display: 'flex',
