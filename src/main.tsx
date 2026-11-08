@@ -1349,23 +1349,6 @@ const App: React.FC = () => {
                         <span>Share</span>
                       </button>
                     </div>
-
-                    {/* Card Progress Pill */}
-                    <div
-                      className="glass-pill"
-                      style={{
-                        padding: '6px 9px',
-                        borderRadius: 999,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: 'var(--text-secondary)',
-                        fontVariantNumeric: 'tabular-nums',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0
-                      }}
-                    >
-                      {(cardIdx + 1).toLocaleString()}/{(totalFeedCount || displayedCards.length).toLocaleString()}
-                    </div>
                   </div>
 
                   {/* Row 2: Primary Full-Width "Deep Study & Tafsir" Pill */}
