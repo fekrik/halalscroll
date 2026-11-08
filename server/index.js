@@ -364,6 +364,7 @@ function buildBootstrapPayload(limit = 16, sessionId = null) {
   const allFolders = Array.from(new Set(['Favorites', 'Duas for Family', 'Hardship & Sabr', 'Daily Memorization', ...folders]));
   return {
     cards: initialPage.cards,
+    feed_seed: dynamicSeed,
     total_corpus_count: counts.total,
     collection_counts: counts,
     surahs: SURAH_DIRECTORY,

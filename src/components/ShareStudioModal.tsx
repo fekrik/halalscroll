@@ -130,6 +130,7 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
   const [shareToast, setShareToast] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const shareFileRef = useRef<File | null>(null);
 
   const basePath = window.location.pathname.replace(/\/c\/.*$/, '').replace(/\/$/, '');
   const canonicalUrl = window.location.hostname.includes('github.io')
@@ -390,6 +391,16 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
       ctx.font = '600 24px -apple-system, sans-serif';
       ctx.fillText(`Halal Scroll: Quran & Sunnah  •  ${displayUrl}`, width / 2, height - 102);
     }
+
+    // Pre-render the share file so navigator.share() can run synchronously inside the tap gesture
+    // (iOS Safari rejects share() with NotAllowedError if we await canvas encoding first).
+    if (!isPlayingAudiogram) {
+      canvas.toBlob((blob) => {
+        shareFileRef.current = blob
+          ? new File([blob], `halalscroll-${card.share_slug}.png`, { type: 'image/png' })
+          : null;
+      }, 'image/png');
+    }
   }, [
     card, format, mediaMode, backdrop, carouselSlide,
     showArabic, showTranslit, showTranslation, showTakeaway, showBadge, showWatermark,
@@ -496,23 +507,19 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
     soundEngine.triggerHaptic('lightImpact');
     const shareText = `“${card.translation_en_clear}” — ${card.source_title}\n\nRead with Word-by-Word Arabic Roots & Classical Tafsir on Halal Scroll:\n${canonicalUrl}`;
 
-    // 1. Try Native Mobile Web Share API with rendered card image if supported (iOS/Android)
-    const blob = await getRenderedImageBlob();
-    if (blob && navigator.share) {
+    // 1. Native OS share sheet with the rendered card image (iOS / Android → Instagram Stories,
+    //    WhatsApp Status, Messages, Save Image…). Called with no prior await to keep the user gesture.
+    const file = shareFileRef.current;
+    if (platform !== 'x' && file && typeof navigator.share === 'function' &&
+        typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
       try {
-        const file = new File([blob], `halalscroll-${card.share_slug}.png`, { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: `${card.source_title} • Halal Scroll`,
-            text: shareText,
-            files: [file]
-          });
-          setShareToast('Shared to system share sheet!');
-          setTimeout(() => setShareToast(null), 3500);
-          return;
-        }
+        await navigator.share({ files: [file], text: shareText });
+        setShareToast('Shared!');
+        setTimeout(() => setShareToast(null), 3000);
+        return;
       } catch (err: any) {
-        if (err.name === 'AbortError') return; // User closed sheet
+        if (err && err.name === 'AbortError') return; // user dismissed the sheet
+        // otherwise fall through to platform fallback
       }
     }
 

@@ -64,7 +64,7 @@ const App: React.FC = () => {
     try {
       const raw = localStorage.getItem('halalscroll_state_v2');
       if (raw) localState = JSON.parse(raw);
-    } catch {}
+    } catch { }
     return {
       streak_count: '12',
       theme: 'andalusian_parchment',
@@ -84,7 +84,7 @@ const App: React.FC = () => {
     try {
       const raw = localStorage.getItem('halalscroll_folders_v1');
       if (raw) localFolders = JSON.parse(raw);
-    } catch {}
+    } catch { }
     return Array.from(new Set([
       'Favorites', 'Duas for Family', 'Hardship & Sabr', 'Daily Memorization',
       ...(initialBoot.data.folders || []),
@@ -98,28 +98,28 @@ const App: React.FC = () => {
     try {
       const saved = localStorage.getItem('hs_last_feed_mode') as FeedMode;
       if (saved === 'for_you' || saved === 'sequential' || saved === 'moods') return saved;
-    } catch {}
+    } catch { }
     return 'for_you';
   });
   const [selectedMood, setSelectedMood] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('hs_last_mood');
       if (saved) return saved;
-    } catch {}
+    } catch { }
     return 'anxious';
   });
   const [selectedCollection, setSelectedCollection] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('hs_last_collection');
       if (saved) return saved;
-    } catch {}
+    } catch { }
     return 'quran';
   });
   const [selectedSurah, setSelectedSurah] = useState<number | null>(() => {
     try {
       const saved = localStorage.getItem('hs_last_surah');
       if (saved) return Number(saved);
-    } catch {}
+    } catch { }
     return null;
   });
   const [surahs, setSurahs] = useState<SurahInfo[]>(() => initialBoot.data.surahs || []);
@@ -139,15 +139,12 @@ const App: React.FC = () => {
   const isFetchingMoreRef = useRef<boolean>(false);
   const hasBackendApiRef = useRef<boolean>(initialBoot.fromServer);
   const isFirstFilterEffectRef = useRef<boolean>(true);
-  const sessionIdRef = useRef<string>(() => {
-    // Generate a fresh session browse seed so refreshing gives a fresh discover sequence
-    try {
-      const freshSeed = 'sess_' + Math.random().toString(36).slice(2, 9) + '_' + Date.now().toString(36);
-      return freshSeed;
-    } catch {
-      return 'sess_' + Date.now().toString(36);
-    }
-  });
+  // One stable browse seed per page load: fresh order on every refresh, consistent across pagination.
+  // Prefer the seed the server used to rank the inlined first page so page 2+ continue the same ordering.
+  const sessionIdRef = useRef<string>(
+    (initialBoot.data as any).feed_seed ||
+    'sess_' + Math.random().toString(36).slice(2, 9) + '_' + Date.now().toString(36)
+  );
 
   // Audio Recitation & Word Highlighting State
   const [playingCardId, setPlayingCardId] = useState<string | null>(null);
@@ -226,7 +223,7 @@ const App: React.FC = () => {
                 setActiveCardIndex(0);
               }
             })
-            .catch(() => {});
+            .catch(() => { });
         }
       }
     };
@@ -252,13 +249,14 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isFirstFilterEffectRef.current) {
       isFirstFilterEffectRef.current = false;
-      return;
+      // The inlined first page is "For You"; only skip the fetch if that's the restored mode
+      if (feedMode === 'for_you') return;
     }
     if (!hasBackendApiRef.current) return;
     const params = new URLSearchParams({
       mode: feedMode,
       collection: selectedCollection,
-      session_id: typeof sessionIdRef.current === 'function' ? (sessionIdRef.current as any)() : sessionIdRef.current,
+      session_id: sessionIdRef.current,
       offset: '0',
       limit: '24'
     });
@@ -280,7 +278,7 @@ const App: React.FC = () => {
           if (feedContainerRef.current) feedContainerRef.current.scrollTop = 0;
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [feedMode, selectedCollection, selectedSurah, selectedMood]);
 
   const fetchNextFeedPage = () => {
@@ -289,7 +287,7 @@ const App: React.FC = () => {
     const params = new URLSearchParams({
       mode: feedMode,
       collection: selectedCollection,
-      session_id: typeof sessionIdRef.current === 'function' ? (sessionIdRef.current as any)() : sessionIdRef.current,
+      session_id: sessionIdRef.current,
       offset: String(cards.length),
       limit: '35'
     });
@@ -315,7 +313,7 @@ const App: React.FC = () => {
           setHasMoreFeed(false);
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => {
         isFetchingMoreRef.current = false;
       });
@@ -332,7 +330,7 @@ const App: React.FC = () => {
       } else {
         localStorage.removeItem('hs_last_surah');
       }
-    } catch {}
+    } catch { }
   }, [feedMode, selectedMood, selectedCollection, selectedSurah]);
 
   // Sync theme attribute on document root
@@ -369,7 +367,7 @@ const App: React.FC = () => {
       const next = { ...prev, ...patch };
       try {
         localStorage.setItem('halalscroll_state_v2', JSON.stringify(next));
-      } catch {}
+      } catch { }
       return next;
     });
     offlineUpdateState(patch);
@@ -386,12 +384,12 @@ const App: React.FC = () => {
             const next = { ...prev, ...data.state };
             try {
               localStorage.setItem('halalscroll_state_v2', JSON.stringify(next));
-            } catch {}
+            } catch { }
             return next;
           });
         }
       }
-    } catch {}
+    } catch { }
   };
 
   const scrollToCardIndex = (idx: number) => {
@@ -420,7 +418,7 @@ const App: React.FC = () => {
             scrollToCardIndex(0);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     } else {
       setFeedMode('for_you');
       setTimeout(() => {
@@ -454,7 +452,7 @@ const App: React.FC = () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ card_ids: [current.id] })
-        }).catch(() => {});
+        }).catch(() => { });
       }
       // Save reading progress in Sequential mode
       if (current && feedMode === 'sequential') {
@@ -1010,15 +1008,15 @@ const App: React.FC = () => {
                         background: card.card_type === 'quran'
                           ? 'rgba(212, 175, 55, 0.18)'
                           : card.card_type === 'hadith'
-                          ? 'rgba(16, 185, 129, 0.18)'
-                          : card.card_type === 'dua'
-                          ? 'rgba(129, 140, 248, 0.2)'
-                          : 'rgba(245, 158, 11, 0.2)',
+                            ? 'rgba(16, 185, 129, 0.18)'
+                            : card.card_type === 'dua'
+                              ? 'rgba(129, 140, 248, 0.2)'
+                              : 'rgba(245, 158, 11, 0.2)',
                         color: card.card_type === 'quran'
                           ? 'var(--accent-gold-bright)'
                           : card.card_type === 'hadith'
-                          ? 'var(--accent-emerald)'
-                          : 'var(--text-primary)'
+                            ? 'var(--accent-emerald)'
+                            : 'var(--text-primary)'
                       }}>
                         {card.card_type === 'quran' ? 'Quran' : card.card_type === 'hadith' ? 'Hadith' : card.card_type === 'dua' ? 'Dua' : 'Seerah'}
                       </span>
