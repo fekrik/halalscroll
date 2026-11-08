@@ -3,12 +3,13 @@ import { createRoot } from 'react-dom/client';
 import {
   Sparkles, Bookmark, Share2, Volume2, Pause, Flame, SlidersHorizontal,
   Crown, FolderPlus, Check, X, Compass, BookOpen, Heart, Sun, Moon,
-  ChevronDown, ArrowUpRight, ShieldCheck, GraduationCap
+  ChevronDown, ArrowUpRight, ShieldCheck, GraduationCap, Smartphone
 } from 'lucide-react';
 import { CardWord, DeepStudyTab, FeedCard, FeedMode, SurahInfo, UserState } from './types';
 import { soundEngine } from './audioEngine';
 import { DeepStudyDrawer } from './components/DeepStudyDrawer';
 import { ShareStudioModal } from './components/ShareStudioModal';
+import { InstallAppModal } from './components/InstallAppModal';
 import {
   getOfflineBootstrap,
   offlineToggleBookmark,
