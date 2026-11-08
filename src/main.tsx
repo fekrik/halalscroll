@@ -991,7 +991,7 @@ const App: React.FC = () => {
                         ? card.arabic_text_indopak
                         : card.arabic_text_uthmani;
                       const tokens = fullArabic.split(/\s+/);
-                      const cleanToken = (s: string) => s.replace(/[،؟:؛.!۝ۚۗۖۙۘ]/g, '').trim();
+                      const cleanToken = (s?: string) => (s || '').replace(/[،؟:؛.!۝ۚۗۖۙۘ]/g, '').trim();
 
                       return tokens.map((tok, tIdx) => {
                         if (tok.includes('۝')) {
@@ -2078,9 +2078,41 @@ const App: React.FC = () => {
   );
 };
 
+class AppErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error) {
+    console.error('Halal Scroll render error:', error);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="app-shell">
+          <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-primary)' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Something went wrong loading Halal Scroll.</div>
+            <button
+              onClick={() => window.location.reload()}
+              style={{ padding: '8px 16px', borderRadius: 999, border: '1px solid var(--border-gold)', background: 'transparent', color: 'var(--accent-gold)', cursor: 'pointer' }}
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const container = document.getElementById('root');
 if (container) {
   const root = createRoot(container);
-  root.render(<App />);
+  root.render(
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
+  );
 }
 

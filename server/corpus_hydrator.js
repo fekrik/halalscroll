@@ -180,16 +180,16 @@ function hydrateCardDetails(card) {
     const seed = SEED_BY_ID.get(card.id);
     const words = seed && seed.words
       ? seed.words.map(w => ({
-          word_position: w.pos,
-          arabic_word: w.arabic,
-          transliteration: w.translit,
-          translation_en: w.en,
+          word_position: w.word_position ?? w.pos,
+          arabic_word: w.arabic_word ?? w.arabic ?? '',
+          transliteration: w.transliteration ?? w.translit ?? '',
+          translation_en: w.translation_en ?? w.en ?? '',
           root_arabic: w.root_arabic,
           root_translit: w.root_translit,
           root_meaning: w.root_meaning,
-          root_occurrences: w.occ,
-          root_examples: w.examples || [],
-          grammar_pos: w.grammar,
+          root_occurrences: w.root_occurrences ?? w.occ,
+          root_examples: w.root_examples || w.examples || [],
+          grammar_pos: w.grammar_pos ?? w.grammar,
           start_ms: w.start_ms,
           end_ms: w.end_ms
         }))
