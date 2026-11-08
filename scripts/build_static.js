@@ -77,9 +77,23 @@ async function buildStaticSite() {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Halal Scroll: Quran &amp; Sunnah — Daily Ayah, Hadith &amp; Tadabbur</title>
   <meta name="description" content="Replace mindless social media doom-scrolling with a serene, tactile vertical feed of the Quran, Sahih Hadith, Prophetic Duas, and Seerah reflections." />
+
+  <!-- PWA & iOS Mobile Web App Meta Tags -->
+  <meta name="theme-color" content="#030712" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Halal Scroll" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="Halal Scroll" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+  <link rel="icon" href="./favicon.png" />
+
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Halal Scroll" />
   <meta property="og:title" content="Halal Scroll: Quran &amp; Sunnah — Daily Ayah, Hadith &amp; Tadabbur" />
@@ -103,6 +117,25 @@ async function buildStaticSite() {
   fs.writeFileSync(path.join(DOCS_DIR, 'index.html'), html);
   fs.writeFileSync(path.join(DOCS_DIR, '404.html'), html);
   fs.writeFileSync(path.join(DOCS_DIR, '.nojekyll'), '');
+
+  // Copy PWA files to DOCS_DIR
+  const docsIconsDir = path.join(DOCS_DIR, 'icons');
+  fs.mkdirSync(docsIconsDir, { recursive: true });
+  if (fs.existsSync(path.join(ROOT, 'public', 'manifest.webmanifest'))) {
+    fs.copyFileSync(path.join(ROOT, 'public', 'manifest.webmanifest'), path.join(DOCS_DIR, 'manifest.webmanifest'));
+  }
+  if (fs.existsSync(path.join(ROOT, 'public', 'sw.js'))) {
+    fs.copyFileSync(path.join(ROOT, 'public', 'sw.js'), path.join(DOCS_DIR, 'sw.js'));
+  }
+  if (fs.existsSync(path.join(ROOT, 'public', 'favicon.png'))) {
+    fs.copyFileSync(path.join(ROOT, 'public', 'favicon.png'), path.join(DOCS_DIR, 'favicon.png'));
+  }
+  const pubIconsDir = path.join(ROOT, 'public', 'icons');
+  if (fs.existsSync(pubIconsDir)) {
+    for (const f of fs.readdirSync(pubIconsDir)) {
+      fs.copyFileSync(path.join(pubIconsDir, f), path.join(docsIconsDir, f));
+    }
+  }
 
   // 4. Pre-render OpenGraph SVGs & raster JPEGs for all 16 cards
   const hasSips = fs.existsSync('/usr/bin/sips');

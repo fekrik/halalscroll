@@ -1,0 +1,42 @@
+{
+  "id": "/?source=pwa",
+  "name": "Halal Scroll: Quran & Sunnah",
+  "short_name": "Halal Scroll",
+  "description": "Daily Ayah, Hadith & Tadabbur — Micro-learning with Quran recitation, reflections, and authentic Sunnah.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay"],
+  "orientation": "portrait",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["education", "lifestyle", "books"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -719,6 +719,39 @@ const handleRequest = async (req, res) => {
     }
   }
 
+  // Static PWA and public assets (manifest, sw.js, icons, favicon)
+  const MIME_TYPES = {
+    '.webmanifest': 'application/manifest+json; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.svg': 'image/svg+xml; charset=utf-8',
+    '.ico': 'image/x-icon'
+  };
+
+  const safeRelPath = path.normalize(pathname).replace(/^(\.\.[\/\\])+/, '');
+  const publicCandidate = path.join(PUBLIC_DIR, safeRelPath);
+  if (safeRelPath !== '/' && safeRelPath !== '\\' && fs.existsSync(publicCandidate)) {
+    try {
+      if (fs.statSync(publicCandidate).isFile()) {
+        const ext = path.extname(publicCandidate).toLowerCase();
+        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+        const cacheControl = (ext === '.webmanifest' || safeRelPath === '/sw.js')
+          ? 'no-cache'
+          : 'public, max-age=86400';
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Cache-Control': cacheControl,
+          ...(safeRelPath === '/sw.js' ? { 'Service-Worker-Allowed': '/' } : {})
+        });
+        return res.end(fs.readFileSync(publicCandidate));
+      }
+    } catch (_) {}
+  }
+
   // Serve HTML with dynamic OpenGraph metadata + inlined initial bootstrap payload for 0ms first render
   const proto = (req.headers && req.headers['x-forwarded-proto']) || 'https';
   const host = (req.headers && req.headers.host) || 'halalscroll-production.up.railway.app';
@@ -749,9 +782,24 @@ const handleRequest = async (req, res) => {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>${escapeXml(ogTitle)}</title>
   <meta name="description" content="${escapeXml(ogDesc)}" />
+
+  <!-- PWA & iOS Mobile Web App Meta Tags -->
+  <meta name="theme-color" content="#030712" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Halal Scroll" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="Halal Scroll" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+  <link rel="icon" href="/favicon.png" />
+
+  <!-- OpenGraph Metadata -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="${escapeXml(baseOrigin + pathname)}" />
   <meta property="og:site_name" content="Halal Scroll" />
@@ -762,7 +810,6 @@ const handleRequest = async (req, res) => {
   <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <link rel="apple-touch-icon" href="${escapeXml(ogImage)}" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${escapeXml(ogTitle)}" />
   <meta name="twitter:description" content="${escapeXml(ogDesc)}" />

@@ -794,6 +794,31 @@ const App: React.FC = () => {
               >
                 <Crown size={14} />
               </button>
+
+              {!isStandalone && (
+                <button
+                  onClick={handleInstallClick}
+                  className="glass-pill"
+                  title="Install Halal Scroll App on your iPhone or Android"
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: 999,
+                    color: 'var(--accent-gold-bright)',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3.5,
+                    cursor: 'pointer',
+                    background: 'rgba(212, 175, 55, 0.15)',
+                    border: '1px solid var(--border-gold)',
+                    flexShrink: 0
+                  }}
+                >
+                  <Smartphone size={12} />
+                  <span>Get App</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -2130,6 +2155,17 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {showInstallModal && (
+          <InstallAppModal
+            deferredPrompt={deferredInstallPrompt}
+            onClose={() => setShowInstallModal(false)}
+            onInstalled={() => {
+              setIsStandalone(true);
+              setShowInstallModal(false);
+            }}
+          />
         )}
       </div>
     </div>
