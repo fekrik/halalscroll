@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import {
   Sparkles, Bookmark, Share2, Volume2, Pause, Flame, SlidersHorizontal,
   Crown, FolderPlus, Check, X, Compass, BookOpen, Heart, Sun, Moon,
-  ChevronDown, ArrowUpRight, ShieldCheck, GraduationCap, Smartphone
+  ChevronDown, ArrowUpRight, ShieldCheck, GraduationCap, Smartphone, Minus, Plus
 } from 'lucide-react';
 import { CardWord, DeepStudyTab, FeedCard, FeedMode, SurahInfo, UserState } from './types';
 import { soundEngine } from './audioEngine';
@@ -81,6 +81,7 @@ const App: React.FC = () => {
       plus_member: 'false',
       sequential_quran_card: 'card-quran-94-5',
       sequential_book_card: 'card-hadith-nawawi-19',
+      font_scale: '1',
       ...(initialBoot.data.state || {}),
       ...localState
     };
@@ -1136,14 +1137,23 @@ const App: React.FC = () => {
                   </div>
 
                   {/* Complete Canonical Arabic Script (with Interactive Root Word Matching) */}
+                  {(() => {
+                    const fontScale = Math.min(1.5, Math.max(0.8, Number(userState.font_scale || '1') || 1));
+                    const baseArabicRem =
+                      card.arabic_text_uthmani.length > 500 ? 1.20 :
+                      card.arabic_text_uthmani.length > 280 ? 1.34 :
+                      card.arabic_text_uthmani.length > 160 ? 1.48 :
+                      card.arabic_text_uthmani.length > 80 ? 1.65 : 1.88;
+                    const baseTransRem =
+                      translationText.length > 600 ? 0.92 :
+                      translationText.length > 300 ? 1.02 :
+                      translationText.length > 160 ? 1.10 : 1.18;
+                    return (
+                      <>
                   <div
                     className="arabic-sacred-text reel-anim-arabic"
                     style={{
-                      fontSize:
-                        card.arabic_text_uthmani.length > 500 ? '1.20rem' :
-                        card.arabic_text_uthmani.length > 280 ? '1.34rem' :
-                        card.arabic_text_uthmani.length > 160 ? '1.48rem' :
-                        card.arabic_text_uthmani.length > 80 ? '1.65rem' : '1.88rem',
+                      fontSize: `${(baseArabicRem * fontScale).toFixed(2)}rem`,
                       lineHeight: card.arabic_text_uthmani.length > 280 ? 1.7 : 1.82
                     }}
                   >
@@ -1223,7 +1233,14 @@ const App: React.FC = () => {
 
                   {/* Optional Learner Transliteration */}
                   {userState.show_transliteration === 'true' && card.transliteration && (
-                    <p className="transliteration-text reel-anim-translation" style={{ marginBottom: 6, maxWidth: 420 }}>
+                    <p
+                      className="transliteration-text reel-anim-translation"
+                      style={{
+                        fontSize: `${(0.88 * fontScale).toFixed(2)}rem`,
+                        marginBottom: 6,
+                        maxWidth: 420
+                      }}
+                    >
                       {card.transliteration}
                     </p>
                   )}
@@ -1232,16 +1249,16 @@ const App: React.FC = () => {
                   <p
                     className="editorial-translation reel-anim-translation"
                     style={{
-                      fontSize:
-                        translationText.length > 600 ? '0.92rem' :
-                        translationText.length > 300 ? '1.02rem' :
-                        translationText.length > 160 ? '1.10rem' : '1.18rem',
+                      fontSize: `${(baseTransRem * fontScale).toFixed(2)}rem`,
                       lineHeight: translationText.length > 300 ? 1.48 : 1.56,
                       maxWidth: 430
                     }}
                   >
                     “{translationText}”
                   </p>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* BOTTOM THUMB-ZONE ACTION DOCK (No-Wrap Mobile-First 2-Row Layout) */}
@@ -2084,6 +2101,95 @@ const App: React.FC = () => {
                     {userState.show_transliteration === 'true' ? 'Enabled ✓' : 'Hidden'}
                   </button>
                 </div>
+
+                {/* Typography Font Size Scale */}
+                {(() => {
+                  const currentScale = Math.min(1.5, Math.max(0.8, Number(userState.font_scale || '1') || 1));
+                  const pct = Math.round(currentScale * 100);
+                  const stepScale = (delta: number) => {
+                    const next = Math.min(1.5, Math.max(0.8, Math.round((currentScale + delta) * 10) / 10));
+                    soundEngine.triggerHaptic('selectionTick');
+                    updateServerState({ font_scale: String(next) });
+                  };
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 14, background: 'var(--surface-card)', gap: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                          4. Reading Font Size
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                          Adjust Arabic, transliteration &amp; translation size ({pct}%)
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        {pct !== 100 && (
+                          <button
+                            onClick={() => {
+                              soundEngine.triggerHaptic('selectionTick');
+                              updateServerState({ font_scale: '1' });
+                            }}
+                            style={{
+                              padding: '5px 9px',
+                              borderRadius: 99,
+                              border: '1px solid var(--border-specular)',
+                              background: 'transparent',
+                              color: 'var(--text-secondary)',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                            title="Reset font size to 100%"
+                          >
+                            Reset
+                          </button>
+                        )}
+                        <button
+                          onClick={() => stepScale(-0.1)}
+                          disabled={currentScale <= 0.8}
+                          aria-label="Decrease font size"
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 99,
+                            border: '1px solid var(--border-gold)',
+                            background: 'var(--surface-card)',
+                            color: currentScale <= 0.8 ? 'var(--text-muted)' : 'var(--text-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: currentScale <= 0.8 ? 'not-allowed' : 'pointer',
+                            opacity: currentScale <= 0.8 ? 0.5 : 1
+                          }}
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <span style={{ minWidth: 38, textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--accent-gold-bright)' }}>
+                          {pct}%
+                        </span>
+                        <button
+                          onClick={() => stepScale(0.1)}
+                          disabled={currentScale >= 1.5}
+                          aria-label="Increase font size"
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 99,
+                            border: '1px solid var(--border-gold)',
+                            background: 'var(--surface-card)',
+                            color: currentScale >= 1.5 ? 'var(--text-muted)' : 'var(--text-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: currentScale >= 1.5 ? 'not-allowed' : 'pointer',
+                            opacity: currentScale >= 1.5 ? 0.5 : 1
+                          }}
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Install App on Device */}
                 {!isStandalone && (

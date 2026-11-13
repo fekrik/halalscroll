@@ -18,7 +18,8 @@ const DEFAULT_STATE: UserState = {
   reciter: 'Mishary Rashid Alafasy',
   plus_member: 'false',
   sequential_quran_card: 'card-quran-94-5',
-  sequential_book_card: 'card-hadith-nawawi-19'
+  sequential_book_card: 'card-hadith-nawawi-19',
+  font_scale: '1'
 };
 
 const DEFAULT_FOLDERS = ['Favorites', 'Duas for Family', 'Hardship & Sabr', 'Daily Memorization'];

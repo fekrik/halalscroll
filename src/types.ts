@@ -104,6 +104,7 @@ export interface UserState {
   plus_member: string;
   sequential_quran_card: string;
   sequential_book_card: string;
+  font_scale?: string;
 }
 
 export type FeedMode = 'for_you' | 'sequential' | 'moods';

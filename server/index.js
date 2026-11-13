@@ -119,6 +119,7 @@ function seedDatabase() {
   upsertState.run('plus_member', 'false');
   upsertState.run('sequential_quran_card', 'card-quran-94-5');
   upsertState.run('sequential_book_card', 'card-hadith-nawawi-19');
+  upsertState.run('font_scale', '1');
 
   // Migrate any previous default theme to fajr_dawn
   try {
