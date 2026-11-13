@@ -7,18 +7,28 @@
     "start": "node server/index.js",
     "dev": "node server/index.js",
     "build": "node scripts/build_static.js",
+    "build:mobile": "npm run build && npx cap sync",
     "test:e2e": "node server/e2e_test.js"
   },
   "engines": {
     "node": "22.x"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.6.2",
+    "@capacitor/share": "^8.0.3",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
     "esbuild": "0.21.5",
     "lucide-react": "0.460.0",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
   "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.2",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7"
   }

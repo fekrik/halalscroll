@@ -1,4 +1,5 @@
 import { CardWord, FeedCard } from './types';
+import { triggerNativeHaptic } from './nativeBridge';
 
 function pad3(n: number): string {
   return String(n).padStart(3, '0');
@@ -33,6 +34,7 @@ class SoundAndHapticsEngine {
   // Tactile Haptic Choreography (Spec Section 2.3)
   public triggerHaptic(type: 'lightImpact' | 'selectionTick' | 'softSuccess') {
     try {
+      triggerNativeHaptic(type);
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         if (type === 'lightImpact') navigator.vibrate(10);
         else if (type === 'selectionTick') navigator.vibrate(5);

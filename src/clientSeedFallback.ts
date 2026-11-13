@@ -156,3 +156,29 @@ export function offlineUpdateState(patch: Partial<UserState>) {
   return state;
 }
 
+export function getLocalFolders(): string[] {
+  return Array.from(
+    new Set([...DEFAULT_FOLDERS, ...readJson<string[]>(STORAGE_KEYS.FOLDERS, [])])
+  );
+}
+
+export function applyLocalUserOverlays(cards: FeedCard[]): FeedCard[] {
+  const bookmarksMap = readJson<Record<string, string[]>>(STORAGE_KEYS.BOOKMARKS, {
+    'card-quran-94-5': ['Favorites'],
+    'card-dua-hisn-anxiety': ['Hardship & Sabr']
+  });
+  const practicedMap = readJson<Record<string, { card_id: string; reflection_note: string; practiced_at: string }>>(
+    STORAGE_KEYS.PRACTICED,
+    {}
+  );
+  return cards.map((c) => {
+    const bmFolders = bookmarksMap[c.id] || [];
+    return {
+      ...c,
+      bookmark_folders: bmFolders,
+      is_bookmarked: bmFolders.length > 0,
+      practiced: practicedMap[c.id] || null
+    };
+  });
+}
+

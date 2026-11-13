@@ -130,6 +130,9 @@ async function buildStaticSite() {
   if (fs.existsSync(path.join(ROOT, 'public', 'favicon.png'))) {
     fs.copyFileSync(path.join(ROOT, 'public', 'favicon.png'), path.join(DOCS_DIR, 'favicon.png'));
   }
+  if (fs.existsSync(path.join(ROOT, 'public', 'privacy.html'))) {
+    fs.copyFileSync(path.join(ROOT, 'public', 'privacy.html'), path.join(DOCS_DIR, 'privacy.html'));
+  }
   const pubIconsDir = path.join(ROOT, 'public', 'icons');
   if (fs.existsSync(pubIconsDir)) {
     for (const f of fs.readdirSync(pubIconsDir)) {

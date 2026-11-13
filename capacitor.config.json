@@ -1,0 +1,17 @@
+{
+  "appId": "com.halalscroll.app",
+  "appName": "Halal Scroll",
+  "webDir": "docs",
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#0b0e17",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0b0e17"
+    }
+  }
+}

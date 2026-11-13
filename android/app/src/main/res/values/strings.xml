@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Halal Scroll</string>
+    <string name="title_activity_main">Halal Scroll</string>
+    <string name="package_name">com.halalscroll.app</string>
+    <string name="custom_url_scheme">com.halalscroll.app</string>
+</resources>

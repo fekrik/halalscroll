@@ -14,8 +14,11 @@ import {
   getOfflineBootstrap,
   offlineToggleBookmark,
   offlineMarkPracticed,
-  offlineUpdateState
+  offlineUpdateState,
+  applyLocalUserOverlays,
+  getLocalFolders
 } from './clientSeedFallback';
+import { isNativeApp, apiUrl, initNativeShell } from './nativeBridge';
 
 const MOOD_FILTERS = [
   { id: 'all', label: 'All Moments', category: 'all' },
@@ -185,6 +188,7 @@ const App: React.FC = () => {
 
   // PWA Standalone Detection & Installation Modal State
   const [isStandalone, setIsStandalone] = useState<boolean>(() => {
+    if (isNativeApp()) return true;
     if (typeof window === 'undefined') return false;
     try {
       const mq = typeof window.matchMedia === 'function' ? window.matchMedia('(display-mode: standalone)') : null;
@@ -200,7 +204,7 @@ const App: React.FC = () => {
     if (typeof window !== 'undefined') {
       try {
         const mq = typeof window.matchMedia === 'function' ? window.matchMedia('(display-mode: standalone)') : null;
-        const isStandaloneCheck = Boolean((mq && mq.matches) || (window.navigator as any)?.standalone);
+        const isStandaloneCheck = isNativeApp() || Boolean((mq && mq.matches) || (window.navigator as any)?.standalone);
         setIsStandalone(isStandaloneCheck);
       } catch { }
 
@@ -244,16 +248,27 @@ const App: React.FC = () => {
       state?: Partial<UserState>;
       folders?: string[];
     }) => {
-      if (data.cards) setCards(data.cards);
+      const native = isNativeApp();
+      if (data.cards) {
+        const preparedCards = native ? applyLocalUserOverlays(data.cards) : data.cards;
+        setCards(preparedCards);
+        if (native) {
+          setSavedVaultCards(preparedCards.filter(c => c.is_bookmarked));
+        }
+      }
       if (data.surahs) setSurahs(data.surahs);
       if (data.collection_counts) setCollectionCounts(data.collection_counts);
       if (data.total_corpus_count) {
         setTotalFeedCount(data.total_corpus_count);
         setHasMoreFeed((data.cards?.length || 0) < data.total_corpus_count);
       }
-      if (data.bookmarked_cards) setSavedVaultCards(data.bookmarked_cards);
-      if (data.state) setUserState(prev => ({ ...prev, ...data.state }));
-      if (data.folders) setFolders(data.folders);
+      if (!native && data.bookmarked_cards) setSavedVaultCards(data.bookmarked_cards);
+      if (!native && data.state) setUserState(prev => ({ ...prev, ...data.state }));
+      if (native) {
+        setFolders(getLocalFolders());
+      } else if (data.folders) {
+        setFolders(data.folders);
+      }
       setLoading(false);
 
       const path = window.location.pathname;
@@ -268,11 +283,12 @@ const App: React.FC = () => {
         if (idx >= 0) {
           setTimeout(() => scrollToCardIndex(idx), 80);
         } else if (hasBackendApiRef.current) {
-          fetch(`/api/cards/${encodeURIComponent(slug)}`)
+          fetch(apiUrl(`/api/cards/${encodeURIComponent(slug)}`))
             .then(r => (r.ok ? r.json() : null))
             .then(res => {
               if (res?.card) {
-                setCards(prev => [res.card, ...prev.filter(c => c.id !== res.card.id)]);
+                const card = isNativeApp() ? applyLocalUserOverlays([res.card])[0] : res.card;
+                setCards(prev => [card, ...prev.filter(c => c.id !== card.id)]);
                 setActiveCardIndex(0);
               }
             })
@@ -286,7 +302,7 @@ const App: React.FC = () => {
       return;
     }
 
-    fetch('/api/bootstrap')
+    fetch(apiUrl('/api/bootstrap'))
       .then(r => {
         if (!r.ok) throw new Error('Static mode');
         hasBackendApiRef.current = true;
@@ -320,12 +336,13 @@ const App: React.FC = () => {
       params.set('mood', selectedMood);
     }
 
-    fetch(`/api/feed?${params.toString()}`)
+    fetch(apiUrl(`/api/feed?${params.toString()}`))
       .then(r => (r.ok ? r.json() : null))
       .then(page => {
         if (page && Array.isArray(page.cards)) {
-          setCards(page.cards);
-          setTotalFeedCount(page.total || page.cards.length);
+          const prepared = isNativeApp() ? applyLocalUserOverlays(page.cards) : page.cards;
+          setCards(prepared);
+          setTotalFeedCount(page.total || prepared.length);
           setHasMoreFeed(Boolean(page.has_more));
           setActiveCardIndex(0);
           if (feedContainerRef.current) feedContainerRef.current.scrollTop = 0;
@@ -351,13 +368,14 @@ const App: React.FC = () => {
       params.set('mood', selectedMood);
     }
 
-    fetch(`/api/feed?${params.toString()}`)
+    fetch(apiUrl(`/api/feed?${params.toString()}`))
       .then(r => (r.ok ? r.json() : null))
       .then(page => {
         if (page && Array.isArray(page.cards) && page.cards.length > 0) {
+          const prepared = isNativeApp() ? applyLocalUserOverlays(page.cards) : page.cards;
           setCards(prev => {
             const seen = new Set(prev.map(c => c.id));
-            const fresh = page.cards.filter((c: FeedCard) => !seen.has(c.id));
+            const fresh = prepared.filter((c: FeedCard) => !seen.has(c.id));
             return [...prev, ...fresh];
           });
           setTotalFeedCount(page.total || cards.length);
@@ -386,9 +404,11 @@ const App: React.FC = () => {
     } catch { }
   }, [feedMode, selectedMood, selectedCollection, selectedSurah]);
 
-  // Sync theme attribute on document root
+  // Sync theme attribute on document root & native status bar
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', userState.theme || 'fajr_dawn');
+    const theme = userState.theme || 'fajr_dawn';
+    document.documentElement.setAttribute('data-theme', theme);
+    initNativeShell(theme);
   }, [userState.theme]);
 
   // Filtered Cards based on active Feed Mode (when server pagination is active, `cards` already matches the filter)
@@ -424,6 +444,7 @@ const App: React.FC = () => {
       return next;
     });
     offlineUpdateState(patch);
+    if (isNativeApp()) return;
     try {
       const res = await fetch('/api/state', {
         method: 'POST',
@@ -463,11 +484,12 @@ const App: React.FC = () => {
     if (inCurrent >= 0) {
       scrollToCardIndex(inCurrent);
     } else if (hasBackendApiRef.current) {
-      fetch(`/api/cards/${encodeURIComponent(idOrSlug)}`)
+      fetch(apiUrl(`/api/cards/${encodeURIComponent(idOrSlug)}`))
         .then(r => (r.ok ? r.json() : null))
         .then(res => {
           if (res?.card) {
-            setCards(prev => [res.card, ...prev.filter(c => c.id !== res.card.id)]);
+            const card = isNativeApp() ? applyLocalUserOverlays([res.card])[0] : res.card;
+            setCards(prev => [card, ...prev.filter(c => c.id !== card.id)]);
             scrollToCardIndex(0);
           }
         })
@@ -498,9 +520,9 @@ const App: React.FC = () => {
       if (newIndex >= displayedCards.length - 6 && hasMoreFeed) {
         fetchNextFeedPage();
       }
-      // Track seen cards in backend for smart exploration
+      // Track seen cards in backend for smart exploration (web mode)
       const current = displayedCards[newIndex];
-      if (current && hasBackendApiRef.current) {
+      if (current && hasBackendApiRef.current && !isNativeApp()) {
         fetch('/api/seen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -555,6 +577,22 @@ const App: React.FC = () => {
       if (data.folders) setFolders(data.folders);
     };
 
+    if (isNativeApp()) {
+      const fallback = offlineToggleBookmark(card.id, folderName, action);
+      const updated = fallback.cards.find(c => c.id === card.id);
+      if (updated) {
+        setCards(prev => prev.map(c => (c.id === updated.id ? updated : c)));
+        if (bookmarkFolderModalCard && bookmarkFolderModalCard.id === updated.id) {
+          setBookmarkFolderModalCard(updated);
+        }
+        setSavedVaultCards(prev => {
+          const rest = prev.filter(c => c.id !== updated.id);
+          return updated.is_bookmarked ? [updated, ...rest] : rest;
+        });
+      }
+      if (fallback.folders) setFolders(fallback.folders);
+      return;
+    }
     try {
       const res = await fetch('/api/bookmarks', {
         method: 'POST',
@@ -587,6 +625,18 @@ const App: React.FC = () => {
       if (data.state) setUserState(prev => ({ ...prev, ...data.state }));
     };
 
+    if (isNativeApp()) {
+      const fallback = offlineMarkPracticed(cardId, practiced, reflectionNote);
+      const updated = fallback.cards.find(c => c.id === cardId);
+      if (updated) {
+        setCards(prev => prev.map(c => (c.id === updated.id ? updated : c)));
+        if (deepStudyModal && deepStudyModal.card.id === cardId) {
+          setDeepStudyModal({ ...deepStudyModal, card: updated });
+        }
+      }
+      if (fallback.state) setUserState(prev => ({ ...prev, ...fallback.state }));
+      return;
+    }
     try {
       const res = await fetch('/api/practice', {
         method: 'POST',
@@ -2234,6 +2284,39 @@ const App: React.FC = () => {
                     </button>
                   </div>
                 )}
+
+                {/* Sources, Authenticity & Privacy */}
+                <div style={{
+                  marginTop: 4,
+                  padding: '12px 14px',
+                  borderRadius: 14,
+                  background: 'var(--surface-card)',
+                  border: '1px solid var(--border-specular)'
+                }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+                    5. Sources, Authenticity &amp; Privacy
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    Quranic script (KFGQPC Uthmani &amp; IndoPak / Tanzil), translations (The Clear Quran, Sahih International), 40 Hadith Nawawi, and Hisn al-Muslim. Preferences &amp; bookmarks stay private on your device.
+                  </div>
+                  <a
+                    href={isNativeApp() ? 'https://halalscroll-production.up.railway.app/privacy.html' : './privacy.html'}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      marginTop: 8,
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      color: 'var(--accent-gold-bright)',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    Read Privacy Policy &amp; Sources <ArrowUpRight size={12} />
+                  </a>
+                </div>
               </div>
             </div>
           </div>
