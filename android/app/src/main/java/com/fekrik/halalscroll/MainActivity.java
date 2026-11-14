@@ -1,4 +1,4 @@
-package com.halalscroll.app;
+package com.fekrik.halalscroll;
 
 import com.getcapacitor.BridgeActivity;
 

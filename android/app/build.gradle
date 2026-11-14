@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.halalscroll.app"
+    namespace = "com.fekrik.halalscroll"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.halalscroll.app"
+        applicationId "com.fekrik.halalscroll"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
