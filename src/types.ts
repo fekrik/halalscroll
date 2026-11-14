@@ -96,7 +96,7 @@ export interface SurahInfo {
 
 export interface UserState {
   streak_count: string;
-  theme: 'midnight_sanctuary' | 'andalusian_parchment' | 'fajr_dawn' | 'maghrib_dusk';
+  theme: 'system' | 'midnight_sanctuary' | 'andalusian_parchment' | 'fajr_dawn' | 'maghrib_dusk';
   arabic_script: 'uthmani' | 'indopak';
   translation_edition: 'clear' | 'sahih';
   show_transliteration: string;

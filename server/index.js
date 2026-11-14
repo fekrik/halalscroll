@@ -111,7 +111,7 @@ function seedDatabase() {
   const upsertState = db.prepare(`INSERT OR IGNORE INTO user_state (key, value) VALUES (?, ?)`);
   upsertState.run('streak_count', '12');
   upsertState.run('last_active_date', new Date().toISOString().slice(0, 10));
-  upsertState.run('theme', 'fajr_dawn');
+  upsertState.run('theme', 'system');
   upsertState.run('arabic_script', 'uthmani');
   upsertState.run('translation_edition', 'clear');
   upsertState.run('show_transliteration', 'true');

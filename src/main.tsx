@@ -76,7 +76,7 @@ const App: React.FC = () => {
     } catch { }
     return {
       streak_count: '12',
-      theme: 'fajr_dawn',
+      theme: 'system',
       arabic_script: 'uthmani',
       translation_edition: 'clear',
       show_transliteration: 'true',
@@ -404,12 +404,33 @@ const App: React.FC = () => {
     } catch { }
   }, [feedMode, selectedMood, selectedCollection, selectedSurah]);
 
-  // Sync theme attribute on document root & native status bar
+  const [systemPrefersLight, setSystemPrefersLight] = useState<boolean>(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia('(prefers-color-scheme: light)').matches;
+  });
+
   useEffect(() => {
-    const theme = userState.theme || 'fajr_dawn';
-    document.documentElement.setAttribute('data-theme', theme);
-    initNativeShell(theme);
-  }, [userState.theme]);
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    const onChange = (e: MediaQueryListEvent) => setSystemPrefersLight(e.matches);
+    setSystemPrefersLight(mq.matches);
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', onChange);
+      return () => mq.removeEventListener('change', onChange);
+    }
+    mq.addListener(onChange);
+    return () => mq.removeListener(onChange);
+  }, []);
+
+  // Sync theme attribute on document root & native status bar
+  const resolvedTheme = userState.theme === 'system'
+    ? (systemPrefersLight ? 'andalusian_parchment' : 'midnight_sanctuary')
+    : (userState.theme || 'midnight_sanctuary');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
+    initNativeShell(resolvedTheme);
+  }, [resolvedTheme]);
 
   // Filtered Cards based on active Feed Mode (when server pagination is active, `cards` already matches the filter)
   const displayedCards = useMemo(() => {
@@ -2017,6 +2038,39 @@ const App: React.FC = () => {
                   <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
                     1. Ambient Sanctuary Theme (Spec Section 2.1):
                   </div>
+                  <button
+                    onClick={() => {
+                      soundEngine.triggerHaptic('selectionTick');
+                      updateServerState({ theme: 'system' });
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      marginBottom: 8,
+                      borderRadius: 14,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      border: userState.theme === 'system' ? '1.5px solid var(--accent-gold-bright)' : '1px solid var(--border-specular)',
+                      background: userState.theme === 'system' ? 'rgba(212, 175, 55, 0.16)' : 'var(--surface-card)',
+                      color: 'var(--text-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
+                        <Smartphone size={14} /> Match System Appearance (Auto)
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                        Follows iOS/device mode — currently {systemPrefersLight ? 'Light (Andalusian Parchment)' : 'Dark (Midnight Sanctuary)'}
+                      </div>
+                    </div>
+                    {userState.theme === 'system' && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-gold-bright)' }}>Active</span>
+                    )}
+                  </button>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                     {[
                       { id: 'midnight_sanctuary', label: 'Midnight Sanctuary', sub: 'Deep Obsidian & Burnished Gold', icon: <Moon size={14} /> },
