@@ -80,12 +80,20 @@ class SoundAndHapticsEngine {
   public speakArabicWord(word: CardWord) {
     this.triggerHaptic('selectionTick');
     try {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(word.arabic_word);
-        utter.lang = 'ar-SA';
-        utter.rate = 0.82;
-        window.speechSynthesis.speak(utter);
+      if (typeof window !== 'undefined' && word?.arabic_word) {
+        const wordAudio = new Audio(
+          apiUrl(`/api/tts?lang=ar&text=${encodeURIComponent(word.arabic_word)}`)
+        );
+        wordAudio.play().catch(() => {
+          try {
+            if ('speechSynthesis' in window) {
+              const utter = new SpeechSynthesisUtterance(word.arabic_word);
+              utter.lang = 'ar-SA';
+              utter.rate = 0.85;
+              window.speechSynthesis.speak(utter);
+            }
+          } catch {}
+        });
       }
       const ctx = this.getContext();
       if (!ctx) return;

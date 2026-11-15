@@ -605,22 +605,34 @@ const handleRequest = async (req, res) => {
 
   // API: GET /api/tts (Arabic Voice Recitation MP3 Stream for Non-Quran Hadith/Dua/Seerah Cards)
   if (pathname === '/api/tts' && req.method === 'GET') {
-    const rawText = (parsedUrl.searchParams.get('text') || '').trim().slice(0, 200);
-    const lang = (parsedUrl.searchParams.get('lang') || 'ar').trim();
+    const rawText = (url.searchParams.get('text') || '').trim().slice(0, 200);
+    const lang = (url.searchParams.get('lang') || 'ar').trim();
     if (!rawText) {
       return sendJson(req, res, 400, { error: 'Missing text parameter' });
     }
     try {
-      const upstreamUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(lang)}&client=tw-ob&q=${encodeURIComponent(rawText)}`;
-      const upstreamRes = await fetch(upstreamUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
-        }
-      });
-      if (!upstreamRes.ok) {
-        return sendJson(req, res, 502, { error: 'Upstream TTS unavailable' });
+      if (!global.__halalTtsCache) {
+        global.__halalTtsCache = new Map();
       }
-      const audioBuffer = Buffer.from(await upstreamRes.arrayBuffer());
+      const cacheKey = `${lang}:${rawText}`;
+      let audioBuffer = global.__halalTtsCache.get(cacheKey);
+      if (!audioBuffer) {
+        const upstreamUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(lang)}&client=tw-ob&q=${encodeURIComponent(rawText)}`;
+        const upstreamRes = await fetch(upstreamUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
+          }
+        });
+        if (!upstreamRes.ok) {
+          return sendJson(req, res, 502, { error: 'Upstream TTS unavailable' });
+        }
+        audioBuffer = Buffer.from(await upstreamRes.arrayBuffer());
+        if (global.__halalTtsCache.size > 300) {
+          const oldestKey = global.__halalTtsCache.keys().next().value;
+          global.__halalTtsCache.delete(oldestKey);
+        }
+        global.__halalTtsCache.set(cacheKey, audioBuffer);
+      }
       res.writeHead(200, {
         ...CORS_HEADERS,
         'Content-Type': 'audio/mpeg',

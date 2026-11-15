@@ -127,6 +127,10 @@ async function runTests() {
   assert.strictEqual(ogJpg.status, 200);
   assert(ogJpg.headers['content-type'].includes('image/jpeg'));
 
+  const ttsRes = await request('GET', '/api/tts?lang=ar&text=' + encodeURIComponent('إنما الأعمال بالنيات'));
+  assert.strictEqual(ttsRes.status, 200, '/api/tts must return 200 audio/mpeg');
+  assert(ttsRes.headers['content-type'].includes('audio/mpeg'));
+
   const deepLinkHtml = await request('GET', '/c/ash-sharh-5-6');
   assert.strictEqual(deepLinkHtml.status, 200);
   assert(!deepLinkHtml.text.includes('__OG_'), 'Deep link HTML must never contain raw __OG_ placeholders');
