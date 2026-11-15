@@ -263,19 +263,19 @@ class SoundAndHapticsEngine {
         };
         sharedAudio.onerror = () => {
           if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
-          // Advance to next track or silent visual pacing without triggering synthetic TTS voice
+          // Advance to next track or silent visual pacing without triggering synthetic TTS voice on Quran
           currentTrack++;
           if (currentTrack < urls.length) {
             playNextTrack();
           } else {
-            this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript);
+            this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript, false);
           }
         };
 
         sharedAudio.src = urls[currentTrack];
         sharedAudio.play().catch(() => {
           if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
-          this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript);
+          this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript, false);
         });
       };
 
@@ -283,19 +283,50 @@ class SoundAndHapticsEngine {
       return;
     }
 
-    // For non-Quran cards (Hadith / Dua), pace word highlights smoothly without synthetic TTS voice
-    this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript);
+    // For non-Quran cards (Hadith / Dua / Seerah), enable transcript-to-voice (speechSynthesis); Quran uses Qari recite only
+    this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript, card.card_type !== 'quran');
   }
 
   private startSynthesizedRecitation(
     card: FeedCard,
     onTick: (activeWordIndex: number, progressRatio: number) => void,
     onComplete: () => void,
-    arabicScript: 'uthmani' | 'indopak' = 'uthmani'
+    arabicScript: 'uthmani' | 'indopak' = 'uthmani',
+    useSpeechSynthesis = false
   ) {
     const { allTokens } = this.getSpokenAyahTokenGroups(card, arabicScript);
     const totalWeight = allTokens.reduce((acc, t) => acc + t.weight, 0);
     const totalDurationMs = Math.max(3200, Math.round(totalWeight * 360));
+
+    let boundaryDriven = false;
+    if (useSpeechSynthesis && card.card_type !== 'quran') {
+      try {
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const spokenString = allTokens.map(t => t.text).join(' ');
+          const utter = new SpeechSynthesisUtterance(spokenString);
+          utter.lang = 'ar-SA';
+          utter.rate = 0.82;
+          utter.onboundary = (ev) => {
+            if (ev.name === 'word' && typeof ev.charIndex === 'number') {
+              boundaryDriven = true;
+              const prefix = spokenString.slice(0, ev.charIndex);
+              const wordIdx = prefix.trim() ? prefix.trim().split(/\s+/).length : 0;
+              const clampedIdx = Math.min(allTokens.length - 1, Math.max(0, wordIdx));
+              onTick(clampedIdx, (clampedIdx + 1) / Math.max(1, allTokens.length));
+            }
+          };
+          utter.onend = () => {
+            if (this.isPlaying) {
+              this.isPlaying = false;
+              onTick(-1, 1);
+              onComplete();
+            }
+          };
+          window.speechSynthesis.speak(utter);
+        }
+      } catch {}
+    }
 
     this.startTime = performance.now();
     const loop = (nowMs: number) => {
@@ -308,9 +339,11 @@ class SoundAndHapticsEngine {
         return;
       }
 
-      const ratio = elapsed / totalDurationMs;
-      const activeIdx = this.pickTokenByWeight(allTokens, ratio);
-      onTick(activeIdx, ratio);
+      if (!boundaryDriven) {
+        const ratio = elapsed / totalDurationMs;
+        const activeIdx = this.pickTokenByWeight(allTokens, ratio);
+        onTick(activeIdx, ratio);
+      }
       this.rafId = requestAnimationFrame(loop);
     };
 
