@@ -311,7 +311,7 @@ html, body, #root {
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 18px max(18px, calc(10px + env(safe-area-inset-bottom, 0px))) 18px;
+  padding: 10px 18px max(18px, calc(10px + env(safe-area-inset-bottom, 0px))) 18px;
   overflow: hidden;
   user-select: none;
 }
@@ -324,9 +324,9 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
-  padding: 4px 6px 8px 6px;
+  padding: 2px 6px 8px 6px;
   overflow-y: hidden;
   transform-origin: center top;
   transition:
