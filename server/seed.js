@@ -3,6 +3,100 @@
 // Sahih al-Bukhari, Sahih Muslim, 40 Hadith Nawawi, Riyad as-Salihin, Hisn al-Muslim, Tafsir As-Sa'di & Ibn Kathir.
 
 const SEED_CARDS = [
+  // 0. QURAN: Surah Al-Fatihah 1:1-7 (The Opening — Beginning of the Quran)
+  {
+    id: 'card-quran-1-1',
+    card_type: 'quran',
+    canonical_ref: 'quran:1:1-7',
+    share_slug: 'al-fatihah-1-7',
+    collection_slug: 'quran',
+    sequence_order: 0,
+    surah_or_book_num: 1,
+    ayah_start: 1,
+    ayah_end: 7,
+    passage_group_id: 'grp-1-1-7',
+    arabic_text_uthmani: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ۝ ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ ۝ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ۝ مَٰلِكِ يَوْمِ ٱلدِّينِ ۝ إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ ۝ ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ ۝ صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ',
+    arabic_text_indopak: 'بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ ۝ الْحَمْدُ لِلّٰهِ رَبِّ الْعٰلَمِيْنَ ۝ الرَّحْمٰنِ الرَّحِيْمِ ۝ مٰلِكِ يَوْمِ الدِّيْنِ ۝ اِيَّاكَ نَعْبُدُ وَاِيَّاكَ نَسْتَعِيْنُ ۝ اِهْدِنَا الصِّرَاطَ الْمُسْتَقِيْمَ ۝ صِرَاطَ الَّذِيْنَ اَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوْبِ عَلَيْهِمْ وَلَا الضَّآلِّيْنَ',
+    transliteration: 'Bismillāhir-Raḥmānir-Raḥīm. Al-ḥamdu lillāhi Rabbil-‘ālamīn. Ar-Raḥmānir-Raḥīm. Māliki yawmid-dīn. Iyyāka na‘budu wa iyyāka nasta‘īn. Ihdināṣ-ṣirāṭal-mustaqīm. Ṣirāṭal-ladhīna an‘amta ‘alayhim ghayril-maghḍūbi ‘alayhim wa laḍ-ḍāllīn.',
+    translation_en_clear: 'In the Name of Allah—the Most Compassionate, Most Merciful. All praise is for Allah—Lord of all worlds, the Most Compassionate, Most Merciful, Master of the Day of Judgment. You alone we worship and You alone we ask for help. Guide us along the Straight Path, the Path of those You have blessed—not those You are displeased with, or those who are astray.',
+    translation_en_sahih: 'In the name of Allah, the Entirely Merciful, the Especially Merciful. [All] praise is [due] to Allah, Lord of the worlds - The Entirely Merciful, the Especially Merciful, Sovereign of the Day of Recompense. It is You we worship and You we ask for help. Guide us to the straight path - The path of those upon whom You have bestowed favor, not of those who have evoked [Your] anger or of those who are astray.',
+    source_title: 'Surah Al-Fatihah • 1:1–7',
+    surah_subtitle: 'The Opening (Umm Al-Kitab)',
+    revelation_place: 'Meccan',
+    narrator_chain: null,
+    authenticity_grade: 'Canonical Mutawatir • Surah 1',
+    theme_palette: 'midnight_gold',
+    mood_tags: ['grateful', 'salah', 'tawakkul'],
+    topic_tags: ['salah', 'tawakkul'],
+    time_window: 'any',
+    discover_weight: 1.6,
+    reciter_name: 'Mishary Rashid Alafasy',
+    words: [
+      {
+        word_position: 1,
+        arabic_word: 'ٱلْحَمْدُ',
+        transliteration: 'al-ḥamdu',
+        translation_en: 'All praise & gratitude',
+        root_arabic: 'ح م د',
+        root_translit: 'Ḥ-M-D',
+        root_meaning: 'Praise, commendation, and thankfulness for beauty and perfection',
+        root_occurrences: 68,
+        root_examples: ['Surah Al-Fatihah 1:2 — "All praise is for Allah"', 'Surah Al-Isra 17:44 — "Everything glorifies His praise"'],
+        grammar_pos: 'Definite Noun (Mubtada)',
+        start_ms: 0,
+        end_ms: 1400
+      },
+      {
+        word_position: 2,
+        arabic_word: 'ٱلرَّحْمَٰنِ',
+        transliteration: 'ar-Raḥmāni',
+        translation_en: 'The Most Compassionate',
+        root_arabic: 'ر ح م',
+        root_translit: 'R-Ḥ-M',
+        root_meaning: 'Womb-like encompassing mercy, tenderness, and compassion',
+        root_occurrences: 339,
+        root_examples: ['Surah Al-A‘raf 7:156 — "My Mercy encompasses all things"', 'Surah Ar-Rahman 55:1 — "The Most Compassionate"'],
+        grammar_pos: 'Intensive Attribute (Sifah Mushabbahah)',
+        start_ms: 1400,
+        end_ms: 2800
+      },
+      {
+        word_position: 3,
+        arabic_word: 'نَعْبُدُ',
+        transliteration: 'na‘budu',
+        translation_en: 'we worship',
+        root_arabic: 'ع ب د',
+        root_translit: '‘-B-D',
+        root_meaning: 'Loving devotion, humility, and willingly submitting to Allah',
+        root_occurrences: 275,
+        root_examples: ['Surah Adh-Dhariyat 51:56 — "I did not create jinn and humans except to worship Me"'],
+        grammar_pos: 'Imperfect Verb (Fi‘l Mudari‘)',
+        start_ms: 2800,
+        end_ms: 4200
+      },
+      {
+        word_position: 4,
+        arabic_word: 'ٱهْدِنَا',
+        transliteration: 'ihdinā',
+        translation_en: 'Guide us',
+        root_arabic: 'ه د ي',
+        root_translit: 'H-D-Y',
+        root_meaning: 'Gentle guidance toward the goal with clarity and steadfastness',
+        root_occurrences: 316,
+        root_examples: ['Surah Al-Baqarah 2:2 — "A guidance for those mindful of Allah"'],
+        grammar_pos: 'Imperative Verb + Object Pronoun',
+        start_ms: 4200,
+        end_ms: 5600
+      }
+    ],
+    deep_study: {
+      plain_summary: 'Surah Al-Fatihah is the spiritual heart of every Muslim’s daily prayer—opening the Quran with praise of Allah’s Mercy, an intimate covenant of worship and reliance ("You alone we worship and You alone we ask for help"), and the supreme supplication for guidance along the Straight Path.',
+      sabab_ul_nuzul: 'Revealed in Mecca as the foundational opening chapter of the Quran and recited in every unit (rak‘ah) of Salah. In a famous Hadith Qudsi (Sahih Muslim 395), Allah says: "I have divided the prayer between Myself and My servant into two halves, and My servant shall have what he has asked for."',
+      classical_tafsir: 'Imam Ibnul Qayyim (Madarij as-Salikin) writes that the entire Quran’s meanings are gathered in Al-Fatihah, and the entire Fatihah revolves around verse 5 ("You alone we worship and You alone we ask for help")—the cure for both arrogance and helplessness.',
+      hadith_commentary: 'The Prophet ﷺ said to Abu Sa‘id ibn al-Mu‘alla: "Shall I not teach you the greatest Surah in the Quran before you leave the mosque?" Then he said: "Al-Hamdu Lillahi Rabbil-‘Alamin (Surah Al-Fatihah); it is the Seven Oft-Repeated Verses and the Grand Quran which has been given to me." (Sahih al-Bukhari 4474)',
+      actionable_sunnah: 'In your next Salah, pause briefly after each verse of Al-Fatihah—just as the Prophet ﷺ used to pause verse by verse—and silently feel Allah answering each line as promised in Hadith Qudsi.'
+    }
+  },
   // 1. QURAN: Surah Ash-Sharh 94:5-6 (Semantically Grouped Passage)
   {
     id: 'card-quran-94-5',

@@ -117,8 +117,8 @@ function seedDatabase() {
   upsertState.run('show_transliteration', 'true');
   upsertState.run('reciter', 'Mishary Rashid Alafasy');
   upsertState.run('plus_member', 'false');
-  upsertState.run('sequential_quran_card', 'card-quran-94-5');
-  upsertState.run('sequential_book_card', 'card-hadith-nawawi-19');
+  upsertState.run('sequential_quran_card', 'card-quran-1-1');
+  upsertState.run('sequential_book_card', 'card-riyad-1');
   upsertState.run('font_scale', '1');
 
   // Migrate any previous default theme to fajr_dawn
@@ -467,11 +467,18 @@ function acceptsGzip(req) {
   return enc.includes('gzip');
 }
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+};
+
 function sendJson(req, res, status, payload) {
   const jsonStr = JSON.stringify(payload);
   if (acceptsGzip(req) && jsonStr.length > 1024) {
     const gz = zlib.gzipSync(Buffer.from(jsonStr, 'utf8'));
     res.writeHead(status, {
+      ...CORS_HEADERS,
       'Content-Type': 'application/json; charset=utf-8',
       'Content-Encoding': 'gzip',
       'Vary': 'Accept-Encoding',
@@ -480,6 +487,7 @@ function sendJson(req, res, status, payload) {
     return res.end(gz);
   }
   res.writeHead(status, {
+    ...CORS_HEADERS,
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store'
   });
@@ -525,6 +533,10 @@ function renderOgSvg(card) {
 }
 
 const handleRequest = async (req, res) => {
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, CORS_HEADERS);
+    return res.end();
+  }
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const pathname = url.pathname;
 
@@ -533,6 +545,7 @@ const handleRequest = async (req, res) => {
     const cached = getCachedBootstrap(20);
     if (acceptsGzip(req)) {
       res.writeHead(200, {
+        ...CORS_HEADERS,
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Encoding': 'gzip',
         'Vary': 'Accept-Encoding',
@@ -541,6 +554,7 @@ const handleRequest = async (req, res) => {
       return res.end(cached.gzipBuf);
     }
     res.writeHead(200, {
+      ...CORS_HEADERS,
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'no-store'
     });

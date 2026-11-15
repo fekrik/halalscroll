@@ -3,13 +3,19 @@ import { createRoot } from 'react-dom/client';
 import {
   Sparkles, Bookmark, Share2, Volume2, Pause, Flame, SlidersHorizontal,
   Crown, FolderPlus, Check, X, Compass, BookOpen, Heart, Sun, Moon,
-  ChevronDown, ArrowUpRight, ShieldCheck, GraduationCap, Smartphone, Minus, Plus
+  ChevronDown, ArrowUpRight, ShieldCheck, GraduationCap, Smartphone, Minus, Plus,
+  Send, Highlighter
 } from 'lucide-react';
 import { CardWord, DeepStudyTab, FeedCard, FeedMode, SurahInfo, UserState } from './types';
 import { soundEngine } from './audioEngine';
 import { DeepStudyDrawer } from './components/DeepStudyDrawer';
 import { ShareStudioModal } from './components/ShareStudioModal';
 import { InstallAppModal } from './components/InstallAppModal';
+import {
+  matchWordHighlight,
+  WordHighlighterModal,
+  OnboardingTutorialModal
+} from './components/FeedExperienceModals';
 import {
   getOfflineBootstrap,
   offlineToggleBookmark,
@@ -82,8 +88,8 @@ const App: React.FC = () => {
       show_transliteration: 'true',
       reciter: 'Mishary Rashid Alafasy',
       plus_member: 'false',
-      sequential_quran_card: 'card-quran-94-5',
-      sequential_book_card: 'card-hadith-nawawi-19',
+      sequential_quran_card: 'card-quran-1-1',
+      sequential_book_card: 'card-nawawi-1',
       font_scale: '1',
       ...(initialBoot.data.state || {}),
       ...localState
@@ -178,6 +184,89 @@ const App: React.FC = () => {
   const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
   const [showPlusModal, setShowPlusModal] = useState<boolean>(false);
   const [showReciterMenuForCard, setShowReciterMenuForCard] = useState<string | null>(null);
+
+  // Likes, Sacred Word Highlighting & Onboarding Tutorial State
+  const [likedCards, setLikedCards] = useState<Record<string, boolean>>(() => {
+    try {
+      const raw = localStorage.getItem('hs_liked_cards_v1');
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [activeHighlightGroups, setActiveHighlightGroups] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('hs_highlight_groups_v1');
+      return raw ? JSON.parse(raw) : ['allah', 'prophet'];
+    } catch {
+      return ['allah', 'prophet'];
+    }
+  });
+  const [customHighlightWords, setCustomHighlightWords] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('hs_custom_highlights_v1');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showHighlighterModal, setShowHighlighterModal] = useState<boolean>(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('hs_onboarding_done_v1') !== 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleLikeCard = (cardId: string) => {
+    soundEngine.triggerHaptic('softSuccess');
+    setLikedCards(prev => {
+      const next = { ...prev, [cardId]: !prev[cardId] };
+      try {
+        localStorage.setItem('hs_liked_cards_v1', JSON.stringify(next));
+      } catch { }
+      return next;
+    });
+  };
+
+  const handleToggleHighlightGroup = (groupId: string) => {
+    setActiveHighlightGroups(prev => {
+      const next = prev.includes(groupId) ? prev.filter(g => g !== groupId) : [...prev, groupId];
+      try {
+        localStorage.setItem('hs_highlight_groups_v1', JSON.stringify(next));
+      } catch { }
+      return next;
+    });
+  };
+
+  const handleAddCustomHighlightWord = (word: string) => {
+    setCustomHighlightWords(prev => {
+      if (prev.includes(word)) return prev;
+      const next = [...prev, word];
+      try {
+        localStorage.setItem('hs_custom_highlights_v1', JSON.stringify(next));
+      } catch { }
+      return next;
+    });
+  };
+
+  const handleRemoveCustomHighlightWord = (word: string) => {
+    setCustomHighlightWords(prev => {
+      const next = prev.filter(w => w !== word);
+      try {
+        localStorage.setItem('hs_custom_highlights_v1', JSON.stringify(next));
+      } catch { }
+      return next;
+    });
+  };
+
+  const handleCompleteOnboarding = () => {
+    try {
+      localStorage.setItem('hs_onboarding_done_v1', 'true');
+    } catch { }
+    setShowOnboardingModal(false);
+  };
   const [webCompanionSlug, setWebCompanionSlug] = useState<string | null>(() => {
     const path = window.location.pathname;
     if (path.startsWith('/c/')) {
@@ -251,7 +340,9 @@ const App: React.FC = () => {
       const native = isNativeApp();
       if (data.cards) {
         const preparedCards = native ? applyLocalUserOverlays(data.cards) : data.cards;
-        setCards(preparedCards);
+        if (feedMode === 'for_you') {
+          setCards(preparedCards);
+        }
         if (native) {
           setSavedVaultCards(preparedCards.filter(c => c.is_bookmarked));
         }
@@ -260,7 +351,7 @@ const App: React.FC = () => {
       if (data.collection_counts) setCollectionCounts(data.collection_counts);
       if (data.total_corpus_count) {
         setTotalFeedCount(data.total_corpus_count);
-        setHasMoreFeed((data.cards?.length || 0) < data.total_corpus_count);
+        setHasMoreFeed(true);
       }
       if (!native && data.bookmarked_cards) setSavedVaultCards(data.bookmarked_cards);
       if (!native && data.state) setUserState(prev => ({ ...prev, ...data.state }));
@@ -318,48 +409,15 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isFirstFilterEffectRef.current) {
       isFirstFilterEffectRef.current = false;
-      // The inlined first page is "For You"; only skip the fetch if that's the restored mode
-      if (feedMode === 'for_you') return;
+      // Only skip if we already have server-inlined "For You" cards
+      if (feedMode === 'for_you' && initialBoot.fromServer) return;
     }
-    if (!hasBackendApiRef.current) return;
     const params = new URLSearchParams({
       mode: feedMode,
       collection: selectedCollection,
       session_id: sessionIdRef.current,
       offset: '0',
-      limit: '24'
-    });
-    if (feedMode === 'sequential' && selectedCollection === 'quran' && selectedSurah) {
-      params.set('surah', String(selectedSurah));
-    }
-    if (feedMode === 'moods' && selectedMood !== 'all') {
-      params.set('mood', selectedMood);
-    }
-
-    fetch(apiUrl(`/api/feed?${params.toString()}`))
-      .then(r => (r.ok ? r.json() : null))
-      .then(page => {
-        if (page && Array.isArray(page.cards)) {
-          const prepared = isNativeApp() ? applyLocalUserOverlays(page.cards) : page.cards;
-          setCards(prepared);
-          setTotalFeedCount(page.total || prepared.length);
-          setHasMoreFeed(Boolean(page.has_more));
-          setActiveCardIndex(0);
-          if (feedContainerRef.current) feedContainerRef.current.scrollTop = 0;
-        }
-      })
-      .catch(() => { });
-  }, [feedMode, selectedCollection, selectedSurah, selectedMood]);
-
-  const fetchNextFeedPage = () => {
-    if (!hasBackendApiRef.current || !hasMoreFeed || isFetchingMoreRef.current) return;
-    isFetchingMoreRef.current = true;
-    const params = new URLSearchParams({
-      mode: feedMode,
-      collection: selectedCollection,
-      session_id: sessionIdRef.current,
-      offset: String(cards.length),
-      limit: '35'
+      limit: '30'
     });
     if (feedMode === 'sequential' && selectedCollection === 'quran' && selectedSurah) {
       params.set('surah', String(selectedSurah));
@@ -372,14 +430,59 @@ const App: React.FC = () => {
       .then(r => (r.ok ? r.json() : null))
       .then(page => {
         if (page && Array.isArray(page.cards) && page.cards.length > 0) {
+          hasBackendApiRef.current = true;
+          const prepared = isNativeApp() ? applyLocalUserOverlays(page.cards) : page.cards;
+          setCards(prepared);
+          setTotalFeedCount(page.total || prepared.length);
+          setHasMoreFeed(true);
+          setActiveCardIndex(0);
+          if (feedContainerRef.current) feedContainerRef.current.scrollTop = 0;
+        }
+      })
+      .catch(() => { });
+  }, [feedMode, selectedCollection, selectedSurah, selectedMood]);
+
+  const fetchNextFeedPage = () => {
+    if (isFetchingMoreRef.current) return;
+    isFetchingMoreRef.current = true;
+    const params = new URLSearchParams({
+      mode: feedMode,
+      collection: selectedCollection,
+      session_id: sessionIdRef.current,
+      offset: String(cards.length),
+      limit: '40'
+    });
+    if (feedMode === 'sequential' && selectedCollection === 'quran' && selectedSurah) {
+      params.set('surah', String(selectedSurah));
+    }
+    if (feedMode === 'moods' && selectedMood !== 'all') {
+      params.set('mood', selectedMood);
+    }
+
+    fetch(apiUrl(`/api/feed?${params.toString()}`))
+      .then(r => (r.ok ? r.json() : null))
+      .then(async (page) => {
+        if (page && Array.isArray(page.cards) && page.cards.length > 0) {
+          hasBackendApiRef.current = true;
           const prepared = isNativeApp() ? applyLocalUserOverlays(page.cards) : page.cards;
           setCards(prev => {
             const seen = new Set(prev.map(c => c.id));
             const fresh = prepared.filter((c: FeedCard) => !seen.has(c.id));
-            return [...prev, ...fresh];
+            return fresh.length > 0 ? [...prev, ...fresh] : [...prev, ...prepared];
           });
           setTotalFeedCount(page.total || cards.length);
-          setHasMoreFeed(Boolean(page.has_more));
+          setHasMoreFeed(true);
+        } else if (feedMode !== 'sequential') {
+          // Endless scrolling: rotate session seed and fetch fresh stream from the 14,678-card corpus
+          sessionIdRef.current = 'sess_' + Math.random().toString(36).slice(2, 9) + '_' + Date.now().toString(36);
+          params.set('session_id', sessionIdRef.current);
+          params.set('offset', '0');
+          const retry = await fetch(apiUrl(`/api/feed?${params.toString()}`)).then(r => (r.ok ? r.json() : null));
+          if (retry && Array.isArray(retry.cards) && retry.cards.length > 0) {
+            const prepared = isNativeApp() ? applyLocalUserOverlays(retry.cards) : retry.cards;
+            setCards(prev => [...prev, ...prepared]);
+            setHasMoreFeed(true);
+          }
         } else {
           setHasMoreFeed(false);
         }
@@ -443,7 +546,7 @@ const App: React.FC = () => {
     if (feedMode === 'sequential') {
       return cards
         .filter(c => c.collection_slug === selectedCollection && (!selectedSurah || c.surah_or_book_num === selectedSurah))
-        .sort((a, b) => a.sequence_order - b.sequence_order);
+        .sort((a, b) => (a.surah_or_book_num || 0) - (b.surah_or_book_num || 0) || (a.ayah_start || 0) - (b.ayah_start || 0) || a.sequence_order - b.sequence_order);
     }
     if (feedMode === 'moods') {
       if (selectedMood === 'all') return cards;
@@ -537,8 +640,8 @@ const App: React.FC = () => {
         setPlayingCardId(null);
         setActiveWordIdx(-1);
       }
-      // Automatically prefetch next page when within 6 cards of the end
-      if (newIndex >= displayedCards.length - 6 && hasMoreFeed) {
+      // Automatically prefetch next page when within 10 cards of the end
+      if (newIndex >= displayedCards.length - 10 && hasMoreFeed) {
         fetchNextFeedPage();
       }
       // Track seen cards in backend for smart exploration (web mode)
@@ -578,7 +681,8 @@ const App: React.FC = () => {
           setPlayingCardId(null);
           setActiveWordIdx(-1);
         },
-        userState.reciter
+        userState.reciter,
+        userState.arabic_script
       );
     }
   };
@@ -1234,6 +1338,7 @@ const App: React.FC = () => {
                         : card.arabic_text_uthmani;
                       const tokens = fullArabic.split(/\s+/);
                       const cleanToken = (s?: string) => (s || '').replace(/[،؟:؛.!۝ۚۗۖۙۘ]/g, '').trim();
+                      let spokenTokenCounter = 0;
 
                       return tokens.map((tok, tIdx) => {
                         if (tok.includes('۝')) {
@@ -1244,14 +1349,16 @@ const App: React.FC = () => {
                           );
                         }
 
+                        const currentSpokenIdx = spokenTokenCounter++;
                         const cleaned = cleanToken(tok);
                         const matchedIdx = (card.words || []).findIndex((w) => {
                           const cw = cleanToken(w.arabic_word);
                           return cw === cleaned || (cleaned.length >= 3 && cw.includes(cleaned));
                         });
                         const matchedWord = matchedIdx >= 0 ? card.words[matchedIdx] : null;
-                        const isWordActive = isCardPlaying && matchedIdx >= 0 && activeWordIdx === matchedIdx;
+                        const isWordActive = isCardPlaying && activeWordIdx === currentSpokenIdx;
                         const isPopoverOpen = matchedWord && popoverWord?.word.word_position === matchedWord.word_position && popoverWord?.card.id === card.id;
+                        const sacredHighlight = matchWordHighlight(tok, 'ar', activeHighlightGroups, customHighlightWords);
 
                         return (
                           <React.Fragment key={tIdx}>
@@ -1271,7 +1378,15 @@ const App: React.FC = () => {
                               }}
                               className={`arabic-word-token ${isWordActive || isPopoverOpen ? 'active-word-glow' : ''}`}
                               style={{
-                                borderBottom: matchedWord ? '1px dotted rgba(168, 125, 32, 0.35)' : undefined
+                                background: !isWordActive && sacredHighlight ? sacredHighlight.bg : undefined,
+                                color: !isWordActive && sacredHighlight ? sacredHighlight.color : undefined,
+                                borderRadius: sacredHighlight ? 6 : undefined,
+                                padding: sacredHighlight ? '0 4px' : undefined,
+                                borderBottom: sacredHighlight
+                                  ? `1.5px solid ${sacredHighlight.border}`
+                                  : matchedWord
+                                    ? '1px dotted rgba(168, 125, 32, 0.35)'
+                                    : undefined
                               }}
                               title={
                                 matchedWord
@@ -1299,7 +1414,7 @@ const App: React.FC = () => {
                       gap: 6
                     }}
                   >
-                    <span>✦ Tap any highlighted Arabic word for Trilateral Root &amp; Audio</span>
+                    <span>✦ Tap any Arabic word for Root &amp; Audio • Highlighted: {activeHighlightGroups.length + customHighlightWords.length > 0 ? 'Active' : 'Off'}</span>
                   </div>
 
                   {/* Optional Learner Transliteration */}
@@ -1316,7 +1431,7 @@ const App: React.FC = () => {
                     </p>
                   )}
 
-                  {/* Editorial Serif English Translation */}
+                  {/* Editorial Serif English Translation (with Sacred & Custom Word Highlighting) */}
                   <p
                     className="editorial-translation reel-anim-translation"
                     style={{
@@ -1325,211 +1440,270 @@ const App: React.FC = () => {
                       maxWidth: 430
                     }}
                   >
-                    “{translationText}”
+                    “{translationText.split(/(\s+)/).map((chunk, cIdx) => {
+                      if (/^\s+$/.test(chunk)) return chunk;
+                      const hl = matchWordHighlight(chunk, 'en', activeHighlightGroups, customHighlightWords);
+                      if (!hl) return <React.Fragment key={cIdx}>{chunk}</React.Fragment>;
+                      return (
+                        <span
+                          key={cIdx}
+                          style={{
+                            background: hl.bg,
+                            color: hl.color,
+                            borderBottom: `1.5px solid ${hl.border}`,
+                            borderRadius: 5,
+                            padding: '0 4px',
+                            fontWeight: 600
+                          }}
+                          title={hl.label}
+                        >
+                          {chunk}
+                        </span>
+                      );
+                    })}”
                   </p>
                       </>
                     );
                   })()}
                 </div>
 
-                {/* BOTTOM THUMB-ZONE ACTION DOCK (No-Wrap Mobile-First 2-Row Layout) */}
+                {/* MODERN INSTAGRAM / SCROLL-THE-BIBLE ACTION BAR */}
                 <div
                   className="reel-anim-dock"
                   style={{
                     width: '100%',
                     flexShrink: 0,
                     display: 'flex',
-                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                     gap: 8,
                     zIndex: 15,
                     marginTop: 'auto',
-                    paddingTop: 8
+                    paddingTop: 10,
+                    borderTop: '1px solid rgba(255, 255, 255, 0.07)'
                   }}
                 >
-                  {/* Row 1: Single-Line No-Wrap Action Bar */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 5,
-                    flexWrap: 'nowrap',
-                    width: '100%'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'nowrap', minWidth: 0 }}>
-                      {/* 1. Audio Play / Reciter Switcher */}
-                      <div style={{ display: 'inline-flex', alignItems: 'center', position: 'relative', flexShrink: 0 }}>
+                  {/* Left Cluster: Sleek Frameless Instagram-Style Icon Actions */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {/* 1. Like (Heart) */}
+                    {(() => {
+                      const isLiked = Boolean(likedCards[card.id]);
+                      return (
                         <button
-                          onClick={() => handleToggleRecitation(card)}
-                          className={`glass-pill ${isCardPlaying ? 'audio-playing-ring' : ''}`}
-                          title="Play Synchronized Word-by-Word Recitation"
+                          onClick={() => handleToggleLikeCard(card.id)}
+                          aria-label="Like passage"
                           style={{
-                            padding: '7px 10px',
-                            borderTopLeftRadius: 999,
-                            borderBottomLeftRadius: 999,
-                            color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
-                            display: 'inline-flex',
+                            background: 'transparent',
+                            border: 'none',
+                            padding: '4px 2px',
+                            display: 'flex',
+                            flexDirection: 'column',
                             alignItems: 'center',
-                            gap: 5,
-                            fontSize: 11.5,
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {isCardPlaying ? <Pause size={13} /> : <Volume2 size={13} />}
-                          <span>{isCardPlaying ? 'Pause' : 'Recite'}</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            soundEngine.triggerHaptic('selectionTick');
-                            setShowReciterMenuForCard(showReciterMenuForCard === card.id ? null : card.id);
-                          }}
-                          className="glass-pill"
-                          title="Change Reciter"
-                          style={{
-                            padding: '7px 7px',
-                            borderTopRightRadius: 999,
-                            borderBottomRightRadius: 999,
-                            borderLeft: 'none',
-                            color: 'var(--text-secondary)',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
+                            gap: 3,
+                            color: isLiked ? '#FF3B5C' : 'var(--text-primary)',
                             cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center'
+                            transform: isLiked ? 'scale(1.06)' : 'scale(1)',
+                            transition: 'transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.15s ease'
                           }}
                         >
-                          <ChevronDown size={12} />
+                          <Heart size={22} strokeWidth={2} fill={isLiked ? '#FF3B5C' : 'none'} />
+                          <span style={{ fontSize: 10, fontWeight: 600, color: isLiked ? '#FF3B5C' : 'var(--text-secondary)' }}>
+                            {isLiked ? 'Liked' : 'Like'}
+                          </span>
                         </button>
+                      );
+                    })()}
 
-                        {/* Reciter Quick-Switcher Popover */}
-                        {showReciterMenuForCard === card.id && (
-                          <div
-                            className="glass-pill"
-                            style={{
-                              position: 'absolute',
-                              left: 0,
-                              bottom: 38,
-                              width: 215,
-                              padding: 8,
-                              borderRadius: 16,
-                              boxShadow: '0 14px 36px rgba(0,0,0,0.45)',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: 4,
-                              zIndex: 30
-                            }}
-                          >
-                            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-gold)', padding: '2px 6px' }}>
-                              Select Qari / Reciter
-                            </div>
-                            {RECITERS.map(r => (
-                              <button
-                                key={r.id}
-                                onClick={() => {
-                                  soundEngine.triggerHaptic('selectionTick');
-                                  updateServerState({ reciter: r.id });
-                                  setShowReciterMenuForCard(null);
-                                }}
-                                style={{
-                                  padding: '6px 8px',
-                                  borderRadius: 10,
-                                  border: 'none',
-                                  textAlign: 'left',
-                                  cursor: 'pointer',
-                                  background: userState.reciter === r.id ? 'rgba(212, 175, 55, 0.2)' : 'transparent',
-                                  color: userState.reciter === r.id ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
-                                  fontSize: 11.5,
-                                  fontWeight: userState.reciter === r.id ? 700 : 500
-                                }}
-                              >
-                                <div>{r.id}</div>
-                                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{r.origin}</div>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 2. Bookmark / Custom Collection Pill */}
-                      <div style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
-                        <button
-                          onClick={() => handleToggleBookmark(card, 'Favorites', 'toggle')}
-                          className="glass-pill"
-                          title="Tap to Bookmark"
-                          style={{
-                            padding: '7px 10px',
-                            borderTopLeftRadius: 999,
-                            borderBottomLeftRadius: 999,
-                            color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
-                            borderColor: card.is_bookmarked ? 'var(--border-gold)' : undefined,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            fontSize: 11.5,
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Bookmark size={13} fill={card.is_bookmarked ? 'currentColor' : 'none'} />
-                          <span>{card.is_bookmarked ? 'Saved' : 'Save'}</span>
-                        </button>
+                    {/* 2. Save / Bookmark */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <button
+                        onClick={() => handleToggleBookmark(card, 'Favorites', 'toggle')}
+                        aria-label="Bookmark passage"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          padding: '4px 2px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 3,
+                          color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
+                          cursor: 'pointer',
+                          transition: 'transform 0.18s ease, color 0.15s ease'
+                        }}
+                      >
+                        <Bookmark size={22} strokeWidth={2} fill={card.is_bookmarked ? 'currentColor' : 'none'} />
+                        <span style={{ fontSize: 10, fontWeight: 600, color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
+                          {card.is_bookmarked ? 'Saved' : 'Save'}
+                        </span>
+                      </button>
+                      {card.is_bookmarked && (
                         <button
                           onClick={() => {
                             soundEngine.triggerHaptic('selectionTick');
                             setBookmarkFolderModalCard(card);
                           }}
-                          className="glass-pill"
-                          title="Choose Collection Folder"
+                          title="Choose Folder"
                           style={{
-                            padding: '7px 7px',
-                            borderTopRightRadius: 999,
-                            borderBottomRightRadius: 999,
-                            borderLeft: 'none',
-                            color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-secondary)',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            whiteSpace: 'nowrap',
+                            background: 'rgba(212, 175, 55, 0.16)',
+                            border: '1px solid var(--border-gold)',
+                            borderRadius: 99,
+                            width: 18,
+                            height: 18,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--accent-gold-bright)',
                             cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center'
+                            marginTop: -10
                           }}
                         >
-                          <ChevronDown size={12} />
+                          <FolderPlus size={10} />
                         </button>
-                      </div>
+                      )}
+                    </div>
 
-                      {/* 3. Social Share Studio Pill */}
+                    {/* 3. Recite Audio + Qari Picker */}
+                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                       <button
-                        onClick={() => {
-                          soundEngine.triggerHaptic('lightImpact');
-                          setShareStudioModal({ card, initialSlide: 0 });
-                        }}
-                        className="glass-pill"
-                        title="Open Studio-Grade Social Share & Video Reel Exporter"
+                        onClick={() => handleToggleRecitation(card)}
+                        aria-label="Recite passage"
                         style={{
-                          padding: '7px 11px',
-                          borderRadius: 999,
-                          color: 'var(--text-primary)',
-                          display: 'inline-flex',
+                          background: 'transparent',
+                          border: 'none',
+                          padding: '4px 2px',
+                          display: 'flex',
+                          flexDirection: 'column',
                           alignItems: 'center',
-                          gap: 4,
-                          fontSize: 11.5,
-                          fontWeight: 600,
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0,
+                          gap: 3,
+                          color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
                           cursor: 'pointer'
                         }}
                       >
-                        <Share2 size={13} />
-                        <span>Share</span>
+                        {isCardPlaying ? <Pause size={22} strokeWidth={2.2} /> : <Volume2 size={22} strokeWidth={2} />}
+                        <span style={{ fontSize: 10, fontWeight: 600, color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
+                          {isCardPlaying ? 'Playing' : 'Recite'}
+                        </span>
                       </button>
+                      <button
+                        onClick={() => {
+                          soundEngine.triggerHaptic('selectionTick');
+                          setShowReciterMenuForCard(showReciterMenuForCard === card.id ? null : card.id);
+                        }}
+                        title="Select Qari / Reciter"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          padding: '2px',
+                          cursor: 'pointer',
+                          marginTop: -10
+                        }}
+                      >
+                        <ChevronDown size={12} />
+                      </button>
+
+                      {showReciterMenuForCard === card.id && (
+                        <div
+                          className="glass-pill"
+                          style={{
+                            position: 'absolute',
+                            left: -20,
+                            bottom: 48,
+                            width: 215,
+                            padding: 8,
+                            borderRadius: 16,
+                            boxShadow: '0 14px 36px rgba(0,0,0,0.55)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4,
+                            zIndex: 30
+                          }}
+                        >
+                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-gold)', padding: '2px 6px' }}>
+                            Select Qari / Reciter
+                          </div>
+                          {RECITERS.map(r => (
+                            <button
+                              key={r.id}
+                              onClick={() => {
+                                soundEngine.triggerHaptic('selectionTick');
+                                updateServerState({ reciter: r.id });
+                                setShowReciterMenuForCard(null);
+                              }}
+                              style={{
+                                padding: '6px 8px',
+                                borderRadius: 10,
+                                border: 'none',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                background: userState.reciter === r.id ? 'rgba(212, 175, 55, 0.2)' : 'transparent',
+                                color: userState.reciter === r.id ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
+                                fontSize: 11.5,
+                                fontWeight: userState.reciter === r.id ? 700 : 500
+                              }}
+                            >
+                              <div>{r.id}</div>
+                              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{r.origin}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
+
+                    {/* 4. Sacred Word Highlighter */}
+                    <button
+                      onClick={() => {
+                        soundEngine.triggerHaptic('selectionTick');
+                        setShowHighlighterModal(true);
+                      }}
+                      aria-label="Highlight sacred words"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '4px 2px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 3,
+                        color: (activeHighlightGroups.length + customHighlightWords.length) > 0 ? 'var(--accent-emerald)' : 'var(--text-primary)',
+                        cursor: 'pointer',
+                        position: 'relative'
+                      }}
+                    >
+                      <Highlighter size={21} strokeWidth={2} />
+                      <span style={{ fontSize: 10, fontWeight: 600, color: (activeHighlightGroups.length + customHighlightWords.length) > 0 ? 'var(--accent-emerald)' : 'var(--text-secondary)' }}>
+                        Highlight
+                      </span>
+                    </button>
+
+                    {/* 5. Share (Instagram Paper-Plane Icon) */}
+                    <button
+                      onClick={() => {
+                        soundEngine.triggerHaptic('lightImpact');
+                        setShareStudioModal({ card, initialSlide: 0 });
+                      }}
+                      aria-label="Share passage"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '4px 2px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 3,
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Send size={21} strokeWidth={2} />
+                      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        Share
+                      </span>
+                    </button>
                   </div>
 
-                  {/* Row 2: Primary Full-Width "Deep Study & Tafsir" Pill */}
+                  {/* Right Cluster: Scroll-the-Bible Style "Deep Study" Liquid Glass Pill */}
                   <button
                     onClick={() => {
                       soundEngine.triggerHaptic('lightImpact');
@@ -1537,35 +1711,23 @@ const App: React.FC = () => {
                     }}
                     className="glass-pill deep-study-cta"
                     style={{
-                      width: '100%',
-                      padding: '11px 16px',
+                      padding: '9px 14px',
                       borderRadius: 999,
                       border: '1px solid var(--border-gold)',
+                      background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(16, 185, 129, 0.12))',
                       color: 'var(--text-primary)',
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: 700,
                       whiteSpace: 'nowrap',
                       cursor: 'pointer',
-                      display: 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      justifyContent: 'space-between'
+                      gap: 6,
+                      flexShrink: 0
                     }}
                   >
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap' }}>
-                      <Sparkles size={15} style={{ color: 'var(--accent-gold-bright)' }} />
-                      <span>Deep Study &amp; Tafsir</span>
-                    </span>
-                    <span style={{
-                      fontSize: 11,
-                      padding: '2px 8px',
-                      borderRadius: 99,
-                      background: 'rgba(212, 175, 55, 0.16)',
-                      color: 'var(--accent-gold-bright)',
-                      fontWeight: 600,
-                      whiteSpace: 'nowrap'
-                    }}>
-                      5 Layers ↑
-                    </span>
+                    <BookOpen size={14} style={{ color: 'var(--accent-gold-bright)' }} />
+                    <span>Deep Study</span>
                   </button>
                 </div>
               </div>
@@ -2339,6 +2501,70 @@ const App: React.FC = () => {
                   </div>
                 )}
 
+                {/* Sacred Word Highlighter & Tutorial */}
+                <div style={{
+                  marginTop: 4,
+                  padding: '12px 14px',
+                  borderRadius: 14,
+                  background: 'var(--surface-card)',
+                  border: '1px solid var(--border-specular)'
+                }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+                    5. Sacred Word Highlighter &amp; Tutorial
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 10 }}>
+                    Automatically illuminate sacred names (Allah, Prophet ﷺ, Mercy, Patience, Akhirah) or custom words across every card, or replay the app welcome guide.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => {
+                        setShowSettings(false);
+                        setShowHighlighterModal(true);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '9px 10px',
+                        borderRadius: 10,
+                        background: 'rgba(212, 175, 55, 0.14)',
+                        border: '1px solid rgba(212, 175, 55, 0.4)',
+                        color: 'var(--accent-gold-bright)',
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <Highlighter size={13} /> Word Highlighter
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowSettings(false);
+                        setShowOnboardingModal(true);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '9px 10px',
+                        borderRadius: 10,
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid var(--border-specular)',
+                        color: 'var(--text-primary)',
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <Sparkles size={13} /> Replay Tutorial
+                    </button>
+                  </div>
+                </div>
+
                 {/* Sources, Authenticity & Privacy */}
                 <div style={{
                   marginTop: 4,
@@ -2348,7 +2574,7 @@ const App: React.FC = () => {
                   border: '1px solid var(--border-specular)'
                 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
-                    5. Sources, Authenticity &amp; Privacy
+                    6. Sources, Authenticity &amp; Privacy
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                     Quranic script (KFGQPC Uthmani &amp; IndoPak / Tanzil), translations (The Clear Quran, Sahih International), 40 Hadith Nawawi, and Hisn al-Muslim. Preferences &amp; bookmarks stay private on your device.
@@ -2509,6 +2735,23 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {showHighlighterModal && (
+          <WordHighlighterModal
+            activeGroupIds={activeHighlightGroups}
+            customWords={customHighlightWords}
+            onToggleGroup={handleToggleHighlightGroup}
+            onAddCustomWord={handleAddCustomHighlightWord}
+            onRemoveCustomWord={handleRemoveCustomHighlightWord}
+            onClose={() => setShowHighlighterModal(false)}
+          />
+        )}
+
+        {showOnboardingModal && (
+          <OnboardingTutorialModal
+            onComplete={handleCompleteOnboarding}
+          />
         )}
 
         {showInstallModal && (

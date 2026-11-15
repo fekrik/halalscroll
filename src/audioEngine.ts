@@ -106,16 +106,78 @@ class SoundAndHapticsEngine {
     } catch {}
   }
 
+  private getSpokenAyahTokenGroups(card: FeedCard, arabicScript: 'uthmani' | 'indopak' = 'uthmani'): {
+    allTokens: { text: string; weight: number; globalIdx: number }[];
+    ayahGroups: { text: string; weight: number; globalIdx: number }[][];
+  } {
+    const fullArabic = arabicScript === 'indopak' && card.arabic_text_indopak
+      ? card.arabic_text_indopak
+      : card.arabic_text_uthmani;
+    const rawTokens = fullArabic.split(/\s+/).filter(Boolean);
+    const allTokens: { text: string; weight: number; globalIdx: number }[] = [];
+    const ayahGroups: { text: string; weight: number; globalIdx: number }[][] = [[]];
+
+    const calcPhoneticWeight = (tok: string): number => {
+      const baseLetters = tok.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED،؟:؛.!۝]/g, '');
+      const longVowels = (tok.match(/[اويآىٰٓ]/g) || []).length;
+      const maddah = (tok.match(/[ٓ]/g) || []).length;
+      return Math.max(1.2, 1.0 + baseLetters.length * 0.48 + longVowels * 0.85 + maddah * 1.4);
+    };
+
+    let globalIdx = 0;
+    for (const tok of rawTokens) {
+      if (tok.includes('۝')) {
+        const curGroup = ayahGroups[ayahGroups.length - 1];
+        if (curGroup.length > 0) {
+          // Qari elongates (madd/waqf) the final word before verse end
+          curGroup[curGroup.length - 1].weight += 1.65;
+          ayahGroups.push([]);
+        }
+        continue;
+      }
+      const item = { text: tok, weight: calcPhoneticWeight(tok), globalIdx };
+      allTokens.push(item);
+      ayahGroups[ayahGroups.length - 1].push(item);
+      globalIdx++;
+    }
+
+    const nonEmptyGroups = ayahGroups.filter(g => g.length > 0);
+    if (nonEmptyGroups.length > 0) {
+      const lastGroup = nonEmptyGroups[nonEmptyGroups.length - 1];
+      lastGroup[lastGroup.length - 1].weight += 1.65;
+    }
+    return {
+      allTokens,
+      ayahGroups: nonEmptyGroups.length > 0 ? nonEmptyGroups : [allTokens]
+    };
+  }
+
+  private pickTokenByWeight(
+    group: { text: string; weight: number; globalIdx: number }[],
+    ratio: number
+  ): number {
+    if (!group || group.length === 0) return -1;
+    const clamped = Math.max(0, Math.min(0.9999, ratio));
+    const totalWeight = group.reduce((acc, t) => acc + t.weight, 0);
+    let target = clamped * totalWeight;
+    for (let i = 0; i < group.length; i++) {
+      target -= group[i].weight;
+      if (target <= 0) return group[i].globalIdx;
+    }
+    return group[group.length - 1].globalIdx;
+  }
+
   // Full Card Synchronized Word-by-Word Recitation (Streams Real Studio Qari MP3 for Quran Passages)
   public startCardRecitation(
     card: FeedCard,
     onTick: (activeWordIndex: number, progressRatio: number) => void,
     onComplete: () => void,
-    reciterOverride?: string
+    reciterOverride?: string,
+    arabicScript: 'uthmani' | 'indopak' = 'uthmani'
   ) {
     this.stopRecitation();
     this.isPlaying = true;
-    const words = card.words && card.words.length > 0 ? card.words : [];
+    const { allTokens, ayahGroups } = this.getSpokenAyahTokenGroups(card, arabicScript);
 
     // If Quran card with surah/ayah numbers, stream real Qari MP3 queue from EveryAyah CDN
     if (typeof window !== 'undefined' && card.card_type === 'quran' && card.surah_or_book_num && card.ayah_start) {
@@ -140,17 +202,27 @@ class SoundAndHapticsEngine {
         const audio = new Audio(urls[currentTrack]);
         this.activeHtmlAudio = audio;
 
+        // Match this audio track to its corresponding ayah token group (or distribute across all tokens)
+        const activeGroup = ayahGroups.length === urls.length
+          ? ayahGroups[currentTrack]
+          : allTokens.slice(
+              Math.floor((currentTrack / urls.length) * allTokens.length),
+              Math.max(1, Math.floor(((currentTrack + 1) / urls.length) * allTokens.length))
+            );
+
         const updateProgress = () => {
           if (!this.isPlaying || this.activeHtmlAudio !== audio) return;
-          const dur = audio.duration && isFinite(audio.duration) ? audio.duration : 6;
-          const trackRatio = Math.min(1, audio.currentTime / dur);
-          const overallRatio = (currentTrack + trackRatio) / urls.length;
-          if (words.length > 0) {
-            const wIdx = Math.min(words.length - 1, Math.floor(overallRatio * words.length));
-            onTick(wIdx, overallRatio);
-          } else {
-            onTick(-1, overallRatio);
-          }
+          const dur = audio.duration && isFinite(audio.duration) && audio.duration > 0.5 ? audio.duration : 6;
+          // Trim leading (~0.24s) and trailing (~0.38s) breath/silence in EveryAyah studio recordings
+          const leadIn = Math.min(0.24, dur * 0.06);
+          const trailOut = Math.min(0.38, dur * 0.09);
+          const effectiveDur = Math.max(0.4, dur - leadIn - trailOut);
+          const effectiveTime = Math.max(0, audio.currentTime - leadIn);
+          const trackRatio = Math.min(1, effectiveTime / effectiveDur);
+          const overallRatio = (currentTrack + Math.min(1, audio.currentTime / dur)) / urls.length;
+
+          const activeGlobalIdx = this.pickTokenByWeight(activeGroup, trackRatio);
+          onTick(activeGlobalIdx, overallRatio);
           this.rafId = requestAnimationFrame(updateProgress);
         };
 
@@ -162,11 +234,10 @@ class SoundAndHapticsEngine {
           playNextTrack();
         };
         audio.onerror = () => {
-          // Fallback to synthesized recitation if offline or CDN blocked
-          this.startSynthesizedRecitation(card, onTick, onComplete);
+          this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript);
         };
         audio.play().catch(() => {
-          this.startSynthesizedRecitation(card, onTick, onComplete);
+          this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript);
         });
       };
 
@@ -174,62 +245,46 @@ class SoundAndHapticsEngine {
       return;
     }
 
-    this.startSynthesizedRecitation(card, onTick, onComplete);
+    this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript);
   }
 
   private startSynthesizedRecitation(
     card: FeedCard,
     onTick: (activeWordIndex: number, progressRatio: number) => void,
-    onComplete: () => void
+    onComplete: () => void,
+    arabicScript: 'uthmani' | 'indopak' = 'uthmani'
   ) {
-    const words = card.words && card.words.length > 0 ? card.words : [];
-    const totalDurationMs = words.length > 0
-      ? Math.max(...words.map(w => w.end_ms), words.length * 900)
-      : 5500;
+    const { allTokens } = this.getSpokenAyahTokenGroups(card, arabicScript);
+    const totalWeight = allTokens.reduce((acc, t) => acc + t.weight, 0);
+    const totalDurationMs = Math.max(3200, Math.round(totalWeight * 360));
 
+    let boundaryDriven = false;
     try {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(card.arabic_text_uthmani.replace(/۝/g, ' '));
+        const spokenString = allTokens.map(t => t.text).join(' ');
+        const utter = new SpeechSynthesisUtterance(spokenString);
         utter.lang = 'ar-SA';
-        utter.rate = 0.78;
+        utter.rate = 0.82;
+        utter.onboundary = (ev) => {
+          if (ev.name === 'word' && typeof ev.charIndex === 'number') {
+            boundaryDriven = true;
+            const prefix = spokenString.slice(0, ev.charIndex);
+            const wordIdx = prefix.trim() ? prefix.trim().split(/\s+/).length : 0;
+            const clampedIdx = Math.min(allTokens.length - 1, Math.max(0, wordIdx));
+            onTick(clampedIdx, (clampedIdx + 1) / Math.max(1, allTokens.length));
+          }
+        };
+        utter.onend = () => {
+          if (this.isPlaying) {
+            this.isPlaying = false;
+            onTick(-1, 1);
+            onComplete();
+          }
+        };
         window.speechSynthesis.speak(utter);
       }
     } catch {}
-
-    const ctx = this.getContext();
-    if (ctx) {
-      const now = ctx.currentTime;
-      const maqamNotes = [220.0, 246.94, 261.63, 293.66, 329.63, 349.23, 293.66, 261.63];
-      words.forEach((w, idx) => {
-        const startSec = now + w.start_ms / 1000;
-        const durSec = Math.max(0.35, (w.end_ms - w.start_ms) / 1000);
-        const freq = maqamNotes[idx % maqamNotes.length];
-
-        const osc = ctx.createOscillator();
-        const sub = ctx.createOscillator();
-        const gain = ctx.createGain();
-
-        osc.type = 'sine';
-        sub.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, startSec);
-        sub.frequency.setValueAtTime(freq * 0.5, startSec);
-
-        gain.gain.setValueAtTime(0.0001, startSec);
-        gain.gain.linearRampToValueAtTime(0.045, startSec + 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.0008, startSec + durSec);
-
-        osc.connect(gain);
-        sub.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.start(startSec);
-        sub.start(startSec);
-        osc.stop(startSec + durSec + 0.02);
-        sub.stop(startSec + durSec + 0.02);
-        this.activeNodes.push(osc, sub, gain);
-      });
-    }
 
     this.startTime = performance.now();
     const loop = (nowMs: number) => {
@@ -242,21 +297,11 @@ class SoundAndHapticsEngine {
         return;
       }
 
-      let currentWordIdx = -1;
-      for (let i = 0; i < words.length; i++) {
-        if (elapsed >= words[i].start_ms && elapsed <= words[i].end_ms) {
-          currentWordIdx = i;
-          break;
-        }
+      if (!boundaryDriven) {
+        const ratio = elapsed / totalDurationMs;
+        const activeIdx = this.pickTokenByWeight(allTokens, ratio);
+        onTick(activeIdx, ratio);
       }
-      if (currentWordIdx === -1 && words.length > 0) {
-        currentWordIdx = Math.min(
-          words.length - 1,
-          Math.floor((elapsed / totalDurationMs) * words.length)
-        );
-      }
-
-      onTick(currentWordIdx, elapsed / totalDurationMs);
       this.rafId = requestAnimationFrame(loop);
     };
 

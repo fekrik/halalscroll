@@ -17,8 +17,8 @@ const DEFAULT_STATE: UserState = {
   show_transliteration: 'true',
   reciter: 'Mishary Rashid Alafasy',
   plus_member: 'false',
-  sequential_quran_card: 'card-quran-94-5',
-  sequential_book_card: 'card-hadith-nawawi-19',
+  sequential_quran_card: 'card-quran-1-1',
+  sequential_book_card: 'card-nawawi-1',
   font_scale: '1'
 };
 
