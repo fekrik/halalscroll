@@ -1530,8 +1530,8 @@ const App: React.FC = () => {
                     <span>✦ Tap any Arabic word for Root &amp; Audio</span>
                   </div>
 
-                  {/* Optional Learner Transliteration */}
-                  {userState.show_transliteration === 'true' && card.transliteration && (
+                  {/* Optional Learner Transliteration (Hidden on Quran cards where Recite provides synchronized audio) */}
+                  {userState.show_transliteration === 'true' && card.card_type !== 'quran' && card.transliteration && (
                     <p
                       className="transliteration-text reel-anim-translation"
                       style={{

@@ -179,28 +179,54 @@ class SoundAndHapticsEngine {
     this.isPlaying = true;
     const { allTokens, ayahGroups } = this.getSpokenAyahTokenGroups(card, arabicScript);
 
+    // Ensure any browser speechSynthesis (word TTS) is completely silenced so only Qari recitation plays
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    } catch {}
+
+    // Resolve Surah & Ayah range (from numeric fields or canonical_ref fallback like "quran:94:5-6")
+    let sNum = Number(card.surah_or_book_num) || 0;
+    let aStart = Number(card.ayah_start) || 0;
+    let aEnd = Number(card.ayah_end) || aStart;
+    if (card.card_type === 'quran' && (!sNum || !aStart) && card.canonical_ref) {
+      const m = card.canonical_ref.match(/^quran:(\d+):(\d+)(?:-(\d+))?/i);
+      if (m) {
+        sNum = Number(m[1]);
+        aStart = Number(m[2]);
+        aEnd = m[3] ? Number(m[3]) : aStart;
+      }
+    }
+
     // If Quran card with surah/ayah numbers, stream real Qari MP3 queue from EveryAyah CDN
-    if (typeof window !== 'undefined' && card.card_type === 'quran' && card.surah_or_book_num && card.ayah_start) {
+    // Reuse a single HTMLAudioElement unlocked by the user's tap gesture so iOS WKWebView plays all ayahs seamlessly
+    if (typeof window !== 'undefined' && card.card_type === 'quran' && sNum > 0 && aStart > 0) {
       const folder = getEveryAyahReciterFolder(reciterOverride || card.reciter_name);
-      const sNum = card.surah_or_book_num;
-      const aStart = card.ayah_start;
-      const aEnd = card.ayah_end && card.ayah_end >= aStart ? card.ayah_end : aStart;
+      const finalEnd = aEnd >= aStart ? aEnd : aStart;
 
       const urls: string[] = [];
-      for (let a = aStart; a <= aEnd; a++) {
+      for (let a = aStart; a <= finalEnd; a++) {
         urls.push(`https://everyayah.com/data/${folder}/${pad3(sNum)}${pad3(a)}.mp3`);
       }
 
+      const sharedAudio = new Audio();
+      sharedAudio.preload = 'auto';
+      this.activeHtmlAudio = sharedAudio;
       let currentTrack = 0;
+
       const playNextTrack = () => {
-        if (!this.isPlaying || currentTrack >= urls.length) {
+        if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio || currentTrack >= urls.length) {
           this.isPlaying = false;
           onTick(-1, 1);
           onComplete();
           return;
         }
-        const audio = new Audio(urls[currentTrack]);
-        this.activeHtmlAudio = audio;
+
+        if (this.rafId !== null) {
+          cancelAnimationFrame(this.rafId);
+          this.rafId = null;
+        }
 
         // Match this audio track to its corresponding ayah token group (or distribute across all tokens)
         const activeGroup = ayahGroups.length === urls.length
@@ -211,32 +237,44 @@ class SoundAndHapticsEngine {
             );
 
         const updateProgress = () => {
-          if (!this.isPlaying || this.activeHtmlAudio !== audio) return;
-          const dur = audio.duration && isFinite(audio.duration) && audio.duration > 0.5 ? audio.duration : 6;
+          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
+          const dur = sharedAudio.duration && isFinite(sharedAudio.duration) && sharedAudio.duration > 0.5 ? sharedAudio.duration : 6;
           // Trim leading (~0.24s) and trailing (~0.38s) breath/silence in EveryAyah studio recordings
           const leadIn = Math.min(0.24, dur * 0.06);
           const trailOut = Math.min(0.38, dur * 0.09);
           const effectiveDur = Math.max(0.4, dur - leadIn - trailOut);
-          const effectiveTime = Math.max(0, audio.currentTime - leadIn);
+          const effectiveTime = Math.max(0, sharedAudio.currentTime - leadIn);
           const trackRatio = Math.min(1, effectiveTime / effectiveDur);
-          const overallRatio = (currentTrack + Math.min(1, audio.currentTime / dur)) / urls.length;
+          const overallRatio = (currentTrack + Math.min(1, sharedAudio.currentTime / dur)) / urls.length;
 
           const activeGlobalIdx = this.pickTokenByWeight(activeGroup, trackRatio);
           onTick(activeGlobalIdx, overallRatio);
           this.rafId = requestAnimationFrame(updateProgress);
         };
 
-        audio.onplay = () => {
+        sharedAudio.onplay = () => {
+          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
           this.rafId = requestAnimationFrame(updateProgress);
         };
-        audio.onended = () => {
+        sharedAudio.onended = () => {
+          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
           currentTrack++;
           playNextTrack();
         };
-        audio.onerror = () => {
-          this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript);
+        sharedAudio.onerror = () => {
+          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
+          // Advance to next track or silent visual pacing without triggering synthetic TTS voice
+          currentTrack++;
+          if (currentTrack < urls.length) {
+            playNextTrack();
+          } else {
+            this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript);
+          }
         };
-        audio.play().catch(() => {
+
+        sharedAudio.src = urls[currentTrack];
+        sharedAudio.play().catch(() => {
+          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
           this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript);
         });
       };
@@ -245,6 +283,7 @@ class SoundAndHapticsEngine {
       return;
     }
 
+    // For non-Quran cards (Hadith / Dua), pace word highlights smoothly without synthetic TTS voice
     this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript);
   }
 
@@ -258,34 +297,6 @@ class SoundAndHapticsEngine {
     const totalWeight = allTokens.reduce((acc, t) => acc + t.weight, 0);
     const totalDurationMs = Math.max(3200, Math.round(totalWeight * 360));
 
-    let boundaryDriven = false;
-    try {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const spokenString = allTokens.map(t => t.text).join(' ');
-        const utter = new SpeechSynthesisUtterance(spokenString);
-        utter.lang = 'ar-SA';
-        utter.rate = 0.82;
-        utter.onboundary = (ev) => {
-          if (ev.name === 'word' && typeof ev.charIndex === 'number') {
-            boundaryDriven = true;
-            const prefix = spokenString.slice(0, ev.charIndex);
-            const wordIdx = prefix.trim() ? prefix.trim().split(/\s+/).length : 0;
-            const clampedIdx = Math.min(allTokens.length - 1, Math.max(0, wordIdx));
-            onTick(clampedIdx, (clampedIdx + 1) / Math.max(1, allTokens.length));
-          }
-        };
-        utter.onend = () => {
-          if (this.isPlaying) {
-            this.isPlaying = false;
-            onTick(-1, 1);
-            onComplete();
-          }
-        };
-        window.speechSynthesis.speak(utter);
-      }
-    } catch {}
-
     this.startTime = performance.now();
     const loop = (nowMs: number) => {
       if (!this.isPlaying) return;
@@ -297,11 +308,9 @@ class SoundAndHapticsEngine {
         return;
       }
 
-      if (!boundaryDriven) {
-        const ratio = elapsed / totalDurationMs;
-        const activeIdx = this.pickTokenByWeight(allTokens, ratio);
-        onTick(activeIdx, ratio);
-      }
+      const ratio = elapsed / totalDurationMs;
+      const activeIdx = this.pickTokenByWeight(allTokens, ratio);
+      onTick(activeIdx, ratio);
       this.rafId = requestAnimationFrame(loop);
     };
 
@@ -315,11 +324,16 @@ class SoundAndHapticsEngine {
       this.rafId = null;
     }
     if (this.activeHtmlAudio) {
-      try {
-        this.activeHtmlAudio.pause();
-        this.activeHtmlAudio.src = '';
-      } catch {}
+      const audioToStop = this.activeHtmlAudio;
       this.activeHtmlAudio = null;
+      try {
+        audioToStop.onplay = null;
+        audioToStop.onended = null;
+        audioToStop.onerror = null;
+        audioToStop.pause();
+        audioToStop.removeAttribute('src');
+        audioToStop.load();
+      } catch {}
     }
     try {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
