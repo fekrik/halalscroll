@@ -92,12 +92,13 @@ export const SACRED_HIGHLIGHT_GROUPS: HighlightGroup[] = [
 export function getSacredContentIdentity(card: {
   card_type: string;
   arabic_text_uthmani?: string;
+  translation_en_clear?: string;
   translation_clear_quran?: string;
 }) {
   const isQuranicDua =
     card.card_type === 'quran' &&
     (/^(رَبَّنَا|رَبِّ|قَالَ رَبِّ|قَالَا رَبَّنَا)/.test((card.arabic_text_uthmani || '').trim()) ||
-      /^(Our Lord|My Lord)/i.test((card.translation_clear_quran || '').trim()));
+      /^(Our Lord|My Lord)/i.test((card.translation_en_clear || card.translation_clear_quran || '').trim()));
 
   if (card.card_type === 'quran') {
     return {
@@ -552,8 +553,10 @@ export const PersonalNoteModal: React.FC<{
     id: string;
     source_title: string;
     card_type: string;
-    arabic_text_uthmani: string;
-    translation_clear_quran: string;
+    arabic_text_uthmani?: string;
+    translation_en_clear?: string;
+    translation_en_sahih?: string;
+    translation_clear_quran?: string;
   };
   existingNote: string;
   allNotes: Record<string, { text: string; source_title: string; card_type: string; updatedAt: string }>;
@@ -573,6 +576,13 @@ export const PersonalNoteModal: React.FC<{
   const [noteText, setNoteText] = useState(existingNote || '');
   const [activeTab, setActiveTab] = useState<'current' | 'all'>('current');
   const [savedToast, setSavedToast] = useState(false);
+
+  const passagePreview =
+    card.translation_en_clear ||
+    card.translation_en_sahih ||
+    card.translation_clear_quran ||
+    card.arabic_text_uthmani ||
+    '';
 
   const savedEntries = Object.entries(allNotes)
     .filter(([, val]) => val && val.text && val.text.trim().length > 0)
@@ -675,7 +685,7 @@ export const PersonalNoteModal: React.FC<{
                 color: 'var(--text-secondary)',
                 lineHeight: 1.45
               }}>
-                “{card.translation_clear_quran.slice(0, 160)}{card.translation_clear_quran.length > 160 ? '…' : ''}”
+                “{passagePreview.slice(0, 160)}{passagePreview.length > 160 ? '…' : ''}”
               </div>
 
               <div style={{ fontSize: 11.5, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>

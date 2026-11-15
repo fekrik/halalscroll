@@ -3019,7 +3019,7 @@ const App: React.FC = () => {
 
         {showWidgetsModal && (
           <WidgetsPreviewModal
-            streakDays={Number(userState.streak_days || '1') || 1}
+            streakDays={Number(userState.streak_count || '1') || 1}
             onClose={() => setShowWidgetsModal(false)}
           />
         )}
