@@ -18,6 +18,8 @@ class SoundAndHapticsEngine {
   private startTime = 0;
   private activeNodes: AudioNode[] = [];
   private activeHtmlAudio: HTMLAudioElement | null = null;
+  private activeWordAudio: HTMLAudioElement | null = null;
+  private playbackSessionId = 0;
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -80,20 +82,40 @@ class SoundAndHapticsEngine {
   public speakArabicWord(word: CardWord) {
     this.triggerHaptic('selectionTick');
     try {
+      if (this.activeWordAudio) {
+        try {
+          this.activeWordAudio.pause();
+          this.activeWordAudio.removeAttribute('src');
+          this.activeWordAudio.load();
+        } catch {}
+        this.activeWordAudio = null;
+      }
       if (typeof window !== 'undefined' && word?.arabic_word) {
+        const sessionId = ++this.playbackSessionId;
         const wordAudio = new Audio(
           apiUrl(`/api/tts?lang=ar&text=${encodeURIComponent(word.arabic_word)}`)
         );
-        wordAudio.play().catch(() => {
-          try {
-            if ('speechSynthesis' in window) {
-              const utter = new SpeechSynthesisUtterance(word.arabic_word);
-              utter.lang = 'ar-SA';
-              utter.rate = 0.85;
-              window.speechSynthesis.speak(utter);
+        this.activeWordAudio = wordAudio;
+        wordAudio
+          .play()
+          .then(() => {
+            if (this.playbackSessionId !== sessionId || this.activeWordAudio !== wordAudio) {
+              try {
+                wordAudio.pause();
+              } catch {}
             }
-          } catch {}
-        });
+          })
+          .catch(() => {
+            if (this.playbackSessionId !== sessionId) return;
+            try {
+              if ('speechSynthesis' in window) {
+                const utter = new SpeechSynthesisUtterance(word.arabic_word);
+                utter.lang = 'ar-SA';
+                utter.rate = 0.85;
+                window.speechSynthesis.speak(utter);
+              }
+            } catch {}
+          });
       }
       const ctx = this.getContext();
       if (!ctx) return;
@@ -185,6 +207,7 @@ class SoundAndHapticsEngine {
   ) {
     this.stopRecitation();
     this.isPlaying = true;
+    const sessionId = ++this.playbackSessionId;
     const { allTokens, ayahGroups } = this.getSpokenAyahTokenGroups(card, arabicScript);
 
     // Ensure any browser speechSynthesis (word TTS) is completely silenced so only Qari recitation plays
@@ -281,10 +304,19 @@ class SoundAndHapticsEngine {
         };
 
         sharedAudio.src = urls[currentTrack];
-        sharedAudio.play().catch(() => {
-          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
-          this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript, false);
-        });
+        sharedAudio
+          .play()
+          .then(() => {
+            if (!this.isPlaying || this.playbackSessionId !== sessionId || this.activeHtmlAudio !== sharedAudio) {
+              try {
+                sharedAudio.pause();
+              } catch {}
+            }
+          })
+          .catch(() => {
+            if (!this.isPlaying || this.playbackSessionId !== sessionId || this.activeHtmlAudio !== sharedAudio) return;
+            this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript, false);
+          });
       };
 
       playNextTrack();
@@ -324,7 +356,7 @@ class SoundAndHapticsEngine {
       let currentTrack = 0;
 
       const playNextTtsChunk = () => {
-        if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio || currentTrack >= ttsUrls.length) {
+        if (!this.isPlaying || this.playbackSessionId !== sessionId || this.activeHtmlAudio !== sharedAudio || currentTrack >= ttsUrls.length) {
           this.isPlaying = false;
           onTick(-1, 1);
           onComplete();
@@ -339,7 +371,7 @@ class SoundAndHapticsEngine {
         const activeGroup = tokenChunks[currentTrack];
 
         const updateProgress = () => {
-          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
+          if (!this.isPlaying || this.playbackSessionId !== sessionId || this.activeHtmlAudio !== sharedAudio) return;
           const dur =
             sharedAudio.duration && isFinite(sharedAudio.duration) && sharedAudio.duration > 0.3
               ? sharedAudio.duration
@@ -352,26 +384,35 @@ class SoundAndHapticsEngine {
         };
 
         sharedAudio.onplay = () => {
-          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
+          if (!this.isPlaying || this.playbackSessionId !== sessionId || this.activeHtmlAudio !== sharedAudio) return;
           this.rafId = requestAnimationFrame(updateProgress);
         };
         sharedAudio.onended = () => {
-          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
+          if (!this.isPlaying || this.playbackSessionId !== sessionId || this.activeHtmlAudio !== sharedAudio) return;
           currentTrack++;
           playNextTtsChunk();
         };
         sharedAudio.onerror = () => {
-          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
+          if (!this.isPlaying || this.playbackSessionId !== sessionId || this.activeHtmlAudio !== sharedAudio) return;
           this.activeHtmlAudio = null;
           this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript, true);
         };
 
         sharedAudio.src = ttsUrls[currentTrack];
-        sharedAudio.play().catch(() => {
-          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
-          this.activeHtmlAudio = null;
-          this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript, true);
-        });
+        sharedAudio
+          .play()
+          .then(() => {
+            if (!this.isPlaying || this.playbackSessionId !== sessionId || this.activeHtmlAudio !== sharedAudio) {
+              try {
+                sharedAudio.pause();
+              } catch {}
+            }
+          })
+          .catch(() => {
+            if (!this.isPlaying || this.playbackSessionId !== sessionId || this.activeHtmlAudio !== sharedAudio) return;
+            this.activeHtmlAudio = null;
+            this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript, true);
+          });
       };
 
       playNextTtsChunk();
@@ -446,6 +487,7 @@ class SoundAndHapticsEngine {
 
   public stopRecitation() {
     this.isPlaying = false;
+    this.playbackSessionId++;
     if (this.rafId !== null) {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
@@ -460,6 +502,15 @@ class SoundAndHapticsEngine {
         audioToStop.pause();
         audioToStop.removeAttribute('src');
         audioToStop.load();
+      } catch {}
+    }
+    if (this.activeWordAudio) {
+      const wordToStop = this.activeWordAudio;
+      this.activeWordAudio = null;
+      try {
+        wordToStop.pause();
+        wordToStop.removeAttribute('src');
+        wordToStop.load();
       } catch {}
     }
     try {

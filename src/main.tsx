@@ -720,19 +720,59 @@ const App: React.FC = () => {
     }
   };
 
+  const stopAllCardAudio = () => {
+    soundEngine.stopRecitation();
+    setPlayingCardId(null);
+    setActiveWordIdx(-1);
+    setShowReciterMenuForCard(null);
+  };
+
+  // Stop recitation or transcript audio whenever switching tabs, collections, moods, surahs, or active cards
+  useEffect(() => {
+    stopAllCardAudio();
+    setPopoverWord(null);
+  }, [activeCard?.id, feedMode, selectedCollection, selectedSurah, selectedMood]);
+
+  // Stop recitation or transcript audio when switching browser tabs or backgrounding the app
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleVisibilityOrHide = () => {
+      if (document.hidden) {
+        stopAllCardAudio();
+      }
+    };
+    const handlePageHide = () => {
+      stopAllCardAudio();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityOrHide);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('blur', handlePageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityOrHide);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('blur', handlePageHide);
+    };
+  }, []);
+
   const handleFeedScroll = () => {
     const container = feedContainerRef.current;
     if (!container || container.clientHeight === 0) return;
+
+    // Immediately stop audio as soon as the user begins scrolling away from the active card
+    if (Math.abs(container.scrollTop - activeCardIndex * container.clientHeight) > 20) {
+      soundEngine.stopRecitation();
+      if (playingCardId) {
+        setPlayingCardId(null);
+        setActiveWordIdx(-1);
+      }
+    }
+
     const newIndex = Math.round(container.scrollTop / container.clientHeight);
     if (newIndex !== activeCardIndex && newIndex >= 0 && newIndex < displayedCards.length) {
       setActiveCardIndex(newIndex);
       soundEngine.triggerHaptic('lightImpact');
       setPopoverWord(null);
-      if (playingCardId) {
-        soundEngine.stopRecitation();
-        setPlayingCardId(null);
-        setActiveWordIdx(-1);
-      }
+      stopAllCardAudio();
       // Automatically prefetch next page when within 10 cards of the end
       if (newIndex >= displayedCards.length - 10 && hasMoreFeed) {
         fetchNextFeedPage();
