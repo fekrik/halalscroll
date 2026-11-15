@@ -21,6 +21,27 @@
   --sacred-quran-color: #A7F3D0;
   --sacred-hadith-color: #FCA5A5;
   --sacred-dua-color: #FDE68A;
+  --active-word-text: #FFFFFF;
+  --active-word-bg: rgba(212, 175, 55, 0.42);
+  --active-word-border: #F5D061;
+  --hl-allah-text: #FFFBEB;
+  --hl-allah-bg: rgba(217, 119, 6, 0.38);
+  --hl-allah-border: #FBBF24;
+  --hl-prophet-text: #FFF1F2;
+  --hl-prophet-bg: rgba(225, 29, 72, 0.36);
+  --hl-prophet-border: #FB7185;
+  --hl-mercy-text: #ECFDF5;
+  --hl-mercy-bg: rgba(5, 150, 105, 0.38);
+  --hl-mercy-border: #34D399;
+  --hl-sabr-text: #EFF6FF;
+  --hl-sabr-bg: rgba(37, 99, 235, 0.38);
+  --hl-sabr-border: #60A5FA;
+  --hl-akhirah-text: #F5F3FF;
+  --hl-akhirah-bg: rgba(124, 58, 237, 0.38);
+  --hl-akhirah-border: #A78BFA;
+  --hl-custom-text: #FFFBEB;
+  --hl-custom-bg: rgba(202, 138, 4, 0.38);
+  --hl-custom-border: #FACC15;
   --shadow-elevated: 0 24px 60px rgba(0, 0, 0, 0.65);
 }
 
@@ -41,11 +62,32 @@
   --text-secondary: #525049;
   --text-muted: #78756C;
   --accent-gold: #A87D20;
-  --accent-gold-bright: #C69214;
+  --accent-gold-bright: #92400E;
   --accent-emerald: #0D9468;
   --sacred-quran-color: #065F46;
   --sacred-hadith-color: #991B1B;
   --sacred-dua-color: #92400E;
+  --active-word-text: #451A03;
+  --active-word-bg: rgba(245, 158, 11, 0.34);
+  --active-word-border: #D97706;
+  --hl-allah-text: #78350F;
+  --hl-allah-bg: rgba(245, 158, 11, 0.26);
+  --hl-allah-border: rgba(180, 83, 9, 0.65);
+  --hl-prophet-text: #881337;
+  --hl-prophet-bg: rgba(225, 29, 72, 0.18);
+  --hl-prophet-border: rgba(190, 18, 60, 0.55);
+  --hl-mercy-text: #064E3B;
+  --hl-mercy-bg: rgba(16, 185, 129, 0.22);
+  --hl-mercy-border: rgba(4, 120, 87, 0.55);
+  --hl-sabr-text: #1E3A8A;
+  --hl-sabr-bg: rgba(59, 130, 246, 0.20);
+  --hl-sabr-border: rgba(29, 78, 216, 0.55);
+  --hl-akhirah-text: #4C1D95;
+  --hl-akhirah-bg: rgba(139, 92, 246, 0.20);
+  --hl-akhirah-border: rgba(109, 40, 217, 0.55);
+  --hl-custom-text: #713F12;
+  --hl-custom-bg: rgba(234, 179, 8, 0.28);
+  --hl-custom-border: rgba(161, 98, 7, 0.6);
   --shadow-elevated: 0 20px 50px rgba(45, 38, 24, 0.16);
 }
 
@@ -70,6 +112,27 @@
   --sacred-quran-color: #A7F3D0;
   --sacred-hadith-color: #FCA5A5;
   --sacred-dua-color: #FDE68A;
+  --active-word-text: #FFFFFF;
+  --active-word-bg: rgba(212, 175, 55, 0.42);
+  --active-word-border: #F7D488;
+  --hl-allah-text: #FFFBEB;
+  --hl-allah-bg: rgba(217, 119, 6, 0.38);
+  --hl-allah-border: #FBBF24;
+  --hl-prophet-text: #FFF1F2;
+  --hl-prophet-bg: rgba(225, 29, 72, 0.36);
+  --hl-prophet-border: #FB7185;
+  --hl-mercy-text: #ECFDF5;
+  --hl-mercy-bg: rgba(5, 150, 105, 0.38);
+  --hl-mercy-border: #34D399;
+  --hl-sabr-text: #EFF6FF;
+  --hl-sabr-bg: rgba(37, 99, 235, 0.38);
+  --hl-sabr-border: #60A5FA;
+  --hl-akhirah-text: #F5F3FF;
+  --hl-akhirah-bg: rgba(124, 58, 237, 0.38);
+  --hl-akhirah-border: #A78BFA;
+  --hl-custom-text: #FFFBEB;
+  --hl-custom-bg: rgba(202, 138, 4, 0.38);
+  --hl-custom-border: #FACC15;
   --shadow-elevated: 0 24px 60px rgba(5, 6, 18, 0.70);
 }
 
@@ -94,6 +157,27 @@
   --sacred-quran-color: #A7F3D0;
   --sacred-hadith-color: #FCA5A5;
   --sacred-dua-color: #FDE68A;
+  --active-word-text: #FFFFFF;
+  --active-word-bg: rgba(212, 175, 55, 0.42);
+  --active-word-border: #FBBF24;
+  --hl-allah-text: #FFFBEB;
+  --hl-allah-bg: rgba(217, 119, 6, 0.38);
+  --hl-allah-border: #FBBF24;
+  --hl-prophet-text: #FFF1F2;
+  --hl-prophet-bg: rgba(225, 29, 72, 0.36);
+  --hl-prophet-border: #FB7185;
+  --hl-mercy-text: #ECFDF5;
+  --hl-mercy-bg: rgba(5, 150, 105, 0.38);
+  --hl-mercy-border: #34D399;
+  --hl-sabr-text: #EFF6FF;
+  --hl-sabr-bg: rgba(37, 99, 235, 0.38);
+  --hl-sabr-border: #60A5FA;
+  --hl-akhirah-text: #F5F3FF;
+  --hl-akhirah-bg: rgba(124, 58, 237, 0.38);
+  --hl-akhirah-border: #A78BFA;
+  --hl-custom-text: #FFFBEB;
+  --hl-custom-bg: rgba(202, 138, 4, 0.38);
+  --hl-custom-border: #FACC15;
   --shadow-elevated: 0 24px 60px rgba(10, 4, 12, 0.72);
 }
 
@@ -431,9 +515,10 @@ html, body, #root {
 }
 
 .arabic-word-token.active-word-glow {
-  color: var(--accent-gold-bright);
-  text-shadow: 0 0 14px rgba(245, 208, 97, 0.65), 0 0 4px rgba(245, 208, 97, 0.45);
-  background: rgba(212, 175, 55, 0.18);
+  color: var(--active-word-text) !important;
+  background: var(--active-word-bg) !important;
+  box-shadow: 0 0 0 1.5px var(--active-word-border);
+  font-weight: 700;
 }
 
 .editorial-translation {

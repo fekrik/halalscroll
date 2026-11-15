@@ -35,9 +35,9 @@ export const SACRED_HIGHLIGHT_GROUPS: HighlightGroup[] = [
     id: 'allah',
     label: 'Allah & Divine Names',
     subtitle: 'Allah, Lord, Most Merciful (اللَّه • رَبّ • الرَّحْمَٰن)',
-    bg: 'rgba(232, 201, 104, 0.24)',
-    border: 'rgba(232, 201, 104, 0.58)',
-    color: '#F7DF8B',
+    bg: 'var(--hl-allah-bg)',
+    border: 'var(--hl-allah-border)',
+    color: 'var(--hl-allah-text)',
     enPatterns: ['allah', 'lord', 'almighty', 'compassionate', 'all-merciful', 'creator', 'most high'],
     arPatterns: ['الله', 'لله', 'بالله', 'تالله', 'والله', 'رب', 'ربك', 'ربنا', 'ربكم', 'ربهم', 'الرحمن', 'الرحيم', 'الغفور', 'العزيز', 'العليم', 'الحكيم']
   },
@@ -45,9 +45,9 @@ export const SACRED_HIGHLIGHT_GROUPS: HighlightGroup[] = [
     id: 'prophet',
     label: 'Prophet & Messenger ﷺ',
     subtitle: 'Prophet, Messenger, Muhammad (مُحَمَّد • رَسُول • نَبِيّ)',
-    bg: 'rgba(248, 113, 113, 0.22)',
-    border: 'rgba(248, 113, 113, 0.55)',
-    color: '#FCA5A5',
+    bg: 'var(--hl-prophet-bg)',
+    border: 'var(--hl-prophet-border)',
+    color: 'var(--hl-prophet-text)',
     enPatterns: ['prophet', 'messenger', 'muhammad', 'apostle'],
     arPatterns: ['محمد', 'رسول', 'الرسول', 'رسوله', 'نبي', 'النبي', 'النبيين', 'المرسلين']
   },
@@ -55,9 +55,9 @@ export const SACRED_HIGHLIGHT_GROUPS: HighlightGroup[] = [
     id: 'mercy',
     label: 'Mercy & Forgiveness',
     subtitle: 'Mercy, Forgive, Repentance (رَحْمَة • مَغْفِرَة • تَوْبَة)',
-    bg: 'rgba(16, 185, 129, 0.22)',
-    border: 'rgba(16, 185, 129, 0.52)',
-    color: '#6EE7B7',
+    bg: 'var(--hl-mercy-bg)',
+    border: 'var(--hl-mercy-border)',
+    color: 'var(--hl-mercy-text)',
     enPatterns: ['mercy', 'merciful', 'forgive', 'forgiveness', 'forgiving', 'repent', 'repentance', 'grace'],
     arPatterns: ['رحمة', 'رحمتي', 'رحمتك', 'مغفرة', 'يغفر', 'غفر', 'توبة', 'تاب', 'عفو']
   },
@@ -65,9 +65,9 @@ export const SACRED_HIGHLIGHT_GROUPS: HighlightGroup[] = [
     id: 'sabr',
     label: 'Patience, Relief & Peace',
     subtitle: 'Patience, Ease, Peace, Trust (صَبْر • يُسْر • سَلَام)',
-    bg: 'rgba(96, 165, 250, 0.22)',
-    border: 'rgba(96, 165, 250, 0.52)',
-    color: '#93C5FD',
+    bg: 'var(--hl-sabr-bg)',
+    border: 'var(--hl-sabr-border)',
+    color: 'var(--hl-sabr-text)',
     enPatterns: ['patience', 'patient', 'steadfast', 'ease', 'relief', 'peace', 'tranquility', 'trust'],
     arPatterns: ['صبر', 'صبرا', 'الصبر', 'الصابرين', 'يسر', 'يسرا', 'اليسر', 'سكينة', 'سلام', 'توكل', 'يتوكل']
   },
@@ -75,9 +75,9 @@ export const SACRED_HIGHLIGHT_GROUPS: HighlightGroup[] = [
     id: 'akhirah',
     label: 'Paradise & Hereafter',
     subtitle: 'Paradise, Jannah, Hereafter (جَنَّة • الْآخِرَة)',
-    bg: 'rgba(167, 139, 250, 0.22)',
-    border: 'rgba(167, 139, 250, 0.52)',
-    color: '#C4B5FD',
+    bg: 'var(--hl-akhirah-bg)',
+    border: 'var(--hl-akhirah-border)',
+    color: 'var(--hl-akhirah-text)',
     enPatterns: ['paradise', 'jannah', 'garden', 'gardens', 'hereafter', 'eternal'],
     arPatterns: ['جنة', 'الجنة', 'جنات', 'الآخرة', 'الفردوس']
   }
@@ -103,12 +103,12 @@ export function getSacredContentIdentity(card: {
     return {
       id: isQuranicDua ? 'quran_dua' : 'quran',
       badgeLabel: isQuranicDua ? 'Quran • Quranic Dua' : 'Quran • Word of Allah',
-      accentColor: isQuranicDua ? '#F7DF8B' : '#34D399',
-      textTint: isQuranicDua ? 'var(--sacred-dua-color, #FDE68A)' : 'var(--sacred-quran-color, #6EE7B7)',
-      pillBg: isQuranicDua ? 'rgba(232, 201, 104, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-      pillBorder: isQuranicDua ? 'rgba(232, 201, 104, 0.5)' : 'rgba(16, 185, 129, 0.5)',
-      quoteBg: isQuranicDua ? 'rgba(232, 201, 104, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-      quoteBorder: isQuranicDua ? 'rgba(232, 201, 104, 0.35)' : 'rgba(16, 185, 129, 0.35)'
+      accentColor: isQuranicDua ? 'var(--sacred-dua-color)' : 'var(--sacred-quran-color)',
+      textTint: isQuranicDua ? 'var(--sacred-dua-color)' : 'var(--sacred-quran-color)',
+      pillBg: isQuranicDua ? 'var(--hl-allah-bg)' : 'var(--hl-mercy-bg)',
+      pillBorder: isQuranicDua ? 'var(--hl-allah-border)' : 'var(--hl-mercy-border)',
+      quoteBg: isQuranicDua ? 'rgba(217, 119, 6, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+      quoteBorder: isQuranicDua ? 'var(--hl-allah-border)' : 'var(--hl-mercy-border)'
     };
   }
 
@@ -116,24 +116,24 @@ export function getSacredContentIdentity(card: {
     return {
       id: 'hadith',
       badgeLabel: 'Hadith • Words of the Prophet ﷺ',
-      accentColor: '#F87171',
-      textTint: 'var(--sacred-hadith-color, #FCA5A5)',
-      pillBg: 'rgba(239, 68, 68, 0.18)',
-      pillBorder: 'rgba(248, 113, 113, 0.48)',
-      quoteBg: 'rgba(239, 68, 68, 0.09)',
-      quoteBorder: 'rgba(248, 113, 113, 0.38)'
+      accentColor: 'var(--sacred-hadith-color)',
+      textTint: 'var(--sacred-hadith-color)',
+      pillBg: 'var(--hl-prophet-bg)',
+      pillBorder: 'var(--hl-prophet-border)',
+      quoteBg: 'rgba(225, 29, 72, 0.08)',
+      quoteBorder: 'var(--hl-prophet-border)'
     };
   }
 
   return {
     id: 'dua',
     badgeLabel: card.card_type === 'dua' ? 'Dua • Sacred Supplication' : 'Seerah • Prophetic Biography',
-    accentColor: '#F7DF8B',
-    textTint: 'var(--sacred-dua-color, #FDE68A)',
-    pillBg: 'rgba(232, 201, 104, 0.2)',
-    pillBorder: 'rgba(232, 201, 104, 0.5)',
-    quoteBg: 'rgba(232, 201, 104, 0.09)',
-    quoteBorder: 'rgba(232, 201, 104, 0.38)'
+    accentColor: 'var(--sacred-dua-color)',
+    textTint: 'var(--sacred-dua-color)',
+    pillBg: 'var(--hl-allah-bg)',
+    pillBorder: 'var(--hl-allah-border)',
+    quoteBg: 'rgba(217, 119, 6, 0.08)',
+    quoteBorder: 'var(--hl-allah-border)'
   };
 }
 
@@ -229,9 +229,9 @@ export function matchWordHighlight(
       const normCw = normalizeArabicForMatch(cw);
       if (normCw && normCw.length >= 2 && (normAr === normCw || normAr.includes(normCw))) {
         return {
-          bg: 'rgba(251, 191, 36, 0.24)',
-          border: 'rgba(251, 191, 36, 0.58)',
-          color: '#FDE68A',
+          bg: 'var(--hl-custom-bg)',
+          border: 'var(--hl-custom-border)',
+          color: 'var(--hl-custom-text)',
           label: `Custom: ${cw}`
         };
       }
@@ -251,9 +251,9 @@ export function matchWordHighlight(
       const normCw = normalizeEnglishForMatch(cw);
       if (normCw && normCw.length >= 2 && normEn === normCw) {
         return {
-          bg: 'rgba(251, 191, 36, 0.24)',
-          border: 'rgba(251, 191, 36, 0.58)',
-          color: '#FDE68A',
+          bg: 'var(--hl-custom-bg)',
+          border: 'var(--hl-custom-border)',
+          color: 'var(--hl-custom-text)',
           label: `Custom: ${cw}`
         };
       }
@@ -372,16 +372,16 @@ export const WordHighlighterModal: React.FC<{
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: '#6EE7B7', background: 'rgba(16, 185, 129, 0.14)', padding: '6px 10px', borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--sacred-quran-color)', background: 'var(--hl-mercy-bg)', padding: '6px 10px', borderRadius: 10 }}>
                 <span style={{ width: 9, height: 9, borderRadius: 99, background: '#10B981', flexShrink: 0 }} />
                 <span><strong>Quran — Emerald Green:</strong> Marks Quranic verses as the direct Word of Allah.</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: '#FCA5A5', background: 'rgba(239, 68, 68, 0.14)', padding: '6px 10px', borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--sacred-hadith-color)', background: 'var(--hl-prophet-bg)', padding: '6px 10px', borderRadius: 10 }}>
                 <span style={{ width: 9, height: 9, borderRadius: 99, background: '#EF4444', flexShrink: 0 }} />
                 <span><strong>Hadith — Deep Red:</strong> Distinguishes Prophet Muhammad’s ﷺ spoken words from narrator text.</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: '#FDE68A', background: 'rgba(232, 201, 104, 0.14)', padding: '6px 10px', borderRadius: 10 }}>
-                <span style={{ width: 9, height: 9, borderRadius: 99, background: '#E8C968', flexShrink: 0 }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--sacred-dua-color)', background: 'var(--hl-allah-bg)', padding: '6px 10px', borderRadius: 10 }}>
+                <span style={{ width: 9, height: 9, borderRadius: 99, background: '#D97706', flexShrink: 0 }} />
                 <span><strong>Duas — Warm Gold:</strong> Makes prophetic &amp; Quranic supplications immediately recognizable.</span>
               </div>
             </div>
@@ -421,7 +421,7 @@ export const WordHighlighterModal: React.FC<{
                         width: 10,
                         height: 10,
                         borderRadius: 99,
-                        background: grp.color,
+                        background: grp.border,
                         display: 'inline-block'
                       }} />
                       {grp.label}
@@ -434,8 +434,8 @@ export const WordHighlighterModal: React.FC<{
                     width: 24,
                     height: 24,
                     borderRadius: 99,
-                    background: isOn ? grp.color : 'rgba(255,255,255,0.06)',
-                    color: isOn ? '#090A0F' : 'var(--text-muted)',
+                    background: isOn ? '#10B981' : 'rgba(128,128,128,0.15)',
+                    color: isOn ? '#06130E' : 'var(--text-muted)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
