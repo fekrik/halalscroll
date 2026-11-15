@@ -1181,79 +1181,72 @@ export const InteractiveCoachMarksOverlay: React.FC<{
         </div>
       </div>
 
-      {/* Middle Coach Marks: Progress Rail & Right-Side Instagram Action Stack */}
+      {/* Middle Coach Mark: Progress Rail Callout */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'flex-end',
-        gap: 12,
-        paddingRight: 44
+        paddingRight: 18
       }}>
-        {/* Progress Rail Callout */}
         <div style={{
-          padding: '8px 13px',
+          padding: '9px 14px',
           borderRadius: 14,
           background: 'rgba(16, 185, 129, 0.18)',
           border: '1px solid rgba(16, 185, 129, 0.55)',
           fontSize: 12,
           fontWeight: 700,
           color: '#6EE7B7',
-          maxWidth: 245,
+          maxWidth: 255,
           textAlign: 'right'
         }}>
           Tap or slide the right rail to jump to any verse →
         </div>
-
-        {/* Heart Callout */}
-        <div style={{
-          padding: '8px 13px',
-          borderRadius: 14,
-          background: 'rgba(255, 59, 92, 0.18)',
-          border: '1px solid rgba(255, 59, 92, 0.5)',
-          fontSize: 12,
-          fontWeight: 700,
-          color: '#FF8DA1',
-          maxWidth: 250,
-          textAlign: 'right'
-        }}>
-          ♥ Heart: Favorite &amp; save to Bookmarks →
-        </div>
-
-        {/* Speech Bubble Private Notes Callout */}
-        <div style={{
-          padding: '8px 13px',
-          borderRadius: 14,
-          background: 'rgba(232, 201, 104, 0.18)',
-          border: '1px solid rgba(232, 201, 104, 0.55)',
-          fontSize: 12,
-          fontWeight: 700,
-          color: '#F7DF8B',
-          maxWidth: 265,
-          textAlign: 'right'
-        }}>
-          💬 Speech Bubble: Write Private Personal Notes (only visible to you) →
-        </div>
-
-        {/* Share Callout */}
-        <div style={{
-          padding: '8px 13px',
-          borderRadius: 14,
-          background: 'rgba(96, 165, 250, 0.18)',
-          border: '1px solid rgba(96, 165, 250, 0.5)',
-          fontSize: 12,
-          fontWeight: 700,
-          color: '#93C5FD',
-          maxWidth: 245,
-          textAlign: 'right'
-        }}>
-          ✈️ Paper Airplane: Share card or link →
-        </div>
       </div>
 
-      {/* Bottom Coach Mark: Deep Study + Dismiss Button */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+      {/* Bottom Coach Marks: Horizontal Instagram Action Bar + Deep Study + Dismiss Button */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{
-          alignSelf: ' stretch',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 8,
+          justifyContent: 'center'
+        }}>
+          <div style={{
+            padding: '7px 11px',
+            borderRadius: 12,
+            background: 'rgba(255, 59, 92, 0.18)',
+            border: '1px solid rgba(255, 59, 92, 0.5)',
+            fontSize: 11.5,
+            fontWeight: 700,
+            color: '#FF8DA1'
+          }}>
+            ♥ Like &amp; Save ↓
+          </div>
+          <div style={{
+            padding: '7px 11px',
+            borderRadius: 12,
+            background: 'rgba(232, 201, 104, 0.18)',
+            border: '1px solid rgba(232, 201, 104, 0.55)',
+            fontSize: 11.5,
+            fontWeight: 700,
+            color: '#F7DF8B'
+          }}>
+            💬 Private Personal Note ↓
+          </div>
+          <div style={{
+            padding: '7px 11px',
+            borderRadius: 12,
+            background: 'rgba(96, 165, 250, 0.18)',
+            border: '1px solid rgba(96, 165, 250, 0.5)',
+            fontSize: 11.5,
+            fontWeight: 700,
+            color: '#93C5FD'
+          }}>
+            ✈️ Share ↓
+          </div>
+        </div>
+
+        <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -1264,8 +1257,8 @@ export const InteractiveCoachMarksOverlay: React.FC<{
           fontSize: 12,
           color: '#F4F1EA'
         }}>
-          <span>🔊 <strong>Recite &amp; Highlight</strong> on left</span>
-          <span style={{ color: 'var(--accent-gold-bright)', fontWeight: 700 }}>📖 Deep Study / Tafsir on right ↓</span>
+          <span>🔊 <strong>Recite &amp; Colors</strong> ↓</span>
+          <span style={{ color: 'var(--accent-gold-bright)', fontWeight: 700 }}>📖 Deep Study / Tafsir ↓</span>
         </div>
 
         <button

@@ -1330,7 +1330,7 @@ const App: React.FC = () => {
                 }}
               >
                 {/* UNIFIED CARD CONTENT CLUSTER: Metadata Header + Sacred Text Canvas */}
-                <div className="card-content-cluster" style={{ zIndex: 2, paddingRight: 44 }}>
+                <div className="card-content-cluster" style={{ zIndex: 2 }}>
                   {/* TOP CARD METADATA HEADER (Clean 2-Line Mobile-Friendly Stack) */}
                   {(() => {
                     const sacredIdentity = getSacredContentIdentity(card);
@@ -1598,138 +1598,7 @@ const App: React.FC = () => {
                   })()}
                 </div>
 
-                {/* INSTAGRAM-STYLE RIGHT-SIDE VERTICAL ACTION STACK (Partner Brief Section 3: Heart, Private Notes Speech Bubble, Paper Airplane Share) */}
-                <div
-                  className="reel-anim-dock"
-                  style={{
-                    position: 'absolute',
-                    right: 12,
-                    bottom: 84,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 16,
-                    zIndex: 22
-                  }}
-                >
-                  {/* 1. Heart: Like / Favorite & Save */}
-                  {(() => {
-                    const isFavorited = Boolean(likedCards[card.id] || card.is_bookmarked);
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleLikeCard(card.id, card);
-                          }}
-                          aria-label="Favorite and save passage"
-                          style={{
-                            width: 42,
-                            height: 42,
-                            borderRadius: 99,
-                            background: isFavorited ? 'rgba(255, 59, 92, 0.16)' : 'rgba(15, 20, 30, 0.55)',
-                            border: isFavorited ? '1px solid rgba(255, 59, 92, 0.45)' : '1px solid var(--border-specular)',
-                            backdropFilter: 'blur(12px)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: isFavorited ? '#FF3B5C' : 'var(--text-primary)',
-                            cursor: 'pointer',
-                            transform: isFavorited ? 'scale(1.06)' : 'scale(1)',
-                            transition: 'all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                          }}
-                        >
-                          <Heart size={21} strokeWidth={2.1} fill={isFavorited ? '#FF3B5C' : 'none'} />
-                        </button>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: isFavorited ? '#FF3B5C' : 'var(--text-secondary)' }}>
-                          {isFavorited ? 'Saved' : 'Like'}
-                        </span>
-                      </div>
-                    );
-                  })()}
-
-                  {/* 2. Speech Bubble: PRIVATE PERSONAL NOTES (Exclusively Private Reflections) */}
-                  {(() => {
-                    const hasPrivateNote = Boolean(personalNotes[card.id]?.text?.trim());
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            soundEngine.triggerHaptic('selectionTick');
-                            setPersonalNoteModalCard(card);
-                          }}
-                          aria-label="Private personal notes"
-                          style={{
-                            width: 42,
-                            height: 42,
-                            borderRadius: 99,
-                            background: hasPrivateNote ? 'rgba(232, 201, 104, 0.2)' : 'rgba(15, 20, 30, 0.55)',
-                            border: hasPrivateNote ? '1px solid var(--border-gold)' : '1px solid var(--border-specular)',
-                            backdropFilter: 'blur(12px)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: hasPrivateNote ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
-                            cursor: 'pointer',
-                            position: 'relative',
-                            transition: 'all 0.18s ease'
-                          }}
-                        >
-                          <MessageCircle size={20} strokeWidth={2.1} fill={hasPrivateNote ? 'rgba(232, 201, 104, 0.25)' : 'none'} />
-                          {hasPrivateNote && (
-                            <span style={{
-                              position: 'absolute',
-                              top: 6,
-                              right: 6,
-                              width: 7,
-                              height: 7,
-                              borderRadius: 99,
-                              background: '#10B981',
-                              boxShadow: '0 0 6px #10B981'
-                            }} />
-                          )}
-                        </button>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: hasPrivateNote ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
-                          {hasPrivateNote ? 'My Note' : 'Note'}
-                        </span>
-                      </div>
-                    );
-                  })()}
-
-                  {/* 3. Paper Airplane: Share via Messaging, Social Apps, or Direct Link */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        soundEngine.triggerHaptic('lightImpact');
-                        setShareStudioModal({ card, initialSlide: 0 });
-                      }}
-                      aria-label="Share passage"
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 99,
-                        background: 'rgba(15, 20, 30, 0.55)',
-                        border: '1px solid var(--border-specular)',
-                        backdropFilter: 'blur(12px)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'var(--text-primary)',
-                        cursor: 'pointer',
-                        transition: 'all 0.18s ease'
-                      }}
-                    >
-                      <Send size={19} strokeWidth={2.1} />
-                    </button>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)' }}>
-                      Share
-                    </span>
-                  </div>
-                </div>
-
-                {/* BOTTOM STUDY & AUDIO BAR (Recite, Sacred Highlighter, and Deep Study / Tafsir) */}
+                {/* MODERN HORIZONTAL INSTAGRAM-STYLE ACTION BAR (Like, Private Note, Share, Recite, Colors, Deep Study) */}
                 <div
                   className="reel-anim-dock"
                   style={{
@@ -1745,9 +1614,112 @@ const App: React.FC = () => {
                     borderTop: '1px solid rgba(255, 255, 255, 0.07)'
                   }}
                 >
-                  {/* Left Cluster: Recite + Sacred Highlighter + Folder Organizer */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    {/* 1. Recite Audio + Qari Picker */}
+                  {/* Left Horizontal Row: Heart (Like/Save), Speech Bubble (Private Note), Paper Airplane (Share), Recite, Colors */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {/* 1. Heart: Like / Favorite & Save */}
+                    {(() => {
+                      const isFavorited = Boolean(likedCards[card.id] || card.is_bookmarked);
+                      return (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleLikeCard(card.id, card);
+                          }}
+                          aria-label="Favorite and save passage"
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            padding: '4px 2px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 3,
+                            color: isFavorited ? '#FF3B5C' : 'var(--text-primary)',
+                            cursor: 'pointer',
+                            transform: isFavorited ? 'scale(1.06)' : 'scale(1)',
+                            transition: 'all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                          }}
+                        >
+                          <Heart size={21} strokeWidth={2.1} fill={isFavorited ? '#FF3B5C' : 'none'} />
+                          <span style={{ fontSize: 9.5, fontWeight: 700, color: isFavorited ? '#FF3B5C' : 'var(--text-secondary)' }}>
+                            {isFavorited ? 'Liked' : 'Like'}
+                          </span>
+                        </button>
+                      );
+                    })()}
+
+                    {/* 2. Speech Bubble: PRIVATE PERSONAL NOTES */}
+                    {(() => {
+                      const hasPrivateNote = Boolean(personalNotes[card.id]?.text?.trim());
+                      return (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            soundEngine.triggerHaptic('selectionTick');
+                            setPersonalNoteModalCard(card);
+                          }}
+                          aria-label="Private personal notes"
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            padding: '4px 2px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 3,
+                            color: hasPrivateNote ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            transition: 'all 0.18s ease'
+                          }}
+                        >
+                          <MessageCircle size={21} strokeWidth={2.1} fill={hasPrivateNote ? 'rgba(232, 201, 104, 0.25)' : 'none'} />
+                          {hasPrivateNote && (
+                            <span style={{
+                              position: 'absolute',
+                              top: 2,
+                              right: 0,
+                              width: 6,
+                              height: 6,
+                              borderRadius: 99,
+                              background: '#10B981',
+                              boxShadow: '0 0 6px #10B981'
+                            }} />
+                          )}
+                          <span style={{ fontSize: 9.5, fontWeight: 700, color: hasPrivateNote ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
+                            {hasPrivateNote ? 'My Note' : 'Note'}
+                          </span>
+                        </button>
+                      );
+                    })()}
+
+                    {/* 3. Paper Airplane: Share */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        soundEngine.triggerHaptic('lightImpact');
+                        setShareStudioModal({ card, initialSlide: 0 });
+                      }}
+                      aria-label="Share passage"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '4px 2px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 3,
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Send size={20} strokeWidth={2.1} />
+                      <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        Share
+                      </span>
+                    </button>
+
+                    {/* 4. Recite Audio + Qari Picker */}
                     <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                       <button
                         onClick={() => handleToggleRecitation(card)}
@@ -1755,16 +1727,17 @@ const App: React.FC = () => {
                         style={{
                           background: 'transparent',
                           border: 'none',
-                          padding: '4px 4px',
+                          padding: '4px 2px',
                           display: 'flex',
+                          flexDirection: 'column',
                           alignItems: 'center',
-                          gap: 6,
+                          gap: 3,
                           color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
                           cursor: 'pointer'
                         }}
                       >
-                        {isCardPlaying ? <Pause size={19} strokeWidth={2.2} /> : <Volume2 size={19} strokeWidth={2} />}
-                        <span style={{ fontSize: 11.5, fontWeight: 700, color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
+                        {isCardPlaying ? <Pause size={21} strokeWidth={2.2} /> : <Volume2 size={21} strokeWidth={2} />}
+                        <span style={{ fontSize: 9.5, fontWeight: 700, color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
                           {isCardPlaying ? 'Playing' : 'Recite'}
                         </span>
                       </button>
@@ -1779,10 +1752,11 @@ const App: React.FC = () => {
                           border: 'none',
                           color: 'var(--text-muted)',
                           padding: '2px',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          marginTop: -10
                         }}
                       >
-                        <ChevronDown size={13} />
+                        <ChevronDown size={12} />
                       </button>
 
                       {showReciterMenuForCard === card.id && (
@@ -1790,8 +1764,8 @@ const App: React.FC = () => {
                           className="glass-pill"
                           style={{
                             position: 'absolute',
-                            left: 0,
-                            bottom: 42,
+                            left: -40,
+                            bottom: 46,
                             width: 215,
                             padding: 8,
                             borderRadius: 16,
@@ -1833,7 +1807,7 @@ const App: React.FC = () => {
                       )}
                     </div>
 
-                    {/* 2. Sacred Color & Word Highlighter */}
+                    {/* 5. Sacred Color & Word Highlighter */}
                     <button
                       onClick={() => {
                         soundEngine.triggerHaptic('selectionTick');
@@ -1843,19 +1817,20 @@ const App: React.FC = () => {
                       style={{
                         background: 'transparent',
                         border: 'none',
-                        padding: '4px 4px',
+                        padding: '4px 2px',
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        gap: 5,
+                        gap: 3,
                         color: (sacredColorCodingEnabled || activeHighlightGroups.length + customHighlightWords.length > 0)
                           ? 'var(--accent-emerald)'
                           : 'var(--text-primary)',
                         cursor: 'pointer'
                       }}
                     >
-                      <Highlighter size={18} strokeWidth={2} />
+                      <Highlighter size={20} strokeWidth={2} />
                       <span style={{
-                        fontSize: 11.5,
+                        fontSize: 9.5,
                         fontWeight: 700,
                         color: (sacredColorCodingEnabled || activeHighlightGroups.length + customHighlightWords.length > 0)
                           ? 'var(--accent-emerald)'
@@ -1863,27 +1838,6 @@ const App: React.FC = () => {
                       }}>
                         Colors
                       </span>
-                    </button>
-
-                    {/* 3. Bookmark Folder Selector */}
-                    <button
-                      onClick={() => {
-                        soundEngine.triggerHaptic('selectionTick');
-                        setBookmarkFolderModalCard(card);
-                      }}
-                      title="Save to Bookmark Collection"
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        padding: '4px 4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-secondary)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Bookmark size={17} strokeWidth={2} fill={card.is_bookmarked ? 'currentColor' : 'none'} />
                     </button>
                   </div>
 
