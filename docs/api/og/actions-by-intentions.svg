@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090A0F"/>
+      <stop offset="55%" stop-color="#12151E"/>
+      <stop offset="100%" stop-color="#172026"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="35%" r="55%">
+      <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#090A0F" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect x="48" y="42" width="1104" height="546" rx="28" fill="none" stroke="#D4AF37" stroke-opacity="0.25" stroke-width="1.5"/>
+  <text x="96" y="105" fill="#D4AF37" font-family="system-ui, sans-serif" font-size="22" font-weight="600" letter-spacing="1">40 Hadith Nawawi • Hadith 1</text>
+  <text x="1104" y="105" text-anchor="end" fill="#10B981" font-family="system-ui, sans-serif" font-size="18" font-weight="600">✓ Sahih • 40 Hadith Nawawi (1)</text>
+  <text x="600" y="255" text-anchor="middle" fill="#F4F1EA" font-family="serif" font-size="44" direction="rtl">إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ، وَإِنَّمَا لِكُلِّ امْرِئٍ مَا نَوَى، فَمَنْ كَانَتْ هِجْرَتُهُ إِلَى اللَّهِ وَرَسُولِهِ فَهِجْرَتُهُ </text>
+  <text x="600" y="385" text-anchor="middle" fill="#E6E1D6" font-family="Georgia, serif" font-size="26" font-style="italic">“Umar ibn al-Khattab (RA) reported: I heard the Messenger of Allah ﷺ say: “Actions are judged only by intentions, and every person shall have only what they intended.””</text>
+  <text x="96" y="535" fill="#9CA3AF" font-family="system-ui, sans-serif" font-size="18">Halal Scroll: Quran &amp; Sunnah • Daily Ayah, Hadith &amp; Tadabbur</text>
+  <text x="1104" y="535" text-anchor="end" fill="#D4AF37" font-family="system-ui, sans-serif" font-size="18" font-weight="600">halalscroll.app/c/actions-by-intentions</text>
+</svg>

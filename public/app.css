@@ -324,14 +324,10 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  padding: 4px 6px 12px 6px;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(212, 175, 55, 0.3) transparent;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 6px 8px 6px;
+  overflow-y: hidden;
   transform-origin: center top;
   transition:
     transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),

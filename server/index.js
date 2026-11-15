@@ -114,16 +114,17 @@ function seedDatabase() {
   upsertState.run('theme', 'system');
   upsertState.run('arabic_script', 'uthmani');
   upsertState.run('translation_edition', 'clear');
-  upsertState.run('show_transliteration', 'true');
+  upsertState.run('show_transliteration', 'false');
   upsertState.run('reciter', 'Mishary Rashid Alafasy');
   upsertState.run('plus_member', 'false');
   upsertState.run('sequential_quran_card', 'card-quran-1-1');
-  upsertState.run('sequential_book_card', 'card-riyad-1');
+  upsertState.run('sequential_book_card', 'card-nawawi-1');
   upsertState.run('font_scale', '1');
 
-  // Migrate any previous default theme to fajr_dawn
+  // Migrate any previous default theme to fajr_dawn and disable default text transliteration
   try {
     db.prepare(`UPDATE user_state SET value = 'fajr_dawn' WHERE key = 'theme' AND value = 'andalusian_parchment'`).run();
+    db.prepare(`UPDATE user_state SET value = 'false' WHERE key = 'show_transliteration'`).run();
   } catch (_) {}
 
   const insertBookmark = db.prepare(`INSERT OR IGNORE INTO user_bookmarks (card_id, folder_name) VALUES (?, ?)`);
@@ -600,6 +601,37 @@ const handleRequest = async (req, res) => {
   // API: GET /api/surahs (114 Surahs Directory)
   if (pathname === '/api/surahs' && req.method === 'GET') {
     return sendJson(req, res, 200, { surahs: SURAH_DIRECTORY });
+  }
+
+  // API: GET /api/tts (Arabic Voice Recitation MP3 Stream for Non-Quran Hadith/Dua/Seerah Cards)
+  if (pathname === '/api/tts' && req.method === 'GET') {
+    const rawText = (parsedUrl.searchParams.get('text') || '').trim().slice(0, 200);
+    const lang = (parsedUrl.searchParams.get('lang') || 'ar').trim();
+    if (!rawText) {
+      return sendJson(req, res, 400, { error: 'Missing text parameter' });
+    }
+    try {
+      const upstreamUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(lang)}&client=tw-ob&q=${encodeURIComponent(rawText)}`;
+      const upstreamRes = await fetch(upstreamUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
+        }
+      });
+      if (!upstreamRes.ok) {
+        return sendJson(req, res, 502, { error: 'Upstream TTS unavailable' });
+      }
+      const audioBuffer = Buffer.from(await upstreamRes.arrayBuffer());
+      res.writeHead(200, {
+        ...CORS_HEADERS,
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': audioBuffer.length,
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=86400'
+      });
+      return res.end(audioBuffer);
+    } catch (err) {
+      return sendJson(req, res, 500, { error: 'Failed to stream TTS audio' });
+    }
   }
 
   // API: GET /api/cards/:slug

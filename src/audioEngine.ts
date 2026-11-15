@@ -1,5 +1,5 @@
 import { CardWord, FeedCard } from './types';
-import { triggerNativeHaptic } from './nativeBridge';
+import { apiUrl, triggerNativeHaptic } from './nativeBridge';
 
 function pad3(n: number): string {
   return String(n).padStart(3, '0');
@@ -283,7 +283,94 @@ class SoundAndHapticsEngine {
       return;
     }
 
-    // For non-Quran cards (Hadith / Dua / Seerah), enable transcript-to-voice (speechSynthesis); Quran uses Qari recite only
+    // For non-Quran cards (Hadith / Dua / Seerah), stream Arabic MP3 voice via HTMLAudioElement (/api/tts)
+    // so iOS WKWebView plays transcript-to-voice with the exact same reliability as Quran Qari MP3s,
+    // falling back to native Web Speech API if offline.
+    if (typeof window !== 'undefined' && card.card_type !== 'quran' && allTokens.length > 0) {
+      const tokenChunks: (typeof allTokens)[] = [];
+      let currentChunk: typeof allTokens = [];
+      let currentLen = 0;
+
+      for (const token of allTokens) {
+        const nextLen = currentLen + token.text.length + 1;
+        if (currentChunk.length > 0 && nextLen > 165) {
+          tokenChunks.push(currentChunk);
+          currentChunk = [token];
+          currentLen = token.text.length;
+        } else {
+          currentChunk.push(token);
+          currentLen = nextLen;
+        }
+      }
+      if (currentChunk.length > 0) {
+        tokenChunks.push(currentChunk);
+      }
+
+      const ttsUrls = tokenChunks.map(chunk =>
+        apiUrl(`/api/tts?lang=ar&text=${encodeURIComponent(chunk.map(t => t.text).join(' '))}`)
+      );
+
+      const sharedAudio = new Audio();
+      sharedAudio.preload = 'auto';
+      this.activeHtmlAudio = sharedAudio;
+      let currentTrack = 0;
+
+      const playNextTtsChunk = () => {
+        if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio || currentTrack >= ttsUrls.length) {
+          this.isPlaying = false;
+          onTick(-1, 1);
+          onComplete();
+          return;
+        }
+
+        if (this.rafId !== null) {
+          cancelAnimationFrame(this.rafId);
+          this.rafId = null;
+        }
+
+        const activeGroup = tokenChunks[currentTrack];
+
+        const updateProgress = () => {
+          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
+          const dur =
+            sharedAudio.duration && isFinite(sharedAudio.duration) && sharedAudio.duration > 0.3
+              ? sharedAudio.duration
+              : Math.max(2, activeGroup.length * 0.42);
+          const trackRatio = Math.min(1, Math.max(0, sharedAudio.currentTime / dur));
+          const overallRatio = (currentTrack + trackRatio) / ttsUrls.length;
+          const activeGlobalIdx = this.pickTokenByWeight(activeGroup, trackRatio);
+          onTick(activeGlobalIdx, overallRatio);
+          this.rafId = requestAnimationFrame(updateProgress);
+        };
+
+        sharedAudio.onplay = () => {
+          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
+          this.rafId = requestAnimationFrame(updateProgress);
+        };
+        sharedAudio.onended = () => {
+          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
+          currentTrack++;
+          playNextTtsChunk();
+        };
+        sharedAudio.onerror = () => {
+          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
+          this.activeHtmlAudio = null;
+          this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript, true);
+        };
+
+        sharedAudio.src = ttsUrls[currentTrack];
+        sharedAudio.play().catch(() => {
+          if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
+          this.activeHtmlAudio = null;
+          this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript, true);
+        });
+      };
+
+      playNextTtsChunk();
+      return;
+    }
+
+    // Fallback for offline or missing audio metadata
     this.startSynthesizedRecitation(card, onTick, onComplete, arabicScript, card.card_type !== 'quran');
   }
 
@@ -302,11 +389,10 @@ class SoundAndHapticsEngine {
     if (useSpeechSynthesis && card.card_type !== 'quran') {
       try {
         if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
           const spokenString = allTokens.map(t => t.text).join(' ');
           const utter = new SpeechSynthesisUtterance(spokenString);
           utter.lang = 'ar-SA';
-          utter.rate = 0.82;
+          utter.rate = 0.85;
           utter.onboundary = (ev) => {
             if (ev.name === 'word' && typeof ev.charIndex === 'number') {
               boundaryDriven = true;

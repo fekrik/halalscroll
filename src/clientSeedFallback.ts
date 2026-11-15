@@ -14,7 +14,7 @@ const DEFAULT_STATE: UserState = {
   theme: 'system',
   arabic_script: 'uthmani',
   translation_edition: 'clear',
-  show_transliteration: 'true',
+  show_transliteration: 'false',
   reciter: 'Mishary Rashid Alafasy',
   plus_member: 'false',
   sequential_quran_card: 'card-quran-1-1',

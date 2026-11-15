@@ -16,7 +16,14 @@ export function isNativeApp(): boolean {
 
 export function apiUrl(path: string): string {
   if (!path.startsWith('/')) return path;
-  return isNativeApp() ? `${PROD_API_ORIGIN}${path}` : path;
+  if (isNativeApp()) return `${PROD_API_ORIGIN}${path}`;
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname } = window.location;
+    if (protocol === 'capacitor:' || protocol === 'file:' || hostname.endsWith('github.io')) {
+      return `${PROD_API_ORIGIN}${path}`;
+    }
+  }
+  return path;
 }
 
 export async function initNativeShell(theme: string) {

@@ -416,6 +416,8 @@ const App: React.FC = () => {
   const [doubleTapBurst, setDoubleTapBurst] = useState<{ x: number; y: number; id: number } | null>(null);
   const lastTapRef = useRef<{ time: number; cardId: string }>({ time: 0, cardId: '' });
   const feedContainerRef = useRef<HTMLDivElement | null>(null);
+  const feedModeRef = useRef<FeedMode>(feedMode);
+  feedModeRef.current = feedMode;
 
   // Load initial data from SQLite backend only if not already inlined in window.__HALAL_BOOTSTRAP__
   useEffect(() => {
@@ -431,7 +433,7 @@ const App: React.FC = () => {
       const native = isNativeApp();
       if (data.cards) {
         const preparedCards = native ? applyLocalUserOverlays(data.cards) : data.cards;
-        if (feedMode === 'for_you') {
+        if (feedModeRef.current === 'for_you') {
           setCards(preparedCards);
         }
         if (native) {
@@ -508,7 +510,7 @@ const App: React.FC = () => {
       collection: selectedCollection,
       session_id: sessionIdRef.current,
       offset: '0',
-      limit: '30'
+      limit: feedMode === 'sequential' ? '60' : '30'
     });
     if (feedMode === 'sequential' && selectedCollection === 'quran' && selectedSurah) {
       params.set('surah', String(selectedSurah));
@@ -1402,15 +1404,25 @@ const App: React.FC = () => {
                   {(() => {
                     const sacredIdentity = getSacredContentIdentity(card);
                     const fontScale = Math.min(1.5, Math.max(0.8, Number(userState.font_scale || '1') || 1));
+                    const fullArabicScript = userState.arabic_script === 'indopak' && card.arabic_text_indopak
+                      ? card.arabic_text_indopak
+                      : card.arabic_text_uthmani;
+                    const allArabicTokens = fullArabicScript.split(/\s+/).filter(Boolean);
+                    const isLongArabic = allArabicTokens.length > 44;
+                    const visibleArabicTokens = isLongArabic ? allArabicTokens.slice(0, 42) : allArabicTokens;
+                    const isLongTranslation = translationText.length > 310;
+                    const clampedTranslationText = isLongTranslation
+                      ? `${translationText.slice(0, 290).replace(/\s+\S*$/, '')}…`
+                      : translationText;
+
                     const baseArabicRem =
-                      card.arabic_text_uthmani.length > 500 ? 1.20 :
-                      card.arabic_text_uthmani.length > 280 ? 1.34 :
-                      card.arabic_text_uthmani.length > 160 ? 1.48 :
-                      card.arabic_text_uthmani.length > 80 ? 1.65 : 1.88;
+                      visibleArabicTokens.length > 34 ? 1.18 :
+                      visibleArabicTokens.length > 24 ? 1.32 :
+                      visibleArabicTokens.length > 14 ? 1.48 :
+                      visibleArabicTokens.length > 8 ? 1.65 : 1.88;
                     const baseTransRem =
-                      translationText.length > 600 ? 0.92 :
-                      translationText.length > 300 ? 1.02 :
-                      translationText.length > 160 ? 1.10 : 1.18;
+                      clampedTranslationText.length > 240 ? 0.94 :
+                      clampedTranslationText.length > 160 ? 1.04 : 1.14;
 
                     const renderHighlightedEnglishChunk = (textSegment: string, keyPrefix: string) =>
                       textSegment.split(/(\s+)/).map((chunk, cIdx) => {
@@ -1441,77 +1453,80 @@ const App: React.FC = () => {
                     className="arabic-sacred-text reel-anim-arabic"
                     style={{
                       fontSize: `${(baseArabicRem * fontScale).toFixed(2)}rem`,
-                      lineHeight: card.arabic_text_uthmani.length > 280 ? 1.7 : 1.82,
+                      lineHeight: visibleArabicTokens.length > 24 ? 1.66 : 1.82,
                       color: sacredColorCodingEnabled ? sacredIdentity.textTint : undefined
                     }}
                   >
                     {(() => {
-                      const fullArabic = userState.arabic_script === 'indopak' && card.arabic_text_indopak
-                        ? card.arabic_text_indopak
-                        : card.arabic_text_uthmani;
-                      const tokens = fullArabic.split(/\s+/);
                       const cleanToken = (s?: string) => (s || '').replace(/[،؟:؛.!۝ۚۗۖۙۘ]/g, '').trim();
                       let spokenTokenCounter = 0;
 
-                      return tokens.map((tok, tIdx) => {
-                        if (tok.includes('۝')) {
-                          return (
-                            <React.Fragment key={tIdx}>
-                              <span style={{ color: 'var(--accent-gold)', margin: '0 4px', fontSize: '0.9em' }}>{tok}</span>{' '}
-                            </React.Fragment>
-                          );
-                        }
+                      return (
+                        <>
+                          {visibleArabicTokens.map((tok, tIdx) => {
+                            if (tok.includes('۝')) {
+                              return (
+                                <React.Fragment key={tIdx}>
+                                  <span style={{ color: 'var(--accent-gold)', margin: '0 4px', fontSize: '0.9em' }}>{tok}</span>{' '}
+                                </React.Fragment>
+                              );
+                            }
 
-                        const currentSpokenIdx = spokenTokenCounter++;
-                        const cleaned = cleanToken(tok);
-                        const matchedIdx = (card.words || []).findIndex((w) => {
-                          const cw = cleanToken(w.arabic_word);
-                          return cw === cleaned || (cleaned.length >= 3 && cw.includes(cleaned));
-                        });
-                        const matchedWord = matchedIdx >= 0 ? card.words[matchedIdx] : null;
-                        const isWordActive = isCardPlaying && activeWordIdx === currentSpokenIdx;
-                        const isPopoverOpen = matchedWord && popoverWord?.word.word_position === matchedWord.word_position && popoverWord?.card.id === card.id;
-                        const sacredHighlight = matchWordHighlight(tok, 'ar', activeHighlightGroups, customHighlightWords);
+                            const currentSpokenIdx = spokenTokenCounter++;
+                            const cleaned = cleanToken(tok);
+                            const matchedIdx = (card.words || []).findIndex((w) => {
+                              const cw = cleanToken(w.arabic_word);
+                              return cw === cleaned || (cleaned.length >= 3 && cw.includes(cleaned));
+                            });
+                            const matchedWord = matchedIdx >= 0 ? card.words[matchedIdx] : null;
+                            const isWordActive = isCardPlaying && activeWordIdx === currentSpokenIdx;
+                            const isPopoverOpen = matchedWord && popoverWord?.word.word_position === matchedWord.word_position && popoverWord?.card.id === card.id;
+                            const sacredHighlight = matchWordHighlight(tok, 'ar', activeHighlightGroups, customHighlightWords);
 
-                        return (
-                          <React.Fragment key={tIdx}>
-                            <span
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (matchedWord) {
-                                  soundEngine.speakArabicWord(matchedWord);
-                                  setPopoverWord({ word: matchedWord, card });
-                                } else if (card.words && card.words.length > 0) {
-                                  soundEngine.speakArabicWord({
-                                    ...card.words[0],
-                                    arabic_word: tok
-                                  });
-                                  setDeepStudyModal({ card, initialTab: 'words' });
-                                }
-                              }}
-                              className={`arabic-word-token ${isWordActive || isPopoverOpen ? 'active-word-glow' : ''}`}
-                              style={{
-                                background: !isWordActive && sacredHighlight ? sacredHighlight.bg : undefined,
-                                color: !isWordActive && sacredHighlight ? sacredHighlight.color : undefined,
-                                borderRadius: sacredHighlight ? 6 : undefined,
-                                padding: sacredHighlight ? '0 4px' : undefined,
-                                borderBottom: sacredHighlight
-                                  ? `1.5px solid ${sacredHighlight.border}`
-                                  : matchedWord
-                                    ? '1px dotted rgba(168, 125, 32, 0.35)'
-                                    : undefined
-                              }}
-                              title={
-                                matchedWord
-                                  ? `Tap for root (${matchedWord.root_arabic}) & meaning: "${matchedWord.translation_en}"`
-                                  : 'Tap to hear pronunciation & open Word Explorer'
-                              }
-                            >
-                              {tok}
-                            </span>{' '}
-                          </React.Fragment>
-                        );
-                      });
+                            return (
+                              <React.Fragment key={tIdx}>
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (matchedWord) {
+                                      soundEngine.speakArabicWord(matchedWord);
+                                      setPopoverWord({ word: matchedWord, card });
+                                    } else if (card.words && card.words.length > 0) {
+                                      soundEngine.speakArabicWord({
+                                        ...card.words[0],
+                                        arabic_word: tok
+                                      });
+                                      setDeepStudyModal({ card, initialTab: 'words' });
+                                    }
+                                  }}
+                                  className={`arabic-word-token ${isWordActive || isPopoverOpen ? 'active-word-glow' : ''}`}
+                                  style={{
+                                    background: !isWordActive && sacredHighlight ? sacredHighlight.bg : undefined,
+                                    color: !isWordActive && sacredHighlight ? sacredHighlight.color : undefined,
+                                    borderRadius: sacredHighlight ? 6 : undefined,
+                                    padding: sacredHighlight ? '0 4px' : undefined,
+                                    borderBottom: sacredHighlight
+                                      ? `1.5px solid ${sacredHighlight.border}`
+                                      : matchedWord
+                                        ? '1px dotted rgba(168, 125, 32, 0.35)'
+                                        : undefined
+                                  }}
+                                  title={
+                                    matchedWord
+                                      ? `Tap for root (${matchedWord.root_arabic}) & meaning: "${matchedWord.translation_en}"`
+                                      : 'Tap to hear pronunciation & open Word Explorer'
+                                  }
+                                >
+                                  {tok}
+                                </span>{' '}
+                              </React.Fragment>
+                            );
+                          })}
+                          {isLongArabic && (
+                            <span style={{ color: 'var(--accent-gold)', fontSize: '0.82em' }}>…</span>
+                          )}
+                        </>
+                      );
                     })()}
                   </div>
 
@@ -1521,7 +1536,7 @@ const App: React.FC = () => {
                     style={{
                       fontSize: 10.5,
                       color: 'var(--text-muted)',
-                      marginBottom: 4,
+                      marginBottom: 2,
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6
@@ -1530,29 +1545,15 @@ const App: React.FC = () => {
                     <span>✦ Tap any Arabic word for Root &amp; Audio</span>
                   </div>
 
-                  {/* Optional Learner Transliteration (Hidden on Quran cards where Recite provides synchronized audio) */}
-                  {userState.show_transliteration === 'true' && card.card_type !== 'quran' && card.transliteration && (
-                    <p
-                      className="transliteration-text reel-anim-translation"
-                      style={{
-                        fontSize: `${(0.88 * fontScale).toFixed(2)}rem`,
-                        marginBottom: 6,
-                        maxWidth: 420
-                      }}
-                    >
-                      {card.transliteration}
-                    </p>
-                  )}
-
                   {/* Editorial Serif English Translation (Color-Coded by Quran / Hadith Quote vs Narrator / Dua) */}
                   {card.card_type === 'hadith' && sacredColorCodingEnabled ? (() => {
-                    const split = splitHadithNarratorAndQuote(translationText);
+                    const split = splitHadithNarratorAndQuote(clampedTranslationText);
                     return (
                       <div
                         className="editorial-translation reel-anim-translation"
                         style={{
                           fontSize: `${(baseTransRem * fontScale).toFixed(2)}rem`,
-                          lineHeight: translationText.length > 300 ? 1.48 : 1.56,
+                          lineHeight: clampedTranslationText.length > 200 ? 1.46 : 1.54,
                           maxWidth: 420,
                           padding: '8px 12px',
                           borderRadius: 14,
@@ -1581,7 +1582,7 @@ const App: React.FC = () => {
                       className="editorial-translation reel-anim-translation"
                       style={{
                         fontSize: `${(baseTransRem * fontScale).toFixed(2)}rem`,
-                        lineHeight: translationText.length > 300 ? 1.48 : 1.56,
+                        lineHeight: clampedTranslationText.length > 200 ? 1.46 : 1.54,
                         maxWidth: 420,
                         padding: sacredColorCodingEnabled ? '8px 12px' : undefined,
                         borderRadius: sacredColorCodingEnabled ? 14 : undefined,
@@ -1590,8 +1591,30 @@ const App: React.FC = () => {
                         color: sacredColorCodingEnabled ? sacredIdentity.textTint : undefined
                       }}
                     >
-                      “{renderHighlightedEnglishChunk(translationText, 'eq')}”
+                      “{renderHighlightedEnglishChunk(clampedTranslationText, 'eq')}”
                     </p>
+                  )}
+
+                  {(isLongArabic || isLongTranslation) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        soundEngine.triggerHaptic('mediumImpact');
+                        setDeepStudyModal({ card, initialTab: 'reflection' });
+                      }}
+                      style={{
+                        background: 'rgba(212, 175, 55, 0.12)',
+                        border: '1px solid rgba(212, 175, 55, 0.35)',
+                        color: 'var(--accent-gold)',
+                        borderRadius: 999,
+                        padding: '4px 12px',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Read Full Text in Deep Study →
+                    </button>
                   )}
                       </>
                     );
