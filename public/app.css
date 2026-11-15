@@ -18,6 +18,9 @@
   --accent-gold: #D4AF37;
   --accent-gold-bright: #F5D061;
   --accent-emerald: #10B981;
+  --sacred-quran-color: #A7F3D0;
+  --sacred-hadith-color: #FCA5A5;
+  --sacred-dua-color: #FDE68A;
   --shadow-elevated: 0 24px 60px rgba(0, 0, 0, 0.65);
 }
 
@@ -40,6 +43,9 @@
   --accent-gold: #A87D20;
   --accent-gold-bright: #C69214;
   --accent-emerald: #0D9468;
+  --sacred-quran-color: #065F46;
+  --sacred-hadith-color: #991B1B;
+  --sacred-dua-color: #92400E;
   --shadow-elevated: 0 20px 50px rgba(45, 38, 24, 0.16);
 }
 
@@ -61,6 +67,9 @@
   --accent-gold: #E5B869;
   --accent-gold-bright: #F7D488;
   --accent-emerald: #34D399;
+  --sacred-quran-color: #A7F3D0;
+  --sacred-hadith-color: #FCA5A5;
+  --sacred-dua-color: #FDE68A;
   --shadow-elevated: 0 24px 60px rgba(5, 6, 18, 0.70);
 }
 
@@ -82,6 +91,9 @@
   --accent-gold: #F59E0B;
   --accent-gold-bright: #FBBF24;
   --accent-emerald: #10B981;
+  --sacred-quran-color: #A7F3D0;
+  --sacred-hadith-color: #FCA5A5;
+  --sacred-dua-color: #FDE68A;
   --shadow-elevated: 0 24px 60px rgba(10, 4, 12, 0.72);
 }
 

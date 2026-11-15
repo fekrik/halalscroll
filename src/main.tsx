@@ -4,7 +4,7 @@ import {
   Sparkles, Bookmark, Share2, Volume2, Pause, Flame, SlidersHorizontal,
   Crown, FolderPlus, Check, X, Compass, BookOpen, Heart, Sun, Moon,
   ChevronDown, ArrowUpRight, ShieldCheck, GraduationCap, Smartphone, Minus, Plus,
-  Send, Highlighter
+  Send, Highlighter, MessageCircle
 } from 'lucide-react';
 import { CardWord, DeepStudyTab, FeedCard, FeedMode, SurahInfo, UserState } from './types';
 import { soundEngine } from './audioEngine';
@@ -13,8 +13,13 @@ import { ShareStudioModal } from './components/ShareStudioModal';
 import { InstallAppModal } from './components/InstallAppModal';
 import {
   matchWordHighlight,
+  getSacredContentIdentity,
+  splitHadithNarratorAndQuote,
   WordHighlighterModal,
-  OnboardingTutorialModal
+  PersonalNoteModal,
+  OnboardingTutorialModal,
+  InteractiveCoachMarksOverlay,
+  WidgetsPreviewModal
 } from './components/FeedExperienceModals';
 import {
   getOfflineBootstrap,
@@ -211,6 +216,24 @@ const App: React.FC = () => {
     }
   });
   const [showHighlighterModal, setShowHighlighterModal] = useState<boolean>(false);
+  const [sacredColorCodingEnabled, setSacredColorCodingEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('hs_sacred_color_coding_v1') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const [personalNotes, setPersonalNotes] = useState<
+    Record<string, { text: string; source_title: string; card_type: string; updatedAt: string }>
+  >(() => {
+    try {
+      const raw = localStorage.getItem('hs_personal_notes_v1');
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [personalNoteModalCard, setPersonalNoteModalCard] = useState<FeedCard | null>(null);
   const [showOnboardingModal, setShowOnboardingModal] = useState<boolean>(() => {
     try {
       return localStorage.getItem('hs_onboarding_done_v1') !== 'true';
@@ -218,14 +241,70 @@ const App: React.FC = () => {
       return false;
     }
   });
+  const [showCoachMarks, setShowCoachMarks] = useState<boolean>(false);
+  const [showWidgetsModal, setShowWidgetsModal] = useState<boolean>(false);
+  const [railScrubLabel, setRailScrubLabel] = useState<string | null>(null);
 
-  const handleToggleLikeCard = (cardId: string) => {
+  const handleToggleSacredColorCoding = () => {
+    setSacredColorCodingEnabled(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('hs_sacred_color_coding_v1', next ? 'true' : 'false');
+      } catch { }
+      return next;
+    });
+  };
+
+  const handleSavePersonalNote = (cardId: string, text: string, sourceTitle: string, cardType: string) => {
+    setPersonalNotes(prev => {
+      const next = { ...prev };
+      if (!text) {
+        delete next[cardId];
+      } else {
+        next[cardId] = {
+          text,
+          source_title: sourceTitle,
+          card_type: cardType,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      try {
+        localStorage.setItem('hs_personal_notes_v1', JSON.stringify(next));
+      } catch { }
+      return next;
+    });
+    // Also persist to SQLite practice/reflection endpoint when online
+    if (hasBackendApiRef.current) {
+      fetch(apiUrl('/api/practice'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ card_id: cardId, reflection: text })
+      }).catch(() => { });
+    }
+  };
+
+  const handleDeletePersonalNote = (cardId: string) => {
+    setPersonalNotes(prev => {
+      const next = { ...prev };
+      delete next[cardId];
+      try {
+        localStorage.setItem('hs_personal_notes_v1', JSON.stringify(next));
+      } catch { }
+      return next;
+    });
+  };
+
+  const handleToggleLikeCard = (cardId: string, cardObj?: FeedCard) => {
     soundEngine.triggerHaptic('softSuccess');
     setLikedCards(prev => {
-      const next = { ...prev, [cardId]: !prev[cardId] };
+      const isNowLiked = !prev[cardId];
+      const next = { ...prev, [cardId]: isNowLiked };
       try {
         localStorage.setItem('hs_liked_cards_v1', JSON.stringify(next));
       } catch { }
+      if (cardObj && isNowLiked && !cardObj.is_bookmarked) {
+        handleToggleBookmark(cardObj, 'Favorites', 'add');
+      }
       return next;
     });
   };
@@ -266,6 +345,18 @@ const App: React.FC = () => {
       localStorage.setItem('hs_onboarding_done_v1', 'true');
     } catch { }
     setShowOnboardingModal(false);
+    try {
+      if (localStorage.getItem('hs_coachmarks_done_v1') !== 'true') {
+        setShowCoachMarks(true);
+      }
+    } catch { }
+  };
+
+  const handleDismissCoachMarks = () => {
+    try {
+      localStorage.setItem('hs_coachmarks_done_v1', 'true');
+    } catch { }
+    setShowCoachMarks(false);
   };
   const [webCompanionSlug, setWebCompanionSlug] = useState<string | null>(() => {
     const path = window.location.pathname;
@@ -1239,80 +1330,77 @@ const App: React.FC = () => {
                 }}
               >
                 {/* UNIFIED CARD CONTENT CLUSTER: Metadata Header + Sacred Text Canvas */}
-                <div className="card-content-cluster" style={{ zIndex: 2 }}>
+                <div className="card-content-cluster" style={{ zIndex: 2, paddingRight: 44 }}>
                   {/* TOP CARD METADATA HEADER (Clean 2-Line Mobile-Friendly Stack) */}
-                  <div
-                    className="reel-anim-meta"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 4,
-                      width: '100%'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', justifyContent: 'center', maxWidth: '100%' }}>
-                      {/* Card Type Pill */}
-                      <span style={{
-                        fontSize: 9.5,
-                        fontWeight: 800,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.06em',
-                        padding: '3px 8px',
-                        borderRadius: 99,
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
-                        background: card.card_type === 'quran'
-                          ? 'rgba(212, 175, 55, 0.18)'
-                          : card.card_type === 'hadith'
-                            ? 'rgba(16, 185, 129, 0.18)'
-                            : card.card_type === 'dua'
-                              ? 'rgba(129, 140, 248, 0.2)'
-                              : 'rgba(245, 158, 11, 0.2)',
-                        color: card.card_type === 'quran'
-                          ? 'var(--accent-gold-bright)'
-                          : card.card_type === 'hadith'
-                            ? 'var(--accent-emerald)'
-                            : 'var(--text-primary)'
-                      }}>
-                        {card.card_type === 'quran' ? 'Quran' : card.card_type === 'hadith' ? 'Hadith' : card.card_type === 'dua' ? 'Dua' : 'Seerah'}
-                      </span>
-
-                      {/* Source Pill */}
-                      <span
-                        className="glass-pill"
+                  {(() => {
+                    const sacredIdentity = getSacredContentIdentity(card);
+                    return (
+                      <div
+                        className="reel-anim-meta"
                         style={{
-                          padding: '3px 10px',
-                          borderRadius: 99,
-                          fontSize: 11.5,
-                          fontWeight: 700,
-                          color: 'var(--text-primary)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 4,
+                          width: '100%'
                         }}
                       >
-                        {card.source_title}
-                      </span>
-                    </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', justifyContent: 'center', maxWidth: '100%' }}>
+                          {/* Color-Coded Sacred Source Pill */}
+                          <span style={{
+                            fontSize: 9.5,
+                            fontWeight: 800,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.06em',
+                            padding: '3px 9px',
+                            borderRadius: 99,
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                            background: sacredIdentity.pillBg,
+                            border: `1px solid ${sacredIdentity.pillBorder}`,
+                            color: sacredIdentity.accentColor
+                          }}>
+                            {sacredIdentity.badgeLabel}
+                          </span>
 
-                    {/* Authenticity / Revelation Subtitle */}
-                    <div style={{
-                      fontSize: 10.5,
-                      fontWeight: 600,
-                      color: 'var(--accent-emerald)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      maxWidth: '100%'
-                    }}>
-                      {card.revelation_place ? `${card.revelation_place} • ${card.authenticity_grade}` : card.authenticity_grade}
-                      {card.narrator_chain ? ` • ${card.narrator_chain}` : ''}
-                    </div>
-                  </div>
+                          {/* Source Pill */}
+                          <span
+                            className="glass-pill"
+                            style={{
+                              padding: '3px 10px',
+                              borderRadius: 99,
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              color: 'var(--text-primary)',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}
+                          >
+                            {card.source_title}
+                          </span>
+                        </div>
 
-                  {/* Complete Canonical Arabic Script (with Interactive Root Word Matching) */}
+                        {/* Authenticity / Revelation Subtitle */}
+                        <div style={{
+                          fontSize: 10.5,
+                          fontWeight: 600,
+                          color: 'var(--accent-emerald)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: '100%'
+                        }}>
+                          {card.revelation_place ? `${card.revelation_place} • ${card.authenticity_grade}` : card.authenticity_grade}
+                          {card.narrator_chain ? ` • ${card.narrator_chain}` : ''}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Complete Canonical Arabic Script (with Interactive Root Word Matching & Color-Coded Sacred Source) */}
                   {(() => {
+                    const sacredIdentity = getSacredContentIdentity(card);
                     const fontScale = Math.min(1.5, Math.max(0.8, Number(userState.font_scale || '1') || 1));
                     const baseArabicRem =
                       card.arabic_text_uthmani.length > 500 ? 1.20 :
@@ -1323,13 +1411,38 @@ const App: React.FC = () => {
                       translationText.length > 600 ? 0.92 :
                       translationText.length > 300 ? 1.02 :
                       translationText.length > 160 ? 1.10 : 1.18;
+
+                    const renderHighlightedEnglishChunk = (textSegment: string, keyPrefix: string) =>
+                      textSegment.split(/(\s+)/).map((chunk, cIdx) => {
+                        if (/^\s+$/.test(chunk)) return chunk;
+                        const hl = matchWordHighlight(chunk, 'en', activeHighlightGroups, customHighlightWords);
+                        if (!hl) return <React.Fragment key={`${keyPrefix}-${cIdx}`}>{chunk}</React.Fragment>;
+                        return (
+                          <span
+                            key={`${keyPrefix}-${cIdx}`}
+                            style={{
+                              background: hl.bg,
+                              color: hl.color,
+                              borderBottom: `1.5px solid ${hl.border}`,
+                              borderRadius: 5,
+                              padding: '0 4px',
+                              fontWeight: 600
+                            }}
+                            title={hl.label}
+                          >
+                            {chunk}
+                          </span>
+                        );
+                      });
+
                     return (
                       <>
                   <div
                     className="arabic-sacred-text reel-anim-arabic"
                     style={{
                       fontSize: `${(baseArabicRem * fontScale).toFixed(2)}rem`,
-                      lineHeight: card.arabic_text_uthmani.length > 280 ? 1.7 : 1.82
+                      lineHeight: card.arabic_text_uthmani.length > 280 ? 1.7 : 1.82,
+                      color: sacredColorCodingEnabled ? sacredIdentity.textTint : undefined
                     }}
                   >
                     {(() => {
@@ -1414,7 +1527,7 @@ const App: React.FC = () => {
                       gap: 6
                     }}
                   >
-                    <span>✦ Tap any Arabic word for Root &amp; Audio • Highlighted: {activeHighlightGroups.length + customHighlightWords.length > 0 ? 'Active' : 'Off'}</span>
+                    <span>✦ Tap any Arabic word for Root &amp; Audio</span>
                   </div>
 
                   {/* Optional Learner Transliteration */}
@@ -1431,43 +1544,192 @@ const App: React.FC = () => {
                     </p>
                   )}
 
-                  {/* Editorial Serif English Translation (with Sacred & Custom Word Highlighting) */}
-                  <p
-                    className="editorial-translation reel-anim-translation"
-                    style={{
-                      fontSize: `${(baseTransRem * fontScale).toFixed(2)}rem`,
-                      lineHeight: translationText.length > 300 ? 1.48 : 1.56,
-                      maxWidth: 430
-                    }}
-                  >
-                    “{translationText.split(/(\s+)/).map((chunk, cIdx) => {
-                      if (/^\s+$/.test(chunk)) return chunk;
-                      const hl = matchWordHighlight(chunk, 'en', activeHighlightGroups, customHighlightWords);
-                      if (!hl) return <React.Fragment key={cIdx}>{chunk}</React.Fragment>;
-                      return (
-                        <span
-                          key={cIdx}
-                          style={{
-                            background: hl.bg,
-                            color: hl.color,
-                            borderBottom: `1.5px solid ${hl.border}`,
-                            borderRadius: 5,
-                            padding: '0 4px',
-                            fontWeight: 600
-                          }}
-                          title={hl.label}
-                        >
-                          {chunk}
-                        </span>
-                      );
-                    })}”
-                  </p>
+                  {/* Editorial Serif English Translation (Color-Coded by Quran / Hadith Quote vs Narrator / Dua) */}
+                  {card.card_type === 'hadith' && sacredColorCodingEnabled ? (() => {
+                    const split = splitHadithNarratorAndQuote(translationText);
+                    return (
+                      <div
+                        className="editorial-translation reel-anim-translation"
+                        style={{
+                          fontSize: `${(baseTransRem * fontScale).toFixed(2)}rem`,
+                          lineHeight: translationText.length > 300 ? 1.48 : 1.56,
+                          maxWidth: 420,
+                          padding: '8px 12px',
+                          borderRadius: 14,
+                          background: sacredIdentity.quoteBg,
+                          borderLeft: `3px solid ${sacredIdentity.accentColor}`,
+                          textAlign: 'left'
+                        }}
+                      >
+                        {split.narratorIntro && (
+                          <div style={{ fontSize: '0.86em', color: 'var(--text-secondary)', fontStyle: 'normal', marginBottom: 4 }}>
+                            {split.narratorIntro}
+                          </div>
+                        )}
+                        <div style={{ color: sacredIdentity.textTint, fontWeight: 500 }}>
+                          “{renderHighlightedEnglishChunk(split.propheticQuote, 'hq')}”
+                        </div>
+                        {split.closingText && (
+                          <div style={{ fontSize: '0.84em', color: 'var(--text-muted)', marginTop: 4 }}>
+                            {split.closingText}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })() : (
+                    <p
+                      className="editorial-translation reel-anim-translation"
+                      style={{
+                        fontSize: `${(baseTransRem * fontScale).toFixed(2)}rem`,
+                        lineHeight: translationText.length > 300 ? 1.48 : 1.56,
+                        maxWidth: 420,
+                        padding: sacredColorCodingEnabled ? '8px 12px' : undefined,
+                        borderRadius: sacredColorCodingEnabled ? 14 : undefined,
+                        background: sacredColorCodingEnabled ? sacredIdentity.quoteBg : undefined,
+                        borderLeft: sacredColorCodingEnabled ? `3px solid ${sacredIdentity.accentColor}` : undefined,
+                        color: sacredColorCodingEnabled ? sacredIdentity.textTint : undefined
+                      }}
+                    >
+                      “{renderHighlightedEnglishChunk(translationText, 'eq')}”
+                    </p>
+                  )}
                       </>
                     );
                   })()}
                 </div>
 
-                {/* MODERN INSTAGRAM / SCROLL-THE-BIBLE ACTION BAR */}
+                {/* INSTAGRAM-STYLE RIGHT-SIDE VERTICAL ACTION STACK (Partner Brief Section 3: Heart, Private Notes Speech Bubble, Paper Airplane Share) */}
+                <div
+                  className="reel-anim-dock"
+                  style={{
+                    position: 'absolute',
+                    right: 12,
+                    bottom: 84,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 16,
+                    zIndex: 22
+                  }}
+                >
+                  {/* 1. Heart: Like / Favorite & Save */}
+                  {(() => {
+                    const isFavorited = Boolean(likedCards[card.id] || card.is_bookmarked);
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleLikeCard(card.id, card);
+                          }}
+                          aria-label="Favorite and save passage"
+                          style={{
+                            width: 42,
+                            height: 42,
+                            borderRadius: 99,
+                            background: isFavorited ? 'rgba(255, 59, 92, 0.16)' : 'rgba(15, 20, 30, 0.55)',
+                            border: isFavorited ? '1px solid rgba(255, 59, 92, 0.45)' : '1px solid var(--border-specular)',
+                            backdropFilter: 'blur(12px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: isFavorited ? '#FF3B5C' : 'var(--text-primary)',
+                            cursor: 'pointer',
+                            transform: isFavorited ? 'scale(1.06)' : 'scale(1)',
+                            transition: 'all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                          }}
+                        >
+                          <Heart size={21} strokeWidth={2.1} fill={isFavorited ? '#FF3B5C' : 'none'} />
+                        </button>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: isFavorited ? '#FF3B5C' : 'var(--text-secondary)' }}>
+                          {isFavorited ? 'Saved' : 'Like'}
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 2. Speech Bubble: PRIVATE PERSONAL NOTES (Exclusively Private Reflections) */}
+                  {(() => {
+                    const hasPrivateNote = Boolean(personalNotes[card.id]?.text?.trim());
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            soundEngine.triggerHaptic('selectionTick');
+                            setPersonalNoteModalCard(card);
+                          }}
+                          aria-label="Private personal notes"
+                          style={{
+                            width: 42,
+                            height: 42,
+                            borderRadius: 99,
+                            background: hasPrivateNote ? 'rgba(232, 201, 104, 0.2)' : 'rgba(15, 20, 30, 0.55)',
+                            border: hasPrivateNote ? '1px solid var(--border-gold)' : '1px solid var(--border-specular)',
+                            backdropFilter: 'blur(12px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: hasPrivateNote ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            transition: 'all 0.18s ease'
+                          }}
+                        >
+                          <MessageCircle size={20} strokeWidth={2.1} fill={hasPrivateNote ? 'rgba(232, 201, 104, 0.25)' : 'none'} />
+                          {hasPrivateNote && (
+                            <span style={{
+                              position: 'absolute',
+                              top: 6,
+                              right: 6,
+                              width: 7,
+                              height: 7,
+                              borderRadius: 99,
+                              background: '#10B981',
+                              boxShadow: '0 0 6px #10B981'
+                            }} />
+                          )}
+                        </button>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: hasPrivateNote ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
+                          {hasPrivateNote ? 'My Note' : 'Note'}
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* 3. Paper Airplane: Share via Messaging, Social Apps, or Direct Link */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        soundEngine.triggerHaptic('lightImpact');
+                        setShareStudioModal({ card, initialSlide: 0 });
+                      }}
+                      aria-label="Share passage"
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 99,
+                        background: 'rgba(15, 20, 30, 0.55)',
+                        border: '1px solid var(--border-specular)',
+                        backdropFilter: 'blur(12px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        transition: 'all 0.18s ease'
+                      }}
+                    >
+                      <Send size={19} strokeWidth={2.1} />
+                    </button>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                      Share
+                    </span>
+                  </div>
+                </div>
+
+                {/* BOTTOM STUDY & AUDIO BAR (Recite, Sacred Highlighter, and Deep Study / Tafsir) */}
                 <div
                   className="reel-anim-dock"
                   style={{
@@ -1483,87 +1745,9 @@ const App: React.FC = () => {
                     borderTop: '1px solid rgba(255, 255, 255, 0.07)'
                   }}
                 >
-                  {/* Left Cluster: Sleek Frameless Instagram-Style Icon Actions */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {/* 1. Like (Heart) */}
-                    {(() => {
-                      const isLiked = Boolean(likedCards[card.id]);
-                      return (
-                        <button
-                          onClick={() => handleToggleLikeCard(card.id)}
-                          aria-label="Like passage"
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            padding: '4px 2px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: 3,
-                            color: isLiked ? '#FF3B5C' : 'var(--text-primary)',
-                            cursor: 'pointer',
-                            transform: isLiked ? 'scale(1.06)' : 'scale(1)',
-                            transition: 'transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.15s ease'
-                          }}
-                        >
-                          <Heart size={22} strokeWidth={2} fill={isLiked ? '#FF3B5C' : 'none'} />
-                          <span style={{ fontSize: 10, fontWeight: 600, color: isLiked ? '#FF3B5C' : 'var(--text-secondary)' }}>
-                            {isLiked ? 'Liked' : 'Like'}
-                          </span>
-                        </button>
-                      );
-                    })()}
-
-                    {/* 2. Save / Bookmark */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <button
-                        onClick={() => handleToggleBookmark(card, 'Favorites', 'toggle')}
-                        aria-label="Bookmark passage"
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          padding: '4px 2px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 3,
-                          color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
-                          cursor: 'pointer',
-                          transition: 'transform 0.18s ease, color 0.15s ease'
-                        }}
-                      >
-                        <Bookmark size={22} strokeWidth={2} fill={card.is_bookmarked ? 'currentColor' : 'none'} />
-                        <span style={{ fontSize: 10, fontWeight: 600, color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
-                          {card.is_bookmarked ? 'Saved' : 'Save'}
-                        </span>
-                      </button>
-                      {card.is_bookmarked && (
-                        <button
-                          onClick={() => {
-                            soundEngine.triggerHaptic('selectionTick');
-                            setBookmarkFolderModalCard(card);
-                          }}
-                          title="Choose Folder"
-                          style={{
-                            background: 'rgba(212, 175, 55, 0.16)',
-                            border: '1px solid var(--border-gold)',
-                            borderRadius: 99,
-                            width: 18,
-                            height: 18,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'var(--accent-gold-bright)',
-                            cursor: 'pointer',
-                            marginTop: -10
-                          }}
-                        >
-                          <FolderPlus size={10} />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* 3. Recite Audio + Qari Picker */}
+                  {/* Left Cluster: Recite + Sacred Highlighter + Folder Organizer */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    {/* 1. Recite Audio + Qari Picker */}
                     <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                       <button
                         onClick={() => handleToggleRecitation(card)}
@@ -1571,17 +1755,16 @@ const App: React.FC = () => {
                         style={{
                           background: 'transparent',
                           border: 'none',
-                          padding: '4px 2px',
+                          padding: '4px 4px',
                           display: 'flex',
-                          flexDirection: 'column',
                           alignItems: 'center',
-                          gap: 3,
+                          gap: 6,
                           color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
                           cursor: 'pointer'
                         }}
                       >
-                        {isCardPlaying ? <Pause size={22} strokeWidth={2.2} /> : <Volume2 size={22} strokeWidth={2} />}
-                        <span style={{ fontSize: 10, fontWeight: 600, color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
+                        {isCardPlaying ? <Pause size={19} strokeWidth={2.2} /> : <Volume2 size={19} strokeWidth={2} />}
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
                           {isCardPlaying ? 'Playing' : 'Recite'}
                         </span>
                       </button>
@@ -1596,11 +1779,10 @@ const App: React.FC = () => {
                           border: 'none',
                           color: 'var(--text-muted)',
                           padding: '2px',
-                          cursor: 'pointer',
-                          marginTop: -10
+                          cursor: 'pointer'
                         }}
                       >
-                        <ChevronDown size={12} />
+                        <ChevronDown size={13} />
                       </button>
 
                       {showReciterMenuForCard === card.id && (
@@ -1608,8 +1790,8 @@ const App: React.FC = () => {
                           className="glass-pill"
                           style={{
                             position: 'absolute',
-                            left: -20,
-                            bottom: 48,
+                            left: 0,
+                            bottom: 42,
                             width: 215,
                             padding: 8,
                             borderRadius: 16,
@@ -1651,55 +1833,57 @@ const App: React.FC = () => {
                       )}
                     </div>
 
-                    {/* 4. Sacred Word Highlighter */}
+                    {/* 2. Sacred Color & Word Highlighter */}
                     <button
                       onClick={() => {
                         soundEngine.triggerHaptic('selectionTick');
                         setShowHighlighterModal(true);
                       }}
-                      aria-label="Highlight sacred words"
+                      aria-label="Color-coded sources & word highlighter"
                       style={{
                         background: 'transparent',
                         border: 'none',
-                        padding: '4px 2px',
+                        padding: '4px 4px',
                         display: 'flex',
-                        flexDirection: 'column',
                         alignItems: 'center',
-                        gap: 3,
-                        color: (activeHighlightGroups.length + customHighlightWords.length) > 0 ? 'var(--accent-emerald)' : 'var(--text-primary)',
-                        cursor: 'pointer',
-                        position: 'relative'
-                      }}
-                    >
-                      <Highlighter size={21} strokeWidth={2} />
-                      <span style={{ fontSize: 10, fontWeight: 600, color: (activeHighlightGroups.length + customHighlightWords.length) > 0 ? 'var(--accent-emerald)' : 'var(--text-secondary)' }}>
-                        Highlight
-                      </span>
-                    </button>
-
-                    {/* 5. Share (Instagram Paper-Plane Icon) */}
-                    <button
-                      onClick={() => {
-                        soundEngine.triggerHaptic('lightImpact');
-                        setShareStudioModal({ card, initialSlide: 0 });
-                      }}
-                      aria-label="Share passage"
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        padding: '4px 2px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 3,
-                        color: 'var(--text-primary)',
+                        gap: 5,
+                        color: (sacredColorCodingEnabled || activeHighlightGroups.length + customHighlightWords.length > 0)
+                          ? 'var(--accent-emerald)'
+                          : 'var(--text-primary)',
                         cursor: 'pointer'
                       }}
                     >
-                      <Send size={21} strokeWidth={2} />
-                      <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                        Share
+                      <Highlighter size={18} strokeWidth={2} />
+                      <span style={{
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        color: (sacredColorCodingEnabled || activeHighlightGroups.length + customHighlightWords.length > 0)
+                          ? 'var(--accent-emerald)'
+                          : 'var(--text-secondary)'
+                      }}>
+                        Colors
                       </span>
+                    </button>
+
+                    {/* 3. Bookmark Folder Selector */}
+                    <button
+                      onClick={() => {
+                        soundEngine.triggerHaptic('selectionTick');
+                        setBookmarkFolderModalCard(card);
+                      }}
+                      title="Save to Bookmark Collection"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '4px 4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        color: card.is_bookmarked ? 'var(--accent-gold-bright)' : 'var(--text-secondary)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Bookmark size={17} strokeWidth={2} fill={card.is_bookmarked ? 'currentColor' : 'none'} />
                     </button>
                   </div>
 
@@ -1735,21 +1919,60 @@ const App: React.FC = () => {
           })}
         </div>
 
-        {/* TIKTOK / REELS VERTICAL SCROLL PROGRESS DOTS (Right Edge Sliding Window) */}
+        {/* INTERACTIVE VERSE JUMP RAIL (Tap or Slide to Jump to Any Verse) */}
         <div
+          onTouchMove={(e) => {
+            const touch = e.touches[0];
+            if (!touch) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const ratio = Math.max(0, Math.min(1, (touch.clientY - rect.top) / Math.max(1, rect.height)));
+            const winStart = Math.max(0, activeCardIndex - 5);
+            const winEnd = Math.min(displayedCards.length, winStart + 11);
+            const targetIdx = Math.min(winEnd - 1, Math.max(winStart, Math.floor(winStart + ratio * (winEnd - winStart))));
+            if (displayedCards[targetIdx]) {
+              setRailScrubLabel(displayedCards[targetIdx].source_title);
+              if (targetIdx !== activeCardIndex) {
+                scrollToCardIndex(targetIdx);
+              }
+            }
+          }}
+          onTouchEnd={() => setTimeout(() => setRailScrubLabel(null), 700)}
           style={{
             position: 'absolute',
-            right: 6,
-            top: '48%',
+            right: 5,
+            top: '34%',
             transform: 'translateY(-50%)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: 5,
             zIndex: 20,
-            pointerEvents: 'auto'
+            padding: '8px 3px',
+            borderRadius: 99,
+            pointerEvents: 'auto',
+            touchAction: 'none'
           }}
         >
+          {railScrubLabel && (
+            <div
+              className="glass-pill"
+              style={{
+                position: 'absolute',
+                right: 18,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                padding: '4px 10px',
+                borderRadius: 99,
+                fontSize: 11,
+                fontWeight: 700,
+                color: 'var(--accent-gold-bright)',
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none'
+              }}
+            >
+              {railScrubLabel}
+            </div>
+          )}
           {(() => {
             const winStart = Math.max(0, activeCardIndex - 5);
             const winEnd = Math.min(displayedCards.length, winStart + 11);
@@ -1759,18 +1982,22 @@ const App: React.FC = () => {
               return (
                 <button
                   key={c.id}
-                  onClick={() => scrollToCardIndex(idx)}
-                  title={`Jump to ${c.source_title}`}
+                  onClick={() => {
+                    setRailScrubLabel(c.source_title);
+                    scrollToCardIndex(idx);
+                    setTimeout(() => setRailScrubLabel(null), 900);
+                  }}
+                  title={`Tap or slide to jump to ${c.source_title}`}
                   style={{
-                    width: 5,
-                    height: isActive ? 18 : 5,
+                    width: 6,
+                    height: isActive ? 20 : 6,
                     borderRadius: 99,
                     border: 'none',
                     padding: 0,
                     cursor: 'pointer',
                     background: isActive ? 'var(--accent-gold-bright)' : 'var(--border-specular)',
                     boxShadow: isActive ? '0 0 8px rgba(212, 175, 55, 0.55)' : 'none',
-                    transition: 'all 0.32s cubic-bezier(0.22, 1, 0.36, 1)'
+                    transition: 'all 0.25s cubic-bezier(0.22, 1, 0.36, 1)'
                   }}
                 />
               );
@@ -2501,7 +2728,7 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {/* Sacred Word Highlighter & Tutorial */}
+                {/* Sacred Word Highlighter, Coach Marks & Widgets */}
                 <div style={{
                   marginTop: 4,
                   padding: '12px 14px',
@@ -2510,19 +2737,42 @@ const App: React.FC = () => {
                   border: '1px solid var(--border-specular)'
                 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
-                    5. Sacred Word Highlighter &amp; Tutorial
+                    5. Sacred Color Coding, Tutorials &amp; iOS Widgets
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 10 }}>
-                    Automatically illuminate sacred names (Allah, Prophet ﷺ, Mercy, Patience, Akhirah) or custom words across every card, or replay the app welcome guide.
+                    Color-code Quran (Emerald), Hadith (Crimson Prophetic quotes), and Duas (Gold), replay the onboarding or interactive coach marks, or preview iPhone Home &amp; Lock Screen widgets.
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     <button
                       onClick={() => {
-                        setShowSettings(false);
+                        setShowSettingsDrawer(false);
                         setShowHighlighterModal(true);
                       }}
                       style={{
-                        flex: 1,
+                        flex: '1 1 45%',
+                        padding: '9px 10px',
+                        borderRadius: 10,
+                        background: 'rgba(16, 185, 129, 0.14)',
+                        border: '1px solid rgba(16, 185, 129, 0.45)',
+                        color: '#6EE7B7',
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <Highlighter size={13} /> Color &amp; Words
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowSettingsDrawer(false);
+                        setShowWidgetsModal(true);
+                      }}
+                      style={{
+                        flex: '1 1 45%',
                         padding: '9px 10px',
                         borderRadius: 10,
                         background: 'rgba(212, 175, 55, 0.14)',
@@ -2537,15 +2787,15 @@ const App: React.FC = () => {
                         gap: 6
                       }}
                     >
-                      <Highlighter size={13} /> Word Highlighter
+                      <Smartphone size={13} /> iOS Widgets
                     </button>
                     <button
                       onClick={() => {
-                        setShowSettings(false);
+                        setShowSettingsDrawer(false);
                         setShowOnboardingModal(true);
                       }}
                       style={{
-                        flex: 1,
+                        flex: '1 1 45%',
                         padding: '9px 10px',
                         borderRadius: 10,
                         background: 'rgba(255,255,255,0.06)',
@@ -2560,7 +2810,30 @@ const App: React.FC = () => {
                         gap: 6
                       }}
                     >
-                      <Sparkles size={13} /> Replay Tutorial
+                      <Sparkles size={13} /> Intro Slides
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowSettingsDrawer(false);
+                        setShowCoachMarks(true);
+                      }}
+                      style={{
+                        flex: '1 1 45%',
+                        padding: '9px 10px',
+                        borderRadius: 10,
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid var(--border-specular)',
+                        color: 'var(--text-primary)',
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <Compass size={13} /> Coach Marks
                     </button>
                   </div>
                 </div>
@@ -2739,12 +3012,44 @@ const App: React.FC = () => {
 
         {showHighlighterModal && (
           <WordHighlighterModal
+            sacredColorCodingEnabled={sacredColorCodingEnabled}
+            onToggleSacredColorCoding={handleToggleSacredColorCoding}
             activeGroupIds={activeHighlightGroups}
             customWords={customHighlightWords}
             onToggleGroup={handleToggleHighlightGroup}
             onAddCustomWord={handleAddCustomHighlightWord}
             onRemoveCustomWord={handleRemoveCustomHighlightWord}
             onClose={() => setShowHighlighterModal(false)}
+          />
+        )}
+
+        {personalNoteModalCard && (
+          <PersonalNoteModal
+            card={personalNoteModalCard}
+            existingNote={personalNotes[personalNoteModalCard.id]?.text || ''}
+            allNotes={personalNotes}
+            onSaveNote={handleSavePersonalNote}
+            onDeleteNote={handleDeletePersonalNote}
+            onJumpToCardId={(targetCardId) => {
+              const idx = displayedCards.findIndex(c => c.id === targetCardId);
+              if (idx >= 0) {
+                scrollToCardIndex(idx);
+              }
+            }}
+            onClose={() => setPersonalNoteModalCard(null)}
+          />
+        )}
+
+        {showWidgetsModal && (
+          <WidgetsPreviewModal
+            streakDays={Number(userState.streak_days || '1') || 1}
+            onClose={() => setShowWidgetsModal(false)}
+          />
+        )}
+
+        {showCoachMarks && !showOnboardingModal && (
+          <InteractiveCoachMarksOverlay
+            onDismiss={handleDismissCoachMarks}
           />
         )}
 
