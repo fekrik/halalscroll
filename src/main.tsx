@@ -1146,12 +1146,12 @@ const App: React.FC = () => {
                   setShowPlusModal(true);
                 }}
                 className="glass-pill"
-                title="Halal Scroll Plus & Student Scholarship"
+                title="Verified Classical Sources & Sadaqah Jariyah Mission"
                 style={{
                   width: 31,
                   height: 31,
                   borderRadius: 999,
-                  color: userState.plus_member === 'true' ? 'var(--accent-emerald)' : 'var(--accent-gold-bright)',
+                  color: 'var(--accent-emerald)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1159,7 +1159,7 @@ const App: React.FC = () => {
                   flexShrink: 0
                 }}
               >
-                <Crown size={14} />
+                <ShieldCheck size={14} />
               </button>
 
               {!isStandalone && (
@@ -2892,12 +2892,12 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* 8. ETHICAL MONETIZATION MODAL: HALAL SCROLL PLUS & SPONSOR-A-STUDENT */}
+        {/* 8. VERIFIED SOURCES & SADAQAH JARIYAH MISSION MODAL (100% Free, Zero In-App Purchases, Zero Ads) */}
         {showPlusModal && (
           <div className="spring-sheet-backdrop" onClick={() => setShowPlusModal(false)}>
             <div
               className="spring-sheet-panel"
-              style={{ height: '78%' }}
+              style={{ height: '74%' }}
               onClick={(e) => e.stopPropagation()}
             >
               <div style={{
@@ -2908,9 +2908,9 @@ const App: React.FC = () => {
                 justifyContent: 'space-between'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Crown size={18} style={{ color: 'var(--accent-gold-bright)' }} />
+                  <ShieldCheck size={18} style={{ color: 'var(--accent-emerald)' }} />
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-                    Halal Scroll Plus • Ethical Sadaqah Jariyah Model
+                    Verified Classical Sources &amp; Sadaqah Jariyah
                   </h3>
                 </div>
                 <button
@@ -2939,7 +2939,7 @@ const App: React.FC = () => {
                   lineHeight: 1.55,
                   color: 'var(--text-primary)'
                 }}>
-                  <strong style={{ color: 'var(--accent-emerald)' }}>Always Free (Sadaqah Jariyah Core):</strong> 100% of the Sequential Quran &amp; Hadith reader, the For You feed, standard audio recitation, and unlimited sharing of Static &amp; Video Cards—with <strong>zero third-party ads</strong> over sacred text.
+                  <strong style={{ color: 'var(--accent-emerald)' }}>100% Free &amp; Open (Sadaqah Jariyah):</strong> Every feature in Halal Scroll is completely free for all users worldwide—with <strong>no subscriptions, no in-app purchases, no user accounts required, and zero ads</strong> over sacred text.
                 </div>
 
                 <div style={{
@@ -2952,37 +2952,16 @@ const App: React.FC = () => {
                   gap: 10
                 }}>
                   <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--accent-gold-bright)' }}>
-                    Halal Scroll Plus ($4.99/mo • $29.99/yr • $79.99 Lifetime)
+                    Included Free for Every Seeker
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <div>✓ <strong>Unlimited 5-Tab Deep Study Breakdowns</strong> (Tadabbur, Roots, Classical Tafsir &amp; Cross-References)</div>
-                    <div>✓ <strong>Full Trilateral Arabic Root Word Explorer</strong> with Quranic occurrences</div>
-                    <div>✓ <strong>Pro Share Studio:</strong> Multi-Slide Deep Study Carousels &amp; watermark toggle</div>
-                    <div>✓ <strong>Mood &amp; Topic Custom Feeds + Offline Reciter Packs</strong></div>
+                    <div>✓ <strong>14,678 Authentic Passages:</strong> Complete 114 Surahs of the Noble Quran, Riyad as-Salihin, 40 Hadith Nawawi, Al-Adab Al-Mufrad, Hisn al-Muslim, and Seerah Gems</div>
+                    <div>✓ <strong>5-Tab Deep Study Breakdowns:</strong> Plain-English Tadabbur, Trilateral Arabic Root Word Explorer, Classical Tafsir (As-Sa‘di, Ibn Kathir, Ma‘ariful Qur’an), and Cross-References</div>
+                    <div>✓ <strong>Synchronized Audio Recitation:</strong> Studio Qari MP3 recitation for Quran and Arabic voice playback for Hadith &amp; Duas</div>
+                    <div>✓ <strong>Private On-Device Notes &amp; Share Studio:</strong> Personal reflections stored privately on your device, plus Ultra-HD Share Cards</div>
                   </div>
-
-                  <button
-                    onClick={() => {
-                      soundEngine.triggerHaptic('softSuccess');
-                      updateServerState({ plus_member: userState.plus_member === 'true' ? 'false' : 'true' });
-                    }}
-                    style={{
-                      marginTop: 6,
-                      padding: '12px 16px',
-                      borderRadius: 14,
-                      background: 'linear-gradient(135deg, #D4AF37, #B48A1E)',
-                      border: 'none',
-                      color: '#090A0F',
-                      fontWeight: 800,
-                      fontSize: 13.5,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {userState.plus_member === 'true' ? 'Plus Active ✓ (Tap to Toggle)' : 'Activate Halal Scroll Plus'}
-                  </button>
                 </div>
 
-                {/* Sponsor-a-Student Scholarship */}
                 <div style={{
                   padding: 16,
                   borderRadius: 16,
@@ -2995,31 +2974,32 @@ const App: React.FC = () => {
                 }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <GraduationCap size={16} style={{ color: 'var(--accent-emerald)' }} />
-                      Sponsor-a-Student Scholarship
+                      <Smartphone size={16} style={{ color: 'var(--accent-gold-bright)' }} />
+                      iPhone Home &amp; Lock Screen Widgets
                     </div>
                     <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
-                      Free, no-questions-asked Plus access for students or anyone who cannot afford a subscription.
+                      Preview the Daily Quran Verse, Daily Authentic Hadith, and Reading Streak widgets.
                     </div>
                   </div>
                   <button
                     onClick={() => {
-                      soundEngine.triggerHaptic('softSuccess');
-                      updateServerState({ plus_member: 'true' });
+                      soundEngine.triggerHaptic('selectionTick');
+                      setShowPlusModal(false);
+                      setShowWidgetsModal(true);
                     }}
                     style={{
                       flexShrink: 0,
                       padding: '8px 12px',
                       borderRadius: 10,
-                      background: 'rgba(16, 185, 129, 0.18)',
-                      border: '1px solid var(--accent-emerald)',
-                      color: 'var(--accent-emerald)',
+                      background: 'rgba(212, 175, 55, 0.18)',
+                      border: '1px solid var(--border-gold)',
+                      color: 'var(--accent-gold-bright)',
                       fontSize: 11.5,
                       fontWeight: 700,
                       cursor: 'pointer'
                     }}
                   >
-                    Claim Free Scholarship
+                    Preview Widgets
                   </button>
                 </div>
               </div>

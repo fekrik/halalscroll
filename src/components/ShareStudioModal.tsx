@@ -873,7 +873,7 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
                 { label: 'English Translation', val: showTranslation, set: setShowTranslation },
                 { label: 'Key Takeaway', val: showTakeaway, set: setShowTakeaway },
                 { label: 'Authenticity Badge', val: showBadge, set: setShowBadge },
-                { label: `Watermark ${isPlusMember ? '(Plus Unlocked)' : ''}`, val: showWatermark, set: setShowWatermark }
+                { label: 'Watermark', val: showWatermark, set: setShowWatermark }
               ].map((item, idx) => (
                 <button
                   key={idx}
