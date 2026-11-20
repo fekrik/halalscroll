@@ -101,6 +101,32 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
           </div>
         </div>
 
+        {/* Official iOS App Store Download Button */}
+        <a
+          href="https://apps.apple.com/app/halal-scroll-quran-sunnah/id6834652749"
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            width: '100%',
+            padding: '13px 16px',
+            marginBottom: 14,
+            borderRadius: 14,
+            background: 'linear-gradient(135deg, #E8C968, #B88B28)',
+            color: '#090A0F',
+            fontWeight: 800,
+            fontSize: 14,
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            boxShadow: '0 6px 20px rgba(212, 175, 55, 0.35)'
+          }}
+        >
+          <Smartphone size={17} />
+          Download on the iOS App Store
+        </a>
+
         {/* iOS Specific Instructions */}
         {isIOS ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, margin: '18px 0' }}>

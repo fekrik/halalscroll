@@ -132,11 +132,19 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const shareFileRef = useRef<File | null>(null);
 
+  const APP_STORE_URL = 'https://apps.apple.com/app/halal-scroll-quran-sunnah/id6834652749';
+  const PROD_WEB_ORIGIN = 'https://halalscroll-production.up.railway.app';
   const basePath = window.location.pathname.replace(/\/c\/.*$/, '').replace(/\/$/, '');
-  const canonicalUrl = window.location.hostname.includes('github.io')
-    ? `${window.location.origin}${basePath}/#/c/${card.share_slug}`
-    : `${window.location.origin}/c/${card.share_slug}`;
-  const displayUrl = `halalscroll.app/c/${card.share_slug}`;
+  const isCapacitorOrLocal =
+    window.location.protocol === 'capacitor:' ||
+    window.location.protocol === 'file:' ||
+    window.location.hostname === 'localhost';
+  const canonicalUrl = isCapacitorOrLocal
+    ? `${PROD_WEB_ORIGIN}/c/${card.share_slug}`
+    : window.location.hostname.includes('github.io')
+      ? `${window.location.origin}${basePath}/#/c/${card.share_slug}`
+      : `${window.location.origin}/c/${card.share_slug}`;
+  const displayUrl = 'Available on the App Store';
 
   // Stop audio on unmount
   useEffect(() => {
@@ -507,7 +515,7 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
     platform: 'instagram' | 'tiktok' | 'whatsapp' | 'x' | 'threads' | 'imessage'
   ) => {
     soundEngine.triggerHaptic('lightImpact');
-    const shareText = `“${card.translation_en_clear}” — ${card.source_title}\n\nRead with Word-by-Word Arabic Roots & Classical Tafsir on Halal Scroll:\n${canonicalUrl}`;
+    const shareText = `“${card.translation_en_clear}” — ${card.source_title}\n\nRead with Word-by-Word Arabic Roots & Classical Tafsir on Halal Scroll:\n${canonicalUrl}\n\nDownload Halal Scroll on the App Store:\n${APP_STORE_URL}`;
 
     // 1. Native OS share sheet with the rendered card image (iOS / Android → Instagram Stories,
     //    WhatsApp Status, Messages, Save Image…). Called with no prior await to keep the user gesture.
@@ -566,10 +574,10 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
   const handleCopyDeepLink = async () => {
     soundEngine.triggerHaptic('softSuccess');
     try {
-      await navigator.clipboard.writeText(canonicalUrl);
+      await navigator.clipboard.writeText(`${canonicalUrl}\n\nApp Store: ${APP_STORE_URL}`);
     } catch {}
     setCopiedLink(true);
-    setShareToast(`Copied canonical link: ${displayUrl}`);
+    setShareToast('Copied passage link & App Store link!');
     setTimeout(() => {
       setCopiedLink(false);
       setShareToast(null);

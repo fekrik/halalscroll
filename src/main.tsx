@@ -958,21 +958,25 @@ const App: React.FC = () => {
             gap: 8
           }}>
             <div style={{ fontSize: 11.5, color: 'var(--text-primary)' }}>
-              <strong>Shared Web Companion:</strong> <code>halalscroll.app/c/{webCompanionSlug}</code>
+              <strong>Halal Scroll:</strong> <span>Read, Listen &amp; Explore Roots</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <a
-                href={`/api/og/${webCompanionSlug}.svg`}
+                href="https://apps.apple.com/app/halal-scroll-quran-sunnah/id6834652749"
                 target="_blank"
                 rel="noreferrer"
                 style={{
                   fontSize: 11,
-                  color: 'var(--accent-gold-bright)',
-                  textDecoration: 'underline',
-                  fontWeight: 600
+                  padding: '4px 10px',
+                  borderRadius: 99,
+                  background: '#E8C968',
+                  color: '#090A0F',
+                  textDecoration: 'none',
+                  fontWeight: 800,
+                  whiteSpace: 'nowrap'
                 }}
               >
-                View OG Card
+                Get on App Store ↗
               </a>
               <button
                 onClick={() => {
