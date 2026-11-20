@@ -25,7 +25,12 @@ export const DeepStudyDrawer: React.FC<DeepStudyDrawerProps> = ({
   onMarkPracticed,
   onOpenShareWithSlide
 }) => {
-  const [activeTab, setActiveTab] = useState<DeepStudyTab>(initialSelectedWord ? 'words' : initialTab);
+  const validInitialTab: DeepStudyTab = (['summary', 'words', 'tafsir', 'sunnah', 'action'] as string[]).includes(
+    initialTab as string
+  )
+    ? initialTab
+    : 'summary';
+  const [activeTab, setActiveTab] = useState<DeepStudyTab>(initialSelectedWord ? 'words' : validInitialTab);
   const [snapExpanded, setSnapExpanded] = useState<boolean>(false);
   const [selectedWord, setSelectedWord] = useState<CardWord | null>(
     initialSelectedWord || (card.words && card.words[0]) || null
@@ -33,6 +38,17 @@ export const DeepStudyDrawer: React.FC<DeepStudyDrawerProps> = ({
   const [tafsirSource, setTafsirSource] = useState<'saadi' | 'kathir' | 'maariful'>('saadi');
   const [reflectionText, setReflectionText] = useState<string>(card.practiced?.reflection_note || '');
   const [isSavingPractice, setIsSavingPractice] = useState<boolean>(false);
+
+  const displayWords: CardWord[] = React.useMemo(() => {
+    const base = Array.isArray(card.words) ? card.words : [];
+    if (!initialSelectedWord) return base;
+    const exists = base.some(
+      (w) =>
+        w.word_position === initialSelectedWord.word_position ||
+        w.arabic_word === initialSelectedWord.arabic_word
+    );
+    return exists ? base : [initialSelectedWord, ...base];
+  }, [card.words, initialSelectedWord]);
 
   useEffect(() => {
     setReflectionText(card.practiced?.reflection_note || '');
@@ -312,59 +328,13 @@ export const DeepStudyDrawer: React.FC<DeepStudyDrawerProps> = ({
           {/* TAB 2: WORD-BY-WORD & ROOT EXPLORER */}
           {activeTab === 'words' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
-                Tap any Arabic word below to hear isolated pronunciation and inspect its <strong>Trilateral Quranic Root</strong>:
-              </div>
-
-              {/* Horizontal Word Strip */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(112px, 1fr))',
-                  gap: 8,
-                  direction: 'rtl'
-                }}
-              >
-                {card.words.map((w) => {
-                  const isSel = selectedWord?.word_position === w.word_position;
-                  return (
-                    <button
-                      key={w.word_position}
-                      onClick={() => {
-                        setSelectedWord(w);
-                        soundEngine.speakArabicWord(w);
-                      }}
-                      style={{
-                        padding: '10px 8px',
-                        borderRadius: 14,
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        background: isSel ? 'rgba(212, 175, 55, 0.18)' : 'var(--surface-card)',
-                        border: isSel ? '1.5px solid var(--accent-gold-bright)' : '1px solid var(--border-specular)',
-                        transition: 'all 0.18s ease'
-                      }}
-                    >
-                      <div className="arabic-sacred-text" style={{ fontSize: 22, margin: 0, lineHeight: 1.4, color: isSel ? 'var(--accent-gold-bright)' : 'var(--text-primary)' }}>
-                        {w.arabic_word}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, direction: 'ltr' }}>
-                        {w.transliteration}
-                      </div>
-                      <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-primary)', marginTop: 2, direction: 'ltr' }}>
-                        {w.translation_en}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Selected Word Trilateral Root Spotlight Card */}
+              {/* Selected Word Trilateral Root Spotlight Card (Shown First so Tapped Word is Front-and-Center) */}
               {selectedWord && (
                 <div style={{
                   padding: 18,
                   borderRadius: 20,
-                  background: 'linear-gradient(155deg, rgba(212, 175, 55, 0.13), rgba(22, 26, 36, 0.6))',
-                  border: '1px solid var(--border-gold)',
+                  background: 'linear-gradient(155deg, rgba(212, 175, 55, 0.15), rgba(22, 26, 36, 0.72))',
+                  border: '1.5px solid var(--border-gold)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 12
@@ -376,17 +346,17 @@ export const DeepStudyDrawer: React.FC<DeepStudyDrawerProps> = ({
                         borderRadius: 14,
                         background: 'rgba(212, 175, 55, 0.2)',
                         border: '1px solid var(--border-gold)',
-                        fontSize: 26,
+                        fontSize: 28,
                         fontFamily: 'serif',
                         color: 'var(--accent-gold-bright)'
                       }}>
                         {selectedWord.arabic_word}
                       </div>
                       <div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+                        <div style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--text-primary)' }}>
                           “{selectedWord.translation_en}”
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                           {selectedWord.transliteration} • <span style={{ color: 'var(--accent-emerald)' }}>{selectedWord.grammar_pos}</span>
                         </div>
                       </div>
@@ -480,6 +450,54 @@ export const DeepStudyDrawer: React.FC<DeepStudyDrawerProps> = ({
                   </div>
                 </div>
               )}
+
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                Key Arabic Words in This Passage (tap any word to inspect its root &amp; hear audio):
+              </div>
+
+              {/* Horizontal Word Strip */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(112px, 1fr))',
+                  gap: 8,
+                  direction: 'rtl'
+                }}
+              >
+                {displayWords.map((w) => {
+                  const isSel =
+                    selectedWord?.word_position === w.word_position ||
+                    selectedWord?.arabic_word === w.arabic_word;
+                  return (
+                    <button
+                      key={`${w.word_position}-${w.arabic_word}`}
+                      onClick={() => {
+                        setSelectedWord(w);
+                        soundEngine.speakArabicWord(w);
+                      }}
+                      style={{
+                        padding: '10px 8px',
+                        borderRadius: 14,
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        background: isSel ? 'rgba(212, 175, 55, 0.18)' : 'var(--surface-card)',
+                        border: isSel ? '1.5px solid var(--accent-gold-bright)' : '1px solid var(--border-specular)',
+                        transition: 'all 0.18s ease'
+                      }}
+                    >
+                      <div className="arabic-sacred-text" style={{ fontSize: 22, margin: 0, lineHeight: 1.4, color: isSel ? 'var(--accent-gold-bright)' : 'var(--text-primary)' }}>
+                        {w.arabic_word}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, direction: 'ltr' }}>
+                        {w.transliteration}
+                      </div>
+                      <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-primary)', marginTop: 2, direction: 'ltr' }}>
+                        {w.translation_en}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 

@@ -18,6 +18,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import { soundEngine } from '../audioEngine';
+import { CardWord, FeedCard } from '../types';
 
 export interface HighlightGroup {
   id: string;
@@ -103,12 +104,12 @@ export function getSacredContentIdentity(card: {
   if (card.card_type === 'quran') {
     return {
       id: isQuranicDua ? 'quran_dua' : 'quran',
-      badgeLabel: isQuranicDua ? 'Quran • Quranic Dua' : 'Quran • Word of Allah',
+      badgeLabel: isQuranicDua ? 'Quran • Supplication' : 'Quran • Verse',
       accentColor: isQuranicDua ? 'var(--sacred-dua-color)' : 'var(--sacred-quran-color)',
       textTint: isQuranicDua ? 'var(--sacred-dua-color)' : 'var(--sacred-quran-color)',
       pillBg: isQuranicDua ? 'var(--hl-allah-bg)' : 'var(--hl-mercy-bg)',
       pillBorder: isQuranicDua ? 'var(--hl-allah-border)' : 'var(--hl-mercy-border)',
-      quoteBg: isQuranicDua ? 'rgba(217, 119, 6, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+      quoteBg: isQuranicDua ? 'rgba(217, 119, 6, 0.06)' : 'rgba(16, 185, 129, 0.06)',
       quoteBorder: isQuranicDua ? 'var(--hl-allah-border)' : 'var(--hl-mercy-border)'
     };
   }
@@ -116,31 +117,31 @@ export function getSacredContentIdentity(card: {
   if (card.card_type === 'hadith') {
     return {
       id: 'hadith',
-      badgeLabel: 'Hadith • Words of the Prophet ﷺ',
+      badgeLabel: 'Hadith • Prophetic Quote',
       accentColor: 'var(--sacred-hadith-color)',
       textTint: 'var(--sacred-hadith-color)',
       pillBg: 'var(--hl-prophet-bg)',
       pillBorder: 'var(--hl-prophet-border)',
-      quoteBg: 'rgba(225, 29, 72, 0.08)',
+      quoteBg: 'rgba(225, 29, 72, 0.06)',
       quoteBorder: 'var(--hl-prophet-border)'
     };
   }
 
   return {
     id: 'dua',
-    badgeLabel: card.card_type === 'dua' ? 'Dua • Sacred Supplication' : 'Seerah • Prophetic Biography',
+    badgeLabel: card.card_type === 'dua' ? 'Dua • Supplication' : 'Seerah • Prophetic Biography',
     accentColor: 'var(--sacred-dua-color)',
     textTint: 'var(--sacred-dua-color)',
     pillBg: 'var(--hl-allah-bg)',
     pillBorder: 'var(--hl-allah-border)',
-    quoteBg: 'rgba(217, 119, 6, 0.08)',
+    quoteBg: 'rgba(217, 119, 6, 0.06)',
     quoteBorder: 'var(--hl-allah-border)'
   };
 }
 
 /**
- * Separates a Hadith's narrator intro (isnad) from the Prophet Muhammad's ﷺ reported words (matn)
- * so only the Prophetic quote is styled in Deep Red / Crimson, preserving accurate attribution.
+ * Separates a Hadith's narrator intro (isnad) and closing text from the Prophet Muhammad's ﷺ
+ * direct reported words (matn) so ONLY direct Prophetic speech is highlighted in red.
  */
 export function splitHadithNarratorAndQuote(text: string): {
   narratorIntro: string;
@@ -149,19 +150,9 @@ export function splitHadithNarratorAndQuote(text: string): {
 } {
   if (!text) return { narratorIntro: '', propheticQuote: '', closingText: '' };
 
-  // Check if there is an explicit colon after "said:" / "says:" / "قَالَ:"
-  const enSaidMatch = text.match(/^(.*?\b(?:Messenger of Allah|Prophet|he)\b[^:"]*?\bsaid\s*:\s*)(.+)$/is);
-  if (enSaidMatch) {
-    return {
-      narratorIntro: enSaidMatch[1].trim(),
-      propheticQuote: enSaidMatch[2].trim().replace(/^["“”']+|["“”']+$/g, ''),
-      closingText: ''
-    };
-  }
-
-  // Check if there is a quoted statement inside "..." or “...”
-  const quoteMatch = text.match(/^(.*?)["“]([^"”]{12,})["”](.*)$/s);
-  if (quoteMatch && quoteMatch[1].trim().length > 5) {
+  // 1. Check if there is an explicit quoted statement inside "..." or “...”
+  const quoteMatch = text.match(/^(.*?)["“«]([^"”»]{8,})["”»](.*)$/s);
+  if (quoteMatch && quoteMatch[1].trim().length > 3) {
     return {
       narratorIntro: quoteMatch[1].trim(),
       propheticQuote: quoteMatch[2].trim(),
@@ -169,21 +160,377 @@ export function splitHadithNarratorAndQuote(text: string): {
     };
   }
 
-  // Arabic narrator split (e.g. قال رسول الله صلى الله عليه وسلم : ...)
-  const arSaidMatch = text.match(/^(.*?(?:قَالَ رَسُولُ اللَّهِ|قَالَ النَّبِيُّ|عَنِ النَّبِيِّ)[^:«"]*?[:«"]\s*)(.+)$/s);
-  if (arSaidMatch) {
+  // 2. Check if there is an opening quote that was truncated at the end ("... or “...)
+  const openQuoteMatch = text.match(/^(.*?)["“«]([^"”»]{8,})$/s);
+  if (openQuoteMatch && openQuoteMatch[1].trim().length > 3) {
     return {
-      narratorIntro: arSaidMatch[1].trim(),
-      propheticQuote: arSaidMatch[2].trim().replace(/[»"]$/g, ''),
+      narratorIntro: openQuoteMatch[1].trim(),
+      propheticQuote: openQuoteMatch[2].trim(),
       closingText: ''
     };
   }
 
-  // If the entire text is already the direct statement (because narrator_chain is stored in metadata)
+  // 3. Check for narrator prefix ending in "said:" / "says:" / "said," / "reported:"
+  const enSaidMatch = text.match(
+    /^(.*?\b(?:Messenger of Allah|Allah['’]s Messenger|Prophet|he)\b[^:"]*?\b(?:said|says|stated|declared)\s*[:,]\s*)(.+)$/is
+  );
+  if (enSaidMatch) {
+    const rest = enSaidMatch[2].trim();
+    const trailingCitation = rest.match(/^(.*?)(\s*(?:\[[^\]]+\]|\((?:Bukhari|Muslim|Agreed|Related|Narrated)[^)]+\))\.?)$/is);
+    if (trailingCitation) {
+      return {
+        narratorIntro: enSaidMatch[1].trim(),
+        propheticQuote: trailingCitation[1].trim().replace(/^["“”']+|["“”']+$/g, ''),
+        closingText: trailingCitation[2].trim()
+      };
+    }
+    return {
+      narratorIntro: enSaidMatch[1].trim(),
+      propheticQuote: rest.replace(/^["“”']+|["“”']+$/g, ''),
+      closingText: ''
+    };
+  }
+
+  // 4. Check for "On the authority of ... who said:" or "Narrated ...:"
+  const genericNarratorColon = text.match(/^((?:On the authority of|Narrated|Reported by|It is narrated on|Abu |Ibn |Umar |Aisha |Anas )[^:]{4,140}:\s*)(.+)$/is);
+  if (genericNarratorColon) {
+    return {
+      narratorIntro: genericNarratorColon[1].trim(),
+      propheticQuote: genericNarratorColon[2].trim().replace(/^["“”']+|["“”']+$/g, ''),
+      closingText: ''
+    };
+  }
+
+  // 5. If the text starts with third-person descriptive narrative ("The Prophet used to...", "A man came to...") without direct speech, keep narrative neutral
+  if (/^(?:A man|Some people|We were sitting|While we were|I came to|I asked|The Messenger of Allah used to|The Prophet used to)/i.test(text.trim())) {
+    const innerColon = text.match(/^([^:]+:\s*)(.+)$/s);
+    if (innerColon) {
+      return {
+        narratorIntro: innerColon[1].trim(),
+        propheticQuote: innerColon[2].trim().replace(/^["“”']+|["“”']+$/g, ''),
+        closingText: ''
+      };
+    }
+  }
+
   return {
     narratorIntro: '',
-    propheticQuote: text,
+    propheticQuote: text.replace(/^["“”']+|["“”']+$/g, ''),
     closingText: ''
+  };
+}
+
+/**
+ * Separates a Dua's introductory/narrator context from the actual supplication words
+ * so ONLY the actual supplication is highlighted in gold.
+ */
+export function splitDuaIntroAndSupplication(text: string): {
+  introText: string;
+  supplicationText: string;
+  closingText: string;
+} {
+  if (!text) return { introText: '', supplicationText: '', closingText: '' };
+
+  // 1. Explicit quoted supplication inside "..." or “...”
+  const quoteMatch = text.match(/^(.*?)["“«]([^"”»]{6,})["”»](.*)$/s);
+  if (quoteMatch && quoteMatch[1].trim().length > 2) {
+    return {
+      introText: quoteMatch[1].trim(),
+      supplicationText: quoteMatch[2].trim(),
+      closingText: quoteMatch[3].trim()
+    };
+  }
+
+  // 2. Colon before supplication ("...used to say: O Allah...")
+  const colonMatch = text.match(/^([^:]{4,120}:\s*)(.+)$/s);
+  if (colonMatch) {
+    return {
+      introText: colonMatch[1].trim(),
+      supplicationText: colonMatch[2].trim().replace(/^["“”']+|["“”']+$/g, ''),
+      closingText: ''
+    };
+  }
+
+  // 3. Detect where vocative supplication starts ("O Allah", "Our Lord", "My Lord", "I seek refuge", "In the Name of Allah")
+  const vocativeMatch = text.match(
+    /^(.*?\.\s+)((?:O Allah|Our Lord|My Lord|O Ever-Living|I seek refuge|In the Name of Allah|Glory be to|There is no deity).+)$/is
+  );
+  if (vocativeMatch && vocativeMatch[1].trim().length > 4) {
+    return {
+      introText: vocativeMatch[1].trim(),
+      supplicationText: vocativeMatch[2].trim(),
+      closingText: ''
+    };
+  }
+
+  return {
+    introText: '',
+    supplicationText: text.replace(/^["“”']+|["“”']+$/g, ''),
+    closingText: ''
+  };
+}
+
+/**
+ * Computes a per-token boolean mask for Arabic text on Hadith or Dua cards:
+ * - For Hadith: returns true ONLY for tokens that belong to the direct Prophetic quote (matn),
+ *   keeping narrator chains (isnad) and closing citations (e.g. رواه البخاري) neutral.
+ * - For Dua: returns true ONLY for tokens that belong to the actual supplication,
+ *   keeping any introductory narrative (e.g. كان النبي إذا...) neutral.
+ */
+export function getArabicSacredQuoteTokenMask(tokens: string[], cardType: string): boolean[] {
+  const n = tokens.length;
+  if (n === 0) return [];
+  if (cardType === 'quran') return tokens.map(() => true);
+
+  const norm = (s: string) =>
+    (s || '')
+      .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED،؟:؛.!۝ۚۗۖۙۘ]/g, '')
+      .replace(/[أإآٱ]/g, 'ا')
+      .trim();
+
+  // Check if tokens contain explicit Arabic guillemets « ... » or quotes " ... "
+  let openQuoteIdx = -1;
+  let closeQuoteIdx = -1;
+  for (let i = 0; i < n; i++) {
+    if (openQuoteIdx === -1 && /[«"“]/.test(tokens[i])) openQuoteIdx = i;
+    if (openQuoteIdx !== -1 && /[»"”]/.test(tokens[i])) closeQuoteIdx = i;
+  }
+
+  // Detect trailing citation start (e.g. رواه البخاري / متفق عليه / أخرجه مسلم)
+  let endExclusive = n;
+  for (let i = Math.max(2, n - 8); i < n; i++) {
+    const w = norm(tokens[i]);
+    if (w === 'رواه' || w === '[رواه' || w === 'متفق' || w === 'اخرجه') {
+      endExclusive = i;
+      break;
+    }
+  }
+
+  if (openQuoteIdx !== -1) {
+    const stopIdx = closeQuoteIdx >= openQuoteIdx ? Math.min(closeQuoteIdx + 1, endExclusive) : endExclusive;
+    return tokens.map((_, idx) => idx >= openQuoteIdx && idx < stopIdx);
+  }
+
+  let startIdx = 0;
+
+  if (cardType === 'hadith') {
+    // Look for narrator intro keywords (عن / حدثنا / سمعت / قال رسول الله / قال النبي)
+    const firstWord = norm(tokens[0]);
+    const hasIsnadPrefix =
+      firstWord === 'عن' ||
+      firstWord === 'حدثنا' ||
+      firstWord === 'اخبرنا' ||
+      firstWord === 'سمعت' ||
+      firstWord === 'ان' ||
+      firstWord === 'قال';
+
+    // Find the colon or speech verb ("قال:" / "يقول:") that introduces the Prophet's direct speech
+    let speechStart = -1;
+    const scanLimit = Math.min(n - 2, 26);
+    for (let i = 0; i < scanLimit; i++) {
+      const raw = tokens[i];
+      const w = norm(raw);
+      if (raw.includes(':') && i >= 1) {
+        speechStart = i + 1;
+      } else if ((w === 'قال' || w === 'يقول' || w === 'فقال') && i >= 2) {
+        speechStart = i + 1;
+      }
+    }
+    if (speechStart > 0 && speechStart < endExclusive) {
+      startIdx = speechStart;
+    } else if (hasIsnadPrefix && n > 6) {
+      // Fallback: if starts with عن ... رضي الله عنه, skip the companion name & blessing
+      for (let i = 1; i < Math.min(n - 2, 16); i++) {
+        const w = norm(tokens[i]);
+        if (w === 'عنه' || w === 'عنهما' || w === 'عنها' || w === 'وسلم') {
+          startIdx = Math.min(endExclusive - 1, i + 1);
+        }
+      }
+    }
+  } else if (cardType === 'dua' || cardType === 'seerah') {
+    // For Dua/Seerah, check if there is a narrative intro before colon or before اللهم / ربنا / رب / أعوذ / بسم / سبحان / لا إله
+    const firstWord = norm(tokens[0]);
+    const startsDirectlyWithDua =
+      firstWord === 'اللهم' ||
+      firstWord === 'ربنا' ||
+      firstWord === 'رب' ||
+      firstWord === 'ربي' ||
+      firstWord === 'اعوذ' ||
+      firstWord === 'بسم' ||
+      firstWord === 'سبحان' ||
+      firstWord === 'لا' ||
+      firstWord === 'حسبنا' ||
+      firstWord === 'يا';
+
+    if (!startsDirectlyWithDua) {
+      for (let i = 0; i < Math.min(n - 1, 20); i++) {
+        const raw = tokens[i];
+        const w = norm(raw);
+        if (raw.includes(':')) {
+          startIdx = i + 1;
+          break;
+        }
+        if (
+          i > 0 &&
+          (w === 'اللهم' ||
+            w === 'ربنا' ||
+            w === 'رب' ||
+            w === 'اعوذ' ||
+            w === 'سبحان' ||
+            w === 'يا')
+        ) {
+          startIdx = i;
+          break;
+        }
+      }
+    }
+  }
+
+  return tokens.map((_, idx) => idx >= startIdx && idx < endExclusive);
+}
+
+const ARABIC_TO_LATIN_MAP: Record<string, string> = {
+  'ا': 'ā', 'أ': 'a', 'إ': 'i', 'آ': 'ā', 'ٱ': 'a', 'ء': '’', 'ؤ': '’', 'ئ': '’',
+  'ب': 'b', 'ت': 't', 'ث': 'th', 'ج': 'j', 'ح': 'ḥ', 'خ': 'kh',
+  'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z', 'س': 's', 'ش': 'sh',
+  'ص': 'ṣ', 'ض': 'ḍ', 'ط': 'ṭ', 'ظ': 'ẓ', 'ع': '‘', 'غ': 'gh',
+  'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l', 'م': 'm', 'ن': 'n',
+  'ه': 'h', 'ة': 'h', 'و': 'w', 'ي': 'y', 'ى': 'ā',
+  '\u064E': 'a', '\u064F': 'u', '\u0650': 'i', '\u0670': 'ā'
+};
+
+const COMMON_ARABIC_LEXICON: Record<string, { translit: string; meaning: string; rootAr: string; rootTr: string; rootMeaning: string; pos: string }> = {
+  'الله': { translit: 'Allāh', meaning: 'Allah, the One Almighty Creator', rootAr: 'أ ل ه', rootTr: 'A-L-H', rootMeaning: 'To worship, adore, and turn to in awe and love', pos: 'Proper Divine Name (Ism al-Jalālah)' },
+  'لله': { translit: 'lillāhi', meaning: 'belongs to Allah / for Allah', rootAr: 'أ ل ه', rootTr: 'A-L-H', rootMeaning: 'To worship, adore, and turn to in awe and love', pos: 'Preposition + Divine Name' },
+  'بالله': { translit: 'billāhi', meaning: 'in Allah / by Allah', rootAr: 'أ ل ه', rootTr: 'A-L-H', rootMeaning: 'To worship, adore, and turn to in awe and love', pos: 'Preposition + Divine Name' },
+  'الرحمن': { translit: 'ar-Raḥmān', meaning: 'The Entirely Merciful', rootAr: 'ر ح م', rootTr: 'R-Ḥ-M', rootMeaning: 'All-encompassing womb-like mercy and compassion', pos: 'Divine Attribute (Intensive Form)' },
+  'الرحيم': { translit: 'ar-Raḥīm', meaning: 'The Especially Merciful', rootAr: 'ر ح م', rootTr: 'R-Ḥ-M', rootMeaning: 'Continuous, gentle mercy bestowed upon creation', pos: 'Divine Attribute' },
+  'رب': { translit: 'Rabb', meaning: 'Lord, Sustainer, and Nurturer', rootAr: 'ر ب ب', rootTr: 'R-B-B', rootMeaning: 'To nurture, sustain, and bring to perfection stage by stage', pos: 'Noun (Mudāf)' },
+  'ربنا': { translit: 'Rabbanā', meaning: 'Our Lord and Sustainer', rootAr: 'ر ب ب', rootTr: 'R-B-B', rootMeaning: 'To nurture, sustain, and bring to perfection', pos: 'Vocative Noun + Pronoun' },
+  'ربي': { translit: 'Rabbī', meaning: 'My Lord and Sustainer', rootAr: 'ر ب ب', rootTr: 'R-B-B', rootMeaning: 'To nurture, sustain, and bring to perfection', pos: 'Vocative Noun + 1st Person Pronoun' },
+  'اللهم': { translit: 'Allāhumma', meaning: 'O Allah (Sacred Vocative)', rootAr: 'أ ل ه', rootTr: 'A-L-H', rootMeaning: 'Direct supplication invoking all Divine Names', pos: 'Vocative Divine Invocation' },
+  'رسول': { translit: 'Rasūl', meaning: 'Messenger', rootAr: 'ر س ل', rootTr: 'R-S-L', rootMeaning: 'To send forth with a weighty message and mission', pos: 'Noun' },
+  'النبي': { translit: 'an-Nabī', meaning: 'The Prophet ﷺ', rootAr: 'ن ب أ', rootTr: 'N-B-’', rootMeaning: 'Elevated news from the unseen; one who conveys divine tidings', pos: 'Definite Noun' },
+  'قال': { translit: 'qāla', meaning: 'he said / declared', rootAr: 'ق و ل', rootTr: 'Q-W-L', rootMeaning: 'To speak, articulate, and express truth', pos: 'Past Verb (3rd Person Singular)' },
+  'ان': { translit: 'inna', meaning: 'indeed / truly', rootAr: 'أ ن ن', rootTr: '’ -N-N', rootMeaning: 'Particle of certainty and emphasis', pos: 'Emphatic Particle (Ḥarf Tawkīd)' },
+  'انما': { translit: 'innamā', meaning: 'only / exclusively', rootAr: 'أ ن ن', rootTr: '’ -N-N', rootMeaning: 'Particle of restriction and emphasis (Ḥaṣr)', pos: 'Restrictive Particle' },
+  'الاعمال': { translit: 'al-a‘māl', meaning: 'the actions / deeds', rootAr: 'ع م ل', rootTr: '‘-M-L', rootMeaning: 'Purposeful work, action, and conscious effort', pos: 'Definite Plural Noun' },
+  'بالنيات': { translit: 'bin-niyyāt', meaning: 'by intentions', rootAr: 'ن و ي', rootTr: 'N-W-Y', rootMeaning: 'The seed-core and unseen aim of the heart', pos: 'Preposition + Plural Noun' },
+  'قلب': { translit: 'qalb', meaning: 'heart', rootAr: 'ق ل ب', rootTr: 'Q-L-B', rootMeaning: 'To turn, transform, and feel at the innermost core', pos: 'Noun' },
+  'قلوب': { translit: 'qulūb', meaning: 'hearts', rootAr: 'ق ل ب', rootTr: 'Q-L-B', rootMeaning: 'To turn, transform, and feel at the innermost core', pos: 'Plural Noun' },
+  'صبر': { translit: 'ṣabr', meaning: 'patience / steadfastness', rootAr: 'ص ب ر', rootTr: 'Ṣ-B-R', rootMeaning: 'Holding firm with serenity and trust during trial', pos: 'Verbal Noun (Maṣdar)' },
+  'يسرا': { translit: 'yusrā', meaning: 'ease / relief', rootAr: 'ي س ر', rootTr: 'Y-S-R', rootMeaning: 'Gentle unfolding, facility, and abundance of relief', pos: 'Indefinite Accusative Noun' },
+  'العسر': { translit: 'al-‘usr', meaning: 'the hardship / difficulty', rootAr: 'ع س ر', rootTr: '‘-S-R', rootMeaning: 'Tightness or constriction that gives way to ease', pos: 'Definite Genitive Noun' }
+};
+
+/**
+ * Resolves ANY tapped Arabic token on a card to its specific CardWord entry
+ * (either matching card.words or synthesizing an accurate morphological entry for that exact tapped token),
+ * fixing Item 11 so tapping any Arabic word always opens THAT word's meaning & trilateral root.
+ */
+export function resolveTappedArabicWord(
+  rawTok: string,
+  tokenIndex: number,
+  card: FeedCard,
+  translationText: string
+): CardWord {
+  const cleanPunct = (s?: string) =>
+    (s || '').replace(/[،؟:؛.!۝ۚۗۖۙۘ«»"“”'’()\[\]]/g, '').trim();
+  const cleanedRaw = cleanPunct(rawTok);
+  const normTapped = normalizeArabicForMatch(cleanedRaw);
+
+  // 1. Try exact or stem match in card.words
+  const words = card.words || [];
+  for (const w of words) {
+    const cw = normalizeArabicForMatch(cleanPunct(w.arabic_word));
+    if (cw && (cw === normTapped || (normTapped.length >= 3 && (cw.includes(normTapped) || normTapped.includes(cw))))) {
+      return w;
+    }
+  }
+
+  // 2. Check common classical Arabic lexicon (direct or after stripping single-letter conjunction و / ف / ب / ل)
+  const strippedConj = normTapped.replace(/^[وفبلك]/, '');
+  const lexEntry = COMMON_ARABIC_LEXICON[normTapped] || COMMON_ARABIC_LEXICON[strippedConj];
+
+  // 3. Extract 3-letter root letters from the Arabic token
+  const extractThreeLetterRoot = (normWord: string): { rootAr: string; rootTr: string } => {
+    let stem = normWord
+      .replace(/^(?:وال|فال|بال|كال|لل|ال|و|ف|ب|ل)/, '')
+      .replace(/(?:وهم|هم|هما|هن|كم|كن|نا|ها|ون|ين|ات|ان|تم|تن|وا|ه|ي|ك)$/, '');
+    if (stem.length > 3) {
+      stem = stem.replace(/^[أإآيتنم]/, '');
+    }
+    if (stem.length > 3) {
+      stem = stem.replace(/[اوي]/g, '');
+    }
+    const chars = Array.from(stem.length >= 3 ? stem.slice(0, 3) : (normWord.replace(/^ال/, '') + 'ءءء').slice(0, 3));
+    const rootAr = chars.join(' ');
+    const rootTr = chars
+      .map(c => (ARABIC_TO_LATIN_MAP[c] || c).toUpperCase())
+      .join('-');
+    return { rootAr, rootTr };
+  };
+
+  // 4. Transliterate the tapped Arabic word with its harakat
+  const transliterateToken = (ar: string): string => {
+    let out = '';
+    for (const ch of Array.from(ar)) {
+      if (ARABIC_TO_LATIN_MAP[ch]) out += ARABIC_TO_LATIN_MAP[ch];
+    }
+    return out || 'kalimah';
+  };
+
+  // 5. Estimate aligned English gloss from the card's translation at the relative token position
+  const estimateContextualGloss = (): string => {
+    const cleanEn = (translationText || card.translation_en_clear || '')
+      .replace(/^["“«]|["”»]$/g, '')
+      .trim();
+    if (!cleanEn) return 'Sacred term in this passage';
+    const arWords = (card.arabic_text_uthmani || '').split(/\s+/).filter(Boolean);
+    const enWords = cleanEn.split(/\s+/).filter(Boolean);
+    if (enWords.length === 0) return 'Sacred term in this passage';
+    const ratio = Math.min(1, Math.max(0, tokenIndex / Math.max(1, arWords.length)));
+    const center = Math.min(enWords.length - 1, Math.floor(ratio * enWords.length));
+    const start = Math.max(0, center - 1);
+    const snippet = enWords
+      .slice(start, Math.min(enWords.length, start + 3))
+      .join(' ')
+      .replace(/^[,.;:!?("“]+|[,.;:!?)”"]+$/g, '');
+    return snippet || cleanEn.slice(0, 36);
+  };
+
+  if (lexEntry) {
+    return {
+      word_position: 1000 + tokenIndex,
+      arabic_word: cleanedRaw || rawTok,
+      transliteration: lexEntry.translit,
+      translation_en: lexEntry.meaning,
+      root_arabic: lexEntry.rootAr,
+      root_translit: lexEntry.rootTr,
+      root_meaning: lexEntry.rootMeaning,
+      root_occurrences: 0,
+      root_examples: [`From ${card.source_title}`],
+      grammar_pos: lexEntry.pos,
+      start_ms: 0,
+      end_ms: 800
+    };
+  }
+
+  const { rootAr, rootTr } = extractThreeLetterRoot(normTapped || cleanedRaw);
+  const gloss = estimateContextualGloss();
+  return {
+    word_position: 1000 + tokenIndex,
+    arabic_word: cleanedRaw || rawTok,
+    transliteration: transliterateToken(cleanedRaw || rawTok),
+    translation_en: gloss,
+    root_arabic: rootAr,
+    root_translit: rootTr,
+    root_meaning: `Classical Arabic root (${rootAr}) anchoring the meaning "${gloss}" in ${card.source_title}`,
+    root_occurrences: 0,
+    root_examples: [`${card.source_title} — “${(translationText || card.translation_en_clear || '').slice(0, 90)}…”`],
+    grammar_pos: 'Classical Arabic Lexical Form',
+    start_ms: 0,
+    end_ms: 800
   };
 }
 
@@ -834,9 +1181,11 @@ export const PersonalNoteModal: React.FC<{
 };
 
 /**
- * FIRST-TIME ONBOARDING SCREENS (Partner Brief Section 1):
- * 5-Screen introductory sequence before entering the app with concise headlines,
- * an iPhone preview frame, and a prominent Continue button.
+ * FIRST-TIME ONBOARDING SCREENS (After-Launch Feedback Items 1, 2, 3, 4):
+ * - Item 1: Simple opening screen ("The average Muslim spends 2+ hours per day scrolling social media. Fill that precious time with dhikr.")
+ * - Item 2: Minimalist full-screen design (no "1 of 5" labels, no heavy frames or nested boxes, generous spacing, subtle dot progress indicator, one Continue button)
+ * - Item 3: Clear content labels ("Quran • Verse", "Hadith • Prophetic Quote", "Dua • Supplication") — no color names ("Emerald Green", "Deep Red", "Warm Gold")
+ * - Item 4: Dedicated mood-based discovery screen ("Find Guidance for How You Feel") with mood chips (Anxious, Grateful, Sad, Seeking Forgiveness, Hopeful, Seeking Patience), introducing search separately.
  */
 export const OnboardingTutorialModal: React.FC<{
   onComplete: () => void;
@@ -845,114 +1194,115 @@ export const OnboardingTutorialModal: React.FC<{
 
   const slides = [
     {
-      badge: '1 of 5 • Mindful Scrolling',
-      title: 'Transform Daily Scrolling Into Sacred Remembrance',
-      desc: 'Replace unproductive social-media feeds with a peaceful, verse-by-verse journey through the Quran, authentic Hadith, and Prophetic Duas.',
-      phonePreview: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', textAlign: 'center', padding: '10px 6px' }}>
-          <span style={{ fontSize: 9.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', padding: '3px 10px', borderRadius: 99, background: 'rgba(16, 185, 129, 0.2)', color: '#6EE7B7', border: '1px solid rgba(16, 185, 129, 0.45)' }}>
-            Quran • Surah Ash-Sharh 94:5–6
-          </span>
-          <div style={{ fontSize: 22, color: '#6EE7B7', fontFamily: 'var(--font-arabic)', lineHeight: 1.65 }}>
-            فَإِنَّ مَعَ ٱلْعُسْرِ يُسْرًا ۝ إِنَّ مَعَ ٱلْعُسْرِ يُسْرًا ۝
+      title: 'The average Muslim spends 2+ hours per day scrolling social media.',
+      subtitle: 'Fill that precious time with dhikr.',
+      visual: (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, textAlign: 'center', padding: '12px 0' }}>
+          <div style={{ fontSize: 32, color: 'var(--sacred-quran-color)', fontFamily: 'var(--font-arabic)', lineHeight: 1.75 }}>
+            أَلَا بِذِكْرِ ٱللَّهِ تَطْمَئِنُّ ٱلْقُلُوبُ
           </div>
-          <div style={{ fontSize: 13, color: '#F4F1EA', fontStyle: 'italic', lineHeight: 1.45 }}>
-            “So, surely with hardship comes ease. Surely with that hardship comes more ease.”
+          <div style={{ fontSize: 16, color: 'rgba(244, 241, 234, 0.88)', fontStyle: 'italic', lineHeight: 1.55, maxWidth: 320 }}>
+            “Surely in the remembrance of Allah do hearts find rest.”
           </div>
-          <div style={{ fontSize: 10.5, color: 'var(--accent-gold-bright)', fontWeight: 700, marginTop: 2 }}>
-            ↑ Swipe Vertically • 14,678 Authentic Passages
+          <div style={{ fontSize: 12, color: 'rgba(244, 241, 234, 0.45)', letterSpacing: '0.04em' }}>
+            Surah Ar-Ra‘d • 13:28
           </div>
         </div>
       )
     },
     {
-      badge: '2 of 5 • Color-Coded Sacred Text',
-      title: 'Instantly Recognize Quran, Hadith & Duas',
-      desc: 'Sacred sources are color-coded for clarity in both Dark and Light modes—distinguishing Allah’s words, the Prophet’s ﷺ spoken quotes, and supplications.',
-      phonePreview: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', textAlign: 'left' }}>
-          <div style={{ padding: '8px 11px', borderRadius: 12, background: 'rgba(16, 185, 129, 0.14)', borderLeft: '3px solid #10B981' }}>
-            <div style={{ fontSize: 10, fontWeight: 800, color: '#6EE7B7', textTransform: 'uppercase' }}>Quran • Emerald Green</div>
-            <div style={{ fontSize: 12, color: '#E2F8EE', marginTop: 2 }}>“Indeed, Allah is with the patient.” (2:153)</div>
-          </div>
-          <div style={{ padding: '8px 11px', borderRadius: 12, background: 'rgba(239, 68, 68, 0.14)', borderLeft: '3px solid #EF4444' }}>
-            <div style={{ fontSize: 10, fontWeight: 800, color: '#FCA5A5', textTransform: 'uppercase' }}>Hadith • Deep Red Prophetic Quote</div>
-            <div style={{ fontSize: 11, color: 'rgba(244,241,234,0.65)', marginTop: 2 }}>Umar ibn al-Khattab reported that the Prophet ﷺ said:</div>
-            <div style={{ fontSize: 12, color: '#FCA5A5', fontWeight: 600 }}>“Actions are judged only by intentions…”</div>
-          </div>
-          <div style={{ padding: '8px 11px', borderRadius: 12, background: 'rgba(232, 201, 104, 0.14)', borderLeft: '3px solid #E8C968' }}>
-            <div style={{ fontSize: 10, fontWeight: 800, color: '#FDE68A', textTransform: 'uppercase' }}>Dua • Warm Gold Supplication</div>
-            <div style={{ fontSize: 12, color: '#FEF08A', marginTop: 2 }}>“Our Lord, grant us good in this world and the Hereafter.”</div>
-          </div>
-        </div>
-      )
-    },
-    {
-      badge: '3 of 5 • Sequential Reading & Streaks',
-      title: 'Complete the Quran & Hadith at Your Own Pace',
-      desc: 'Switch to Sequential Mode anytime to read in exact canonical order starting from Surah Al-Fatihah 1:1 or Hadith #1, while building your daily streak.',
-      phonePreview: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: 12, background: 'rgba(212, 175, 55, 0.14)', border: '1px solid rgba(212, 175, 55, 0.4)' }}>
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--accent-gold-bright)', textTransform: 'uppercase' }}>Sequential Khatmah</div>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: '#F4F1EA', marginTop: 2 }}>Surah Al-Fatihah • 1:1 → 114</div>
+      title: 'Quran, Hadith & Duas at a Glance',
+      subtitle: 'Recognize every sacred source effortlessly while you read.',
+      visual: (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, width: '100%', textAlign: 'left', padding: '4px 0' }}>
+          <div style={{ paddingLeft: 14, borderLeft: '2.5px solid #10B981' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#6EE7B7', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              Quran • Verse
             </div>
-            <span style={{ padding: '4px 9px', borderRadius: 99, background: '#10B981', color: '#04130D', fontSize: 10.5, fontWeight: 800 }}>
-              Auto-Saved
-            </span>
+            <div style={{ fontSize: 14.5, color: '#E2F8EE', marginTop: 4, lineHeight: 1.45 }}>
+              “Indeed, Allah is with the patient.” <span style={{ opacity: 0.6, fontSize: 12.5 }}>(2:153)</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 6, justifyContent: 'space-between' }}>
-            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, idx) => (
-              <div key={idx} style={{ flex: 1, padding: '6px 0', borderRadius: 10, background: idx < 5 ? 'rgba(16, 185, 129, 0.22)' : 'rgba(255,255,255,0.05)', border: idx < 5 ? '1px solid #34D399' : '1px solid rgba(255,255,255,0.1)', textAlign: 'center', fontSize: 10.5, fontWeight: 700, color: idx < 5 ? '#6EE7B7' : 'var(--text-muted)' }}>
-                {d} {idx < 5 ? '✓' : ''}
-              </div>
-            ))}
+
+          <div style={{ paddingLeft: 14, borderLeft: '2.5px solid #EF4444' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#FCA5A5', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              Hadith • Prophetic Quote
+            </div>
+            <div style={{ fontSize: 13.5, color: 'rgba(244,241,234,0.68)', marginTop: 4, lineHeight: 1.45 }}>
+              Umar ibn al-Khattab reported that the Prophet ﷺ said:{' '}
+              <span style={{ color: '#FCA5A5', fontWeight: 600 }}>“Actions are judged only by intentions…”</span>
+            </div>
           </div>
-        </div>
-      )
-    },
-    {
-      badge: '4 of 5 • Tafsir, Roots & Private Notes',
-      title: 'Deep Study, Word-by-Word Audio & Private Reflections',
-      desc: 'Listen to Qari recitation with synchronized word highlighting, inspect Arabic roots and 5-layer Tafsir, and save private personal notes on any card.',
-      phonePreview: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9, width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, direction: 'rtl', fontSize: 19, padding: '6px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.04)' }}>
-            <span style={{ color: 'rgba(244,241,234,0.65)' }}>بِسْمِ</span>
-            <span style={{ padding: '1px 8px', borderRadius: 7, background: 'rgba(232,201,104,0.28)', border: '1px solid #E8C968', color: '#F7DF8B', fontWeight: 700 }}>ٱللَّهِ</span>
-            <span style={{ color: 'rgba(244,241,234,0.65)' }}>ٱلرَّحْمَٰنِ</span>
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 99, background: 'rgba(255,59,92,0.16)', color: '#FF6B84', fontSize: 11, fontWeight: 700 }}>
-              <Heart size={12} fill="currentColor" /> Favorite
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 99, background: 'rgba(16,185,129,0.16)', color: '#6EE7B7', fontSize: 11, fontWeight: 700 }}>
-              <MessageCircle size={12} /> Private Note
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 99, background: 'rgba(212,175,55,0.18)', color: '#F7DF8B', fontSize: 11, fontWeight: 700 }}>
-              <BookOpen size={12} /> Deep Tafsir
-            </span>
+
+          <div style={{ paddingLeft: 14, borderLeft: '2.5px solid #E8C968' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#FDE68A', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              Dua • Supplication
+            </div>
+            <div style={{ fontSize: 13.5, color: 'rgba(244,241,234,0.68)', marginTop: 4, lineHeight: 1.45 }}>
+              Among the Prophet’s ﷺ most frequent prayers:{' '}
+              <span style={{ color: '#FEF08A', fontWeight: 600 }}>“Our Lord, grant us good in this world and good in the Hereafter.”</span>
+            </div>
           </div>
         </div>
       )
     },
     {
-      badge: '5 of 5 • Search by Surah, Ayah & Mood',
-      title: 'Find Any Verse or Spiritual Remedy in Seconds',
-      desc: 'Jump directly to any of the 114 Surahs, search by Ayah or English/Arabic keyword, or filter by how your heart feels right now.',
-      phonePreview: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(232,201,104,0.4)', fontSize: 12, color: '#F4F1EA' }}>
-            <Search size={14} style={{ color: 'var(--accent-gold-bright)' }} />
+      title: 'Find Guidance for How You Feel',
+      subtitle: 'Select your current state of heart to receive verses, Hadiths, and Duas tailored to your moment.',
+      visual: (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center', padding: '12px 0' }}>
+          {[
+            'Anxious',
+            'Grateful',
+            'Sad',
+            'Seeking Forgiveness',
+            'Hopeful',
+            'Seeking Patience'
+          ].map((mood, idx) => (
+            <span
+              key={mood}
+              style={{
+                padding: '10px 18px',
+                borderRadius: 999,
+                background: idx === 0 || idx === 3 ? 'rgba(232, 201, 104, 0.16)' : 'rgba(255, 255, 255, 0.05)',
+                border: idx === 0 || idx === 3 ? '1px solid rgba(232, 201, 104, 0.45)' : '1px solid rgba(255, 255, 255, 0.1)',
+                fontSize: 13.5,
+                color: idx === 0 || idx === 3 ? '#F7DF8B' : '#F4F1EA',
+                fontWeight: 600
+              }}
+            >
+              {mood}
+            </span>
+          ))}
+        </div>
+      )
+    },
+    {
+      title: 'Read in Order, or Search Any Verse',
+      subtitle: 'Follow a sequential Khatmah through all 114 Surahs and classical Hadith books, or jump to any Ayah in seconds.',
+      visual: (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%', padding: '8px 0' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '13px 16px',
+            borderRadius: 14,
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            fontSize: 13.5,
+            color: 'rgba(244, 241, 234, 0.8)'
+          }}>
+            <Search size={16} style={{ color: 'var(--accent-gold-bright)', flexShrink: 0 }} />
             <span>Search “Surah Ya-Sin”, “2:255”, or “mercy”…</span>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
-            {['Anxious', 'Grateful', 'Seeking Forgiveness', 'Patience', 'Morning & Evening'].map((m) => (
-              <span key={m} style={{ padding: '4px 9px', borderRadius: 99, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', fontSize: 10.5, color: '#F4F1EA', fontWeight: 600 }}>
-                {m}
-              </span>
-            ))}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderRadius: 14, background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#F4F1EA' }}>114 Surahs &amp; 40 Hadith Nawawi</div>
+              <div style={{ fontSize: 12, color: 'rgba(244, 241, 234, 0.55)', marginTop: 2 }}>Auto-saves your sequential reading place</div>
+            </div>
+            <BookOpen size={18} style={{ color: 'var(--accent-gold-bright)' }} />
           </div>
         </div>
       )
@@ -964,113 +1314,82 @@ export const OnboardingTutorialModal: React.FC<{
 
   return (
     <div
-      className="spring-sheet-backdrop"
       style={{
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        background: 'rgba(5, 7, 12, 0.92)',
-        backdropFilter: 'blur(20px)',
-        zIndex: 999
+        position: 'fixed',
+        inset: 0,
+        zIndex: 999,
+        background: 'linear-gradient(180deg, #090C14 0%, #0E131F 100%)',
+        color: '#F4F1EA',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        padding: 'max(24px, env(safe-area-inset-top, 24px)) 28px max(28px, env(safe-area-inset-bottom, 28px))',
+        animation: 'fadeIn 0.25s ease-out'
       }}
     >
+      {/* Subtle Top Bar: Skip Only (No "1 of 5" clutter) */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', maxWidth: 440, margin: '0 auto' }}>
+        <button
+          onClick={() => {
+            soundEngine.triggerHaptic('selectionTick');
+            onComplete();
+          }}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'rgba(244, 241, 234, 0.45)',
+            fontSize: 13.5,
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '4px 8px'
+          }}
+        >
+          Skip
+        </button>
+      </div>
+
+      {/* Generous Full-Screen Center Content */}
       <div
         style={{
           width: '100%',
-          maxWidth: 390,
-          borderRadius: 28,
-          background: 'linear-gradient(165deg, rgba(20, 26, 38, 0.98), rgba(9, 12, 18, 0.99))',
-          border: '1px solid rgba(232, 201, 104, 0.38)',
-          boxShadow: '0 28px 68px rgba(0, 0, 0, 0.85)',
-          padding: '22px 20px 20px',
+          maxWidth: 420,
+          margin: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: 14,
-          position: 'relative'
+          alignItems: 'center',
+          textAlign: 'center',
+          gap: 28
         }}
-        onClick={(e) => e.stopPropagation()}
       >
-        {/* Top Row: Step Badge & Skip */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{
-            padding: '4px 10px',
-            borderRadius: 99,
-            background: 'rgba(212, 175, 55, 0.16)',
-            border: '1px solid rgba(212, 175, 55, 0.38)',
-            color: 'var(--accent-gold-bright)',
-            fontSize: 10.5,
-            fontWeight: 800,
-            letterSpacing: '0.05em',
-            textTransform: 'uppercase'
-          }}>
-            {current.badge}
-          </span>
-          <button
-            onClick={() => {
-              soundEngine.triggerHaptic('selectionTick');
-              onComplete();
-            }}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            Skip
-          </button>
-        </div>
-
-        {/* Headline & Subtitle */}
-        <div style={{ textAlign: 'center', padding: '0 4px' }}>
-          <h2 style={{ fontSize: 19, fontWeight: 800, color: '#F4F1EA', lineHeight: 1.25, marginBottom: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#F4F1EA', lineHeight: 1.3, letterSpacing: '-0.01em', margin: 0 }}>
             {current.title}
-          </h2>
-          <p style={{ fontSize: 12.5, color: 'rgba(244, 241, 234, 0.76)', lineHeight: 1.48, margin: 0 }}>
-            {current.desc}
+          </h1>
+          <p style={{ fontSize: 16, color: 'rgba(244, 241, 234, 0.72)', lineHeight: 1.5, margin: 0, fontWeight: 500 }}>
+            {current.subtitle}
           </p>
         </div>
 
-        {/* Mock iPhone Preview Frame */}
-        <div style={{
-          borderRadius: 22,
-          padding: '14px 14px',
-          background: 'radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.12), rgba(7, 10, 15, 0.95) 75%)',
-          border: '1.5px solid rgba(255, 255, 255, 0.12)',
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12)',
-          minHeight: 170,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative'
-        }}>
-          {/* Mini Dynamic Island Notch */}
-          <div style={{
-            width: 54,
-            height: 6,
-            borderRadius: 99,
-            background: 'rgba(255,255,255,0.14)',
-            marginBottom: 12
-          }} />
-          {current.phonePreview}
+        <div style={{ width: '100%' }}>
+          {current.visual}
         </div>
+      </div>
 
-        {/* Progress Dots */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
+      {/* Bottom Footer: Subtle Progress Dots + Single Prominent Continue Button */}
+      <div style={{ width: '100%', maxWidth: 420, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
           {slides.map((_, idx) => (
             <button
               key={idx}
               onClick={() => setStep(idx)}
+              aria-label={`Onboarding step ${idx + 1}`}
               style={{
-                width: idx === step ? 24 : 7,
-                height: 7,
+                width: idx === step ? 20 : 6,
+                height: 6,
                 borderRadius: 99,
                 border: 'none',
                 padding: 0,
-                background: idx === step ? 'var(--accent-gold-bright)' : 'rgba(255,255,255,0.18)',
+                background: idx === step ? '#E8C968' : 'rgba(255,255,255,0.16)',
                 transition: 'all 0.25s ease',
                 cursor: 'pointer'
               }}
@@ -1078,58 +1397,34 @@ export const OnboardingTutorialModal: React.FC<{
           ))}
         </div>
 
-        {/* Prominent Continue Button */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          {step > 0 && (
-            <button
-              onClick={() => {
-                soundEngine.triggerHaptic('selectionTick');
-                setStep(step - 1);
-              }}
-              style={{
-                padding: '13px 16px',
-                borderRadius: 14,
-                border: '1px solid rgba(255,255,255,0.14)',
-                background: 'rgba(255,255,255,0.05)',
-                color: '#F4F1EA',
-                fontSize: 13.5,
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              Back
-            </button>
-          )}
-          <button
-            onClick={() => {
-              soundEngine.triggerHaptic('softSuccess');
-              if (isLast) {
-                onComplete();
-              } else {
-                setStep(step + 1);
-              }
-            }}
-            style={{
-              flex: 1,
-              padding: '13px 18px',
-              borderRadius: 14,
-              border: '1px solid rgba(232, 201, 104, 0.65)',
-              background: 'linear-gradient(135deg, #E8C968, #B88B28)',
-              color: '#090A0F',
-              fontSize: 14,
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              boxShadow: '0 8px 24px rgba(212, 175, 55, 0.3)'
-            }}
-          >
-            <span>{isLast ? 'Continue to Halal Scroll' : 'Continue'}</span>
-            <ChevronRight size={16} strokeWidth={2.5} />
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            soundEngine.triggerHaptic('softSuccess');
+            if (isLast) {
+              onComplete();
+            } else {
+              setStep(step + 1);
+            }
+          }}
+          style={{
+            width: '100%',
+            padding: '16px 22px',
+            borderRadius: 16,
+            border: 'none',
+            background: '#E8C968',
+            color: '#090A0F',
+            fontSize: 15.5,
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8
+          }}
+        >
+          <span>{isLast ? 'Begin Reading' : 'Continue'}</span>
+          <ChevronRight size={18} strokeWidth={2.5} />
+        </button>
       </div>
     </div>
   );

@@ -5,6 +5,15 @@ function pad3(n: number): string {
   return String(n).padStart(3, '0');
 }
 
+export function isNonSpokenArabicMarker(tok: string): boolean {
+  if (!tok) return true;
+  if (tok.includes('۝')) return true;
+  const lettersOnly = tok
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED،؟:؛.!۝«»"“”'’()\[\]\-–—ﷺ]/g, '')
+    .trim();
+  return lettersOnly.length === 0;
+}
+
 function getEveryAyahReciterFolder(reciterName = 'Mishary Rashid Alafasy'): string {
   if (reciterName.includes('Husary')) return 'Husary_128kbps';
   if (reciterName.includes('AbdulBaset')) return 'Abdul_Basit_Murattal_192kbps';
@@ -148,10 +157,22 @@ class SoundAndHapticsEngine {
     const ayahGroups: { text: string; weight: number; globalIdx: number }[][] = [[]];
 
     const calcPhoneticWeight = (tok: string): number => {
-      const baseLetters = tok.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED،؟:؛.!۝]/g, '');
-      const longVowels = (tok.match(/[اويآىٰٓ]/g) || []).length;
-      const maddah = (tok.match(/[ٓ]/g) || []).length;
-      return Math.max(1.2, 1.0 + baseLetters.length * 0.48 + longVowels * 0.85 + maddah * 1.4);
+      const baseLetters = tok.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED،؟:؛.!۝«»"“”'’()\[\]\-–—]/g, '');
+      const longVowels = (tok.match(/[اويآىٰ]/g) || []).length;
+      const maddah = (tok.match(/[ٓآ]/g) || []).length;
+      const shaddah = (tok.match(/[\u0651]/g) || []).length;
+      const ghunnah = (tok.match(/[نم]\u0651/g) || []).length;
+      const hasPausePunct = /[،؟:؛.!«»]$/.test(tok) || /[\u06D6-\u06DC]/.test(tok);
+      return Math.max(
+        1.15,
+        0.95 +
+          baseLetters.length * 0.44 +
+          longVowels * 0.72 +
+          maddah * 1.65 +
+          shaddah * 0.55 +
+          ghunnah * 0.85 +
+          (hasPausePunct ? 0.9 : 0)
+      );
     };
 
     let globalIdx = 0;
@@ -160,8 +181,16 @@ class SoundAndHapticsEngine {
         const curGroup = ayahGroups[ayahGroups.length - 1];
         if (curGroup.length > 0) {
           // Qari elongates (madd/waqf) the final word before verse end
-          curGroup[curGroup.length - 1].weight += 1.65;
+          curGroup[curGroup.length - 1].weight += 1.85;
           ayahGroups.push([]);
+        }
+        continue;
+      }
+      if (isNonSpokenArabicMarker(tok)) {
+        const curGroup = ayahGroups[ayahGroups.length - 1];
+        if (curGroup.length > 0) {
+          // Standalone waqf sign or punctuation adds pause duration to preceding word
+          curGroup[curGroup.length - 1].weight += 0.75;
         }
         continue;
       }
@@ -174,7 +203,7 @@ class SoundAndHapticsEngine {
     const nonEmptyGroups = ayahGroups.filter(g => g.length > 0);
     if (nonEmptyGroups.length > 0) {
       const lastGroup = nonEmptyGroups[nonEmptyGroups.length - 1];
-      lastGroup[lastGroup.length - 1].weight += 1.65;
+      lastGroup[lastGroup.length - 1].weight += 1.85;
     }
     return {
       allTokens,
@@ -267,12 +296,16 @@ class SoundAndHapticsEngine {
               Math.max(1, Math.floor(((currentTrack + 1) / urls.length) * allTokens.length))
             );
 
+        const groupWeight = activeGroup.reduce((acc, t) => acc + t.weight, 0);
         const updateProgress = () => {
           if (!this.isPlaying || this.activeHtmlAudio !== sharedAudio) return;
-          const dur = sharedAudio.duration && isFinite(sharedAudio.duration) && sharedAudio.duration > 0.5 ? sharedAudio.duration : 6;
-          // Trim leading (~0.24s) and trailing (~0.38s) breath/silence in EveryAyah studio recordings
-          const leadIn = Math.min(0.24, dur * 0.06);
-          const trailOut = Math.min(0.38, dur * 0.09);
+          const dur =
+            sharedAudio.duration && isFinite(sharedAudio.duration) && sharedAudio.duration > 0.5
+              ? sharedAudio.duration
+              : Math.max(2.5, groupWeight * 0.36);
+          // Trim leading (~0.32s) and trailing (~0.62s) breath/silence in EveryAyah studio recordings
+          const leadIn = Math.min(0.32, dur * 0.075);
+          const trailOut = Math.min(0.62, dur * 0.14);
           const effectiveDur = Math.max(0.4, dur - leadIn - trailOut);
           const effectiveTime = Math.max(0, sharedAudio.currentTime - leadIn);
           const trackRatio = Math.min(1, effectiveTime / effectiveDur);
@@ -369,14 +402,19 @@ class SoundAndHapticsEngine {
         }
 
         const activeGroup = tokenChunks[currentTrack];
+        const groupWeight = activeGroup.reduce((acc, t) => acc + t.weight, 0);
 
         const updateProgress = () => {
           if (!this.isPlaying || this.playbackSessionId !== sessionId || this.activeHtmlAudio !== sharedAudio) return;
           const dur =
             sharedAudio.duration && isFinite(sharedAudio.duration) && sharedAudio.duration > 0.3
               ? sharedAudio.duration
-              : Math.max(2, activeGroup.length * 0.42);
-          const trackRatio = Math.min(1, Math.max(0, sharedAudio.currentTime / dur));
+              : Math.max(1.8, groupWeight * 0.24);
+          const leadIn = Math.min(0.10, dur * 0.035);
+          const trailOut = Math.min(0.22, dur * 0.065);
+          const effectiveDur = Math.max(0.25, dur - leadIn - trailOut);
+          const effectiveTime = Math.max(0, sharedAudio.currentTime - leadIn);
+          const trackRatio = Math.min(1, Math.max(0, effectiveTime / effectiveDur));
           const overallRatio = (currentTrack + trackRatio) / ttsUrls.length;
           const activeGlobalIdx = this.pickTokenByWeight(activeGroup, trackRatio);
           onTick(activeGlobalIdx, overallRatio);

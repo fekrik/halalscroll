@@ -503,15 +503,23 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
     });
   };
 
-  const handleNativePlatformShare = async (platform: 'instagram' | 'tiktok' | 'whatsapp' | 'x') => {
+  const handleNativePlatformShare = async (
+    platform: 'instagram' | 'tiktok' | 'whatsapp' | 'x' | 'threads' | 'imessage'
+  ) => {
     soundEngine.triggerHaptic('lightImpact');
     const shareText = `“${card.translation_en_clear}” — ${card.source_title}\n\nRead with Word-by-Word Arabic Roots & Classical Tafsir on Halal Scroll:\n${canonicalUrl}`;
 
     // 1. Native OS share sheet with the rendered card image (iOS / Android → Instagram Stories,
     //    WhatsApp Status, Messages, Save Image…). Called with no prior await to keep the user gesture.
     const file = shareFileRef.current;
-    if (platform !== 'x' && file && typeof navigator.share === 'function' &&
-        typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+    if (
+      platform !== 'x' &&
+      platform !== 'threads' &&
+      file &&
+      typeof navigator.share === 'function' &&
+      typeof navigator.canShare === 'function' &&
+      navigator.canShare({ files: [file] })
+    ) {
       try {
         await navigator.share({ files: [file], text: shareText });
         setShareToast('Shared!');
@@ -531,7 +539,15 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
     } else if (platform === 'x') {
       const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
       window.open(xUrl, '_blank', 'noopener,noreferrer');
-      setShareToast('Opened X / Post composer with OpenGraph card preview!');
+      setShareToast('Opened X composer with OpenGraph card preview!');
+    } else if (platform === 'threads') {
+      const threadsUrl = `https://www.threads.net/intent/post?text=${encodeURIComponent(shareText)}`;
+      window.open(threadsUrl, '_blank', 'noopener,noreferrer');
+      setShareToast('Opened Threads composer with sacred passage & link!');
+    } else if (platform === 'imessage') {
+      const smsUrl = `sms:?&body=${encodeURIComponent(shareText)}`;
+      window.location.href = smsUrl;
+      setShareToast('Opened iMessage / Messages with passage & preview link!');
     } else if (platform === 'instagram' || platform === 'tiktok') {
       // For desktop or browsers without file sharing, download Ultra-HD PNG and copy caption
       handleDownloadPng();
@@ -945,7 +961,7 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
             </button>
           </div>
 
-          {/* One-Tap Native Social Destinations */}
+          {/* One-Tap Native Social Destinations with Official Platform Logos */}
           <div style={{
             padding: 14,
             borderRadius: 16,
@@ -953,15 +969,16 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
             border: '1px solid var(--border-specular)'
           }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 10 }}>
-              One-Tap Native Platform Destinations &amp; Smart Web Link
+              Share Directly to Platform
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+              {/* 1. Instagram */}
               <button
                 onClick={() => handleNativePlatformShare('instagram')}
                 style={{
                   padding: '10px 12px',
                   borderRadius: 12,
-                  background: 'rgba(225, 48, 108, 0.14)',
+                  background: 'rgba(225, 48, 108, 0.13)',
                   border: '1px solid rgba(225, 48, 108, 0.35)',
                   color: 'var(--text-primary)',
                   fontSize: 12,
@@ -969,19 +986,36 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between'
+                  gap: 9
                 }}
               >
-                <span>Instagram Story / Reel</span>
-                <Share2 size={13} />
+                <span style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 7,
+                  background: 'linear-gradient(135deg, #F58529, #DD2A7B, #8134AF)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FFFFFF',
+                  flexShrink: 0
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                  </svg>
+                </span>
+                <span>Instagram</span>
               </button>
 
+              {/* 2. TikTok */}
               <button
                 onClick={() => handleNativePlatformShare('tiktok')}
                 style={{
                   padding: '10px 12px',
                   borderRadius: 12,
-                  background: 'rgba(45, 212, 191, 0.14)',
+                  background: 'rgba(45, 212, 191, 0.12)',
                   border: '1px solid rgba(45, 212, 191, 0.35)',
                   color: 'var(--text-primary)',
                   fontSize: 12,
@@ -989,39 +1023,105 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between'
+                  gap: 9
                 }}
               >
-                <span>TikTok Photo / Reel</span>
-                <Share2 size={13} />
+                <span style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 7,
+                  background: '#0F1419',
+                  border: '1px solid rgba(45, 212, 191, 0.5)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#2DD4BF',
+                  flexShrink: 0
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
+                  </svg>
+                </span>
+                <span>TikTok</span>
               </button>
 
+              {/* 3. WhatsApp */}
               <button
                 onClick={() => handleNativePlatformShare('whatsapp')}
                 style={{
                   padding: '10px 12px',
                   borderRadius: 12,
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  background: 'rgba(37, 211, 102, 0.13)',
+                  border: '1px solid rgba(37, 211, 102, 0.35)',
                   color: 'var(--text-primary)',
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between'
+                  gap: 9
                 }}
               >
-                <span>WhatsApp Status / Chat</span>
-                <ExternalLink size={13} />
+                <span style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 7,
+                  background: '#25D366',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FFFFFF',
+                  flexShrink: 0
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.52 3.48A11.82 11.82 0 0 0 12.04 0C5.5 0 .18 5.32.18 11.86c0 2.09.55 4.13 1.59 5.93L0 24l6.37-1.67a11.82 11.82 0 0 0 5.67 1.44h.01c6.54 0 11.86-5.32 11.86-11.86 0-3.17-1.23-6.15-3.39-8.43zm-8.48 18.29h-.01a9.84 9.84 0 0 1-5.02-1.38l-.36-.21-3.78.99 1.01-3.68-.23-.38a9.83 9.83 0 0 1-1.51-5.25c0-5.43 4.42-9.85 9.86-9.85 2.63 0 5.1 1.03 6.96 2.89a9.8 9.8 0 0 1 2.89 6.96c0 5.44-4.42 9.91-9.81 9.91zm5.4-7.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35z" />
+                  </svg>
+                </span>
+                <span>WhatsApp</span>
               </button>
 
+              {/* 4. iMessage */}
+              <button
+                onClick={() => handleNativePlatformShare('imessage')}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  background: 'rgba(52, 199, 89, 0.13)',
+                  border: '1px solid rgba(52, 199, 89, 0.35)',
+                  color: 'var(--text-primary)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 9
+                }}
+              >
+                <span style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 7,
+                  background: 'linear-gradient(180deg, #52E575, #30D158)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FFFFFF',
+                  flexShrink: 0
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3C6.48 3 2 6.58 2 11c0 2.52 1.46 4.77 3.74 6.24-.22 1.24-.87 2.52-1.62 3.38-.23.26-.01.67.33.61 1.85-.32 3.63-1.08 4.86-1.76.86.22 1.76.34 2.69.34 5.52 0 10-3.58 10-8s-4.48-8.81-10-8.81z" />
+                  </svg>
+                </span>
+                <span>iMessage</span>
+              </button>
+
+              {/* 5. X (Twitter) */}
               <button
                 onClick={() => handleNativePlatformShare('x')}
                 style={{
                   padding: '10px 12px',
                   borderRadius: 12,
-                  background: 'rgba(255, 255, 255, 0.08)',
+                  background: 'rgba(255, 255, 255, 0.07)',
                   border: '1px solid var(--border-specular)',
                   color: 'var(--text-primary)',
                   fontSize: 12,
@@ -1029,11 +1129,63 @@ export const ShareStudioModal: React.FC<ShareStudioModalProps> = ({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between'
+                  gap: 9
                 }}
               >
-                <span>X / Threads / iMessage</span>
-                <ExternalLink size={13} />
+                <span style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 7,
+                  background: '#0F1419',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FFFFFF',
+                  flexShrink: 0
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                </span>
+                <span>X</span>
+              </button>
+
+              {/* 6. Threads */}
+              <button
+                onClick={() => handleNativePlatformShare('threads')}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  background: 'rgba(255, 255, 255, 0.07)',
+                  border: '1px solid var(--border-specular)',
+                  color: 'var(--text-primary)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 9
+                }}
+              >
+                <span style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 7,
+                  background: '#101010',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FFFFFF',
+                  flexShrink: 0
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 12a7 7 0 1 0-3.2 5.9" />
+                    <path d="M15.5 12c0 1.9-1.3 3.5-3.2 3.5S9 13.9 9 12s1.4-3.5 3.3-3.5c1.8 0 3.2 1.3 3.2 3.5v1.2a2.1 2.1 0 0 0 4.2 0V12" />
+                  </svg>
+                </span>
+                <span>Threads</span>
               </button>
             </div>
 

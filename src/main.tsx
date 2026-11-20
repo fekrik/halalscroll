@@ -7,7 +7,7 @@ import {
   Send, Highlighter, MessageCircle
 } from 'lucide-react';
 import { CardWord, DeepStudyTab, FeedCard, FeedMode, SurahInfo, UserState } from './types';
-import { soundEngine } from './audioEngine';
+import { soundEngine, isNonSpokenArabicMarker } from './audioEngine';
 import { DeepStudyDrawer } from './components/DeepStudyDrawer';
 import { ShareStudioModal } from './components/ShareStudioModal';
 import { InstallAppModal } from './components/InstallAppModal';
@@ -15,6 +15,9 @@ import {
   matchWordHighlight,
   getSacredContentIdentity,
   splitHadithNarratorAndQuote,
+  splitDuaIntroAndSupplication,
+  getArabicSacredQuoteTokenMask,
+  resolveTappedArabicWord,
   WordHighlighterModal,
   PersonalNoteModal,
   OnboardingTutorialModal,
@@ -1124,7 +1127,7 @@ const App: React.FC = () => {
                   setShowSettingsDrawer(true);
                 }}
                 className="glass-pill"
-                title="Theme, Script & Typography Settings"
+                title="Settings, Reading Preferences & About"
                 style={{
                   width: 31,
                   height: 31,
@@ -1138,28 +1141,6 @@ const App: React.FC = () => {
                 }}
               >
                 <SlidersHorizontal size={14} />
-              </button>
-
-              <button
-                onClick={() => {
-                  soundEngine.triggerHaptic('selectionTick');
-                  setShowPlusModal(true);
-                }}
-                className="glass-pill"
-                title="Verified Classical Sources & Sadaqah Jariyah Mission"
-                style={{
-                  width: 31,
-                  height: 31,
-                  borderRadius: 999,
-                  color: 'var(--accent-emerald)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  flexShrink: 0
-                }}
-              >
-                <ShieldCheck size={14} />
               </button>
 
               {!isStandalone && (
@@ -1371,9 +1352,9 @@ const App: React.FC = () => {
                   }
                 }}
               >
-                {/* UNIFIED CARD CONTENT CLUSTER: Metadata Header + Sacred Text Canvas */}
-                <div className="card-content-cluster" style={{ zIndex: 2 }}>
-                  {/* TOP CARD METADATA HEADER (Clean 2-Line Mobile-Friendly Stack) */}
+                {/* UNIFIED CARD CONTENT CLUSTER: Slim Top Metadata + Vertically Balanced Sacred Text + Act On It Today */}
+                <div className="card-content-cluster" style={{ zIndex: 2, paddingRight: 44 }}>
+                  {/* SLIM TOP CARD METADATA HEADER */}
                   {(() => {
                     const sacredIdentity = getSacredContentIdentity(card);
                     return (
@@ -1383,18 +1364,18 @@ const App: React.FC = () => {
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          gap: 4,
-                          width: '100%'
+                          gap: 3,
+                          width: '100%',
+                          flexShrink: 0
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', justifyContent: 'center', maxWidth: '100%' }}>
-                          {/* Color-Coded Sacred Source Pill */}
                           <span style={{
                             fontSize: 9.5,
-                            fontWeight: 800,
+                            fontWeight: 700,
                             textTransform: 'uppercase',
-                            letterSpacing: '0.06em',
-                            padding: '3px 9px',
+                            letterSpacing: '0.05em',
+                            padding: '2px 8px',
                             borderRadius: 99,
                             whiteSpace: 'nowrap',
                             flexShrink: 0,
@@ -1405,12 +1386,8 @@ const App: React.FC = () => {
                             {sacredIdentity.badgeLabel}
                           </span>
 
-                          {/* Source Pill */}
                           <span
-                            className="glass-pill"
                             style={{
-                              padding: '3px 10px',
-                              borderRadius: 99,
                               fontSize: 11.5,
                               fontWeight: 700,
                               color: 'var(--text-primary)',
@@ -1423,24 +1400,22 @@ const App: React.FC = () => {
                           </span>
                         </div>
 
-                        {/* Authenticity / Revelation Subtitle */}
                         <div style={{
-                          fontSize: 10.5,
-                          fontWeight: 600,
-                          color: 'var(--accent-emerald)',
+                          fontSize: 10,
+                          fontWeight: 500,
+                          color: 'var(--text-secondary)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           maxWidth: '100%'
                         }}>
                           {card.revelation_place ? `${card.revelation_place} • ${card.authenticity_grade}` : card.authenticity_grade}
-                          {card.narrator_chain ? ` • ${card.narrator_chain}` : ''}
                         </div>
                       </div>
                     );
                   })()}
 
-                  {/* Complete Canonical Arabic Script (with Interactive Root Word Matching & Color-Coded Sacred Source) */}
+                  {/* VERTICALLY CENTERED SACRED PASSAGE CANVAS (Arabic + Translation + Act On It Today) */}
                   {(() => {
                     const sacredIdentity = getSacredContentIdentity(card);
                     const fontScale = Math.min(1.5, Math.max(0.8, Number(userState.font_scale || '1') || 1));
@@ -1450,6 +1425,7 @@ const App: React.FC = () => {
                     const allArabicTokens = fullArabicScript.split(/\s+/).filter(Boolean);
                     const isLongArabic = allArabicTokens.length > 44;
                     const visibleArabicTokens = isLongArabic ? allArabicTokens.slice(0, 42) : allArabicTokens;
+                    const arabicQuoteMask = getArabicSacredQuoteTokenMask(visibleArabicTokens, card.card_type);
                     const isLongTranslation = translationText.length > 310;
                     const clampedTranslationText = isLongTranslation
                       ? `${translationText.slice(0, 290).replace(/\s+\S*$/, '')}…`
@@ -1488,180 +1464,361 @@ const App: React.FC = () => {
                       });
 
                     return (
-                      <>
-                  <div
-                    className="arabic-sacred-text reel-anim-arabic"
-                    style={{
-                      fontSize: `${(baseArabicRem * fontScale).toFixed(2)}rem`,
-                      lineHeight: visibleArabicTokens.length > 24 ? 1.66 : 1.82,
-                      color: sacredColorCodingEnabled ? sacredIdentity.textTint : undefined
-                    }}
-                  >
-                    {(() => {
-                      const cleanToken = (s?: string) => (s || '').replace(/[،؟:؛.!۝ۚۗۖۙۘ]/g, '').trim();
-                      let spokenTokenCounter = 0;
-
-                      return (
-                        <>
-                          {visibleArabicTokens.map((tok, tIdx) => {
-                            if (tok.includes('۝')) {
-                              return (
-                                <React.Fragment key={tIdx}>
-                                  <span style={{ color: 'var(--accent-gold)', margin: '0 4px', fontSize: '0.9em' }}>{tok}</span>{' '}
-                                </React.Fragment>
-                              );
-                            }
-
-                            const currentSpokenIdx = spokenTokenCounter++;
-                            const cleaned = cleanToken(tok);
-                            const matchedIdx = (card.words || []).findIndex((w) => {
-                              const cw = cleanToken(w.arabic_word);
-                              return cw === cleaned || (cleaned.length >= 3 && cw.includes(cleaned));
-                            });
-                            const matchedWord = matchedIdx >= 0 ? card.words[matchedIdx] : null;
-                            const isWordActive = isCardPlaying && activeWordIdx === currentSpokenIdx;
-                            const isPopoverOpen = matchedWord && popoverWord?.word.word_position === matchedWord.word_position && popoverWord?.card.id === card.id;
-                            const sacredHighlight = matchWordHighlight(tok, 'ar', activeHighlightGroups, customHighlightWords);
-
-                            return (
-                              <React.Fragment key={tIdx}>
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (matchedWord) {
-                                      soundEngine.speakArabicWord(matchedWord);
-                                      setPopoverWord({ word: matchedWord, card });
-                                    } else if (card.words && card.words.length > 0) {
-                                      soundEngine.speakArabicWord({
-                                        ...card.words[0],
-                                        arabic_word: tok
-                                      });
-                                      setDeepStudyModal({ card, initialTab: 'words' });
-                                    }
-                                  }}
-                                  className={`arabic-word-token ${isWordActive || isPopoverOpen ? 'active-word-glow' : ''}`}
-                                  style={{
-                                    background: !isWordActive && sacredHighlight ? sacredHighlight.bg : undefined,
-                                    color: !isWordActive && sacredHighlight ? sacredHighlight.color : undefined,
-                                    borderRadius: sacredHighlight ? 6 : undefined,
-                                    padding: sacredHighlight ? '0 4px' : undefined,
-                                    borderBottom: sacredHighlight
-                                      ? `1.5px solid ${sacredHighlight.border}`
-                                      : matchedWord
-                                        ? '1px dotted rgba(168, 125, 32, 0.35)'
-                                        : undefined
-                                  }}
-                                  title={
-                                    matchedWord
-                                      ? `Tap for root (${matchedWord.root_arabic}) & meaning: "${matchedWord.translation_en}"`
-                                      : 'Tap to hear pronunciation & open Word Explorer'
-                                  }
-                                >
-                                  {tok}
-                                </span>{' '}
-                              </React.Fragment>
-                            );
-                          })}
-                          {isLongArabic && (
-                            <span style={{ color: 'var(--accent-gold)', fontSize: '0.82em' }}>…</span>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Subtle Interactive Hint Pill */}
-                  <div
-                    className="reel-anim-translation"
-                    style={{
-                      fontSize: 10.5,
-                      color: 'var(--text-muted)',
-                      marginBottom: 2,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6
-                    }}
-                  >
-                    <span>✦ Tap any Arabic word for Root &amp; Audio</span>
-                  </div>
-
-                  {/* Editorial Serif English Translation (Color-Coded by Quran / Hadith Quote vs Narrator / Dua) */}
-                  {card.card_type === 'hadith' && sacredColorCodingEnabled ? (() => {
-                    const split = splitHadithNarratorAndQuote(clampedTranslationText);
-                    return (
                       <div
-                        className="editorial-translation reel-anim-translation"
                         style={{
-                          fontSize: `${(baseTransRem * fontScale).toFixed(2)}rem`,
-                          lineHeight: clampedTranslationText.length > 200 ? 1.46 : 1.54,
-                          maxWidth: 420,
-                          padding: '8px 12px',
-                          borderRadius: 14,
-                          background: sacredIdentity.quoteBg,
-                          borderLeft: `3px solid ${sacredIdentity.accentColor}`,
-                          textAlign: 'left'
+                          marginTop: 'auto',
+                          marginBottom: 'auto',
+                          width: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 10
                         }}
                       >
-                        {split.narratorIntro && (
-                          <div style={{ fontSize: '0.86em', color: 'var(--text-secondary)', fontStyle: 'normal', marginBottom: 4 }}>
-                            {split.narratorIntro}
-                          </div>
-                        )}
-                        <div style={{ color: sacredIdentity.textTint, fontWeight: 500 }}>
-                          “{renderHighlightedEnglishChunk(split.propheticQuote, 'hq')}”
+                        <div
+                          className="arabic-sacred-text reel-anim-arabic"
+                          style={{
+                            fontSize: `${(baseArabicRem * fontScale).toFixed(2)}rem`,
+                            lineHeight: visibleArabicTokens.length > 24 ? 1.66 : 1.82
+                          }}
+                        >
+                          {(() => {
+                            let spokenTokenCounter = 0;
+
+                            return (
+                              <>
+                                {visibleArabicTokens.map((tok, tIdx) => {
+                                  if (tok.includes('۝')) {
+                                    return (
+                                      <React.Fragment key={tIdx}>
+                                        <span style={{ color: 'var(--accent-gold)', margin: '0 4px', fontSize: '0.9em' }}>{tok}</span>{' '}
+                                      </React.Fragment>
+                                    );
+                                  }
+
+                                  const isNonSpoken = isNonSpokenArabicMarker(tok);
+                                  const currentSpokenIdx = isNonSpoken ? -1 : spokenTokenCounter++;
+                                  const isWordActive = !isNonSpoken && isCardPlaying && activeWordIdx === currentSpokenIdx;
+                                  const sacredHighlight = matchWordHighlight(tok, 'ar', activeHighlightGroups, customHighlightWords);
+                                  const isDirectSacredQuote = arabicQuoteMask[tIdx];
+                                  const tokenSourceColor =
+                                    sacredColorCodingEnabled && isDirectSacredQuote
+                                      ? sacredIdentity.textTint
+                                      : 'var(--text-primary)';
+
+                                  return (
+                                    <React.Fragment key={tIdx}>
+                                      <span
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (isNonSpoken) return;
+                                          const resolvedWord = resolveTappedArabicWord(tok, tIdx, card, translationText);
+                                          soundEngine.speakArabicWord(resolvedWord);
+                                          setPopoverWord({ word: resolvedWord, card });
+                                        }}
+                                        className={`arabic-word-token ${isWordActive ? 'active-word-glow' : ''}`}
+                                        style={{
+                                          background: !isWordActive && sacredHighlight ? sacredHighlight.bg : undefined,
+                                          color: !isWordActive
+                                            ? (sacredHighlight ? sacredHighlight.color : tokenSourceColor)
+                                            : undefined,
+                                          borderRadius: sacredHighlight ? 6 : undefined,
+                                          padding: sacredHighlight ? '0 4px' : undefined,
+                                          borderBottom: sacredHighlight
+                                            ? `1.5px solid ${sacredHighlight.border}`
+                                            : undefined
+                                        }}
+                                        title="Tap to hear pronunciation & inspect 3-letter Arabic root"
+                                      >
+                                        {tok}
+                                      </span>{' '}
+                                    </React.Fragment>
+                                  );
+                                })}
+                                {isLongArabic && (
+                                  <span style={{ color: 'var(--accent-gold)', fontSize: '0.82em' }}>…</span>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
-                        {split.closingText && (
-                          <div style={{ fontSize: '0.84em', color: 'var(--text-muted)', marginTop: 4 }}>
-                            {split.closingText}
+
+                        {/* Optional Learner Transliteration (Controlled via Settings) */}
+                        {userState.show_transliteration === 'true' && card.card_type !== 'quran' && card.transliteration && (
+                          <p
+                            className="transliteration-text reel-anim-translation"
+                            style={{
+                              fontSize: `${(0.84 * fontScale).toFixed(2)}rem`,
+                              margin: 0,
+                              maxWidth: 420
+                            }}
+                          >
+                            {card.transliteration}
+                          </p>
+                        )}
+
+                        {/* Editorial Serif English Translation (Items 5 & 6: Partial Highlighting Only on Direct Prophetic Speech or Actual Dua) */}
+                        {card.card_type === 'hadith' && sacredColorCodingEnabled ? (() => {
+                          const split = splitHadithNarratorAndQuote(clampedTranslationText);
+                          return (
+                            <div
+                              className="editorial-translation reel-anim-translation"
+                              style={{
+                                fontSize: `${(baseTransRem * fontScale).toFixed(2)}rem`,
+                                lineHeight: clampedTranslationText.length > 200 ? 1.48 : 1.56,
+                                maxWidth: 420,
+                                textAlign: 'center',
+                                color: 'var(--text-primary)'
+                              }}
+                            >
+                              {split.narratorIntro && (
+                                <span style={{ color: 'var(--text-secondary)', fontStyle: 'normal' }}>
+                                  {renderHighlightedEnglishChunk(split.narratorIntro, 'hn')}{' '}
+                                </span>
+                              )}
+                              <span style={{ color: sacredIdentity.textTint, fontWeight: 500 }}>
+                                “{renderHighlightedEnglishChunk(split.propheticQuote, 'hq')}”
+                              </span>
+                              {split.closingText && (
+                                <span style={{ color: 'var(--text-secondary)', fontStyle: 'normal', fontSize: '0.9em' }}>
+                                  {' '}{split.closingText}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })() : (card.card_type === 'dua' || card.card_type === 'seerah') && sacredColorCodingEnabled ? (() => {
+                          const splitDua = splitDuaIntroAndSupplication(clampedTranslationText);
+                          return (
+                            <div
+                              className="editorial-translation reel-anim-translation"
+                              style={{
+                                fontSize: `${(baseTransRem * fontScale).toFixed(2)}rem`,
+                                lineHeight: clampedTranslationText.length > 200 ? 1.48 : 1.56,
+                                maxWidth: 420,
+                                textAlign: 'center',
+                                color: 'var(--text-primary)'
+                              }}
+                            >
+                              {splitDua.introText && (
+                                <span style={{ color: 'var(--text-secondary)', fontStyle: 'normal' }}>
+                                  {renderHighlightedEnglishChunk(splitDua.introText, 'dn')}{' '}
+                                </span>
+                              )}
+                              <span style={{ color: sacredIdentity.textTint, fontWeight: 500 }}>
+                                “{renderHighlightedEnglishChunk(splitDua.supplicationText, 'dq')}”
+                              </span>
+                              {splitDua.closingText && (
+                                <span style={{ color: 'var(--text-secondary)', fontStyle: 'normal', fontSize: '0.9em' }}>
+                                  {' '}{splitDua.closingText}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })() : (
+                          <p
+                            className="editorial-translation reel-anim-translation"
+                            style={{
+                              fontSize: `${(baseTransRem * fontScale).toFixed(2)}rem`,
+                              lineHeight: clampedTranslationText.length > 200 ? 1.48 : 1.56,
+                              maxWidth: 420,
+                              margin: 0,
+                              color: sacredColorCodingEnabled ? sacredIdentity.textTint : 'var(--text-primary)'
+                            }}
+                          >
+                            “{renderHighlightedEnglishChunk(clampedTranslationText, 'eq')}”
+                          </p>
+                        )}
+
+                        {/* ITEM 9: PROMOTED "ACT ON IT TODAY" DIRECTLY UNDER MAIN FEED PASSAGE */}
+                        {card.deep_study?.actionable_sunnah && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              soundEngine.triggerHaptic('selectionTick');
+                              setDeepStudyModal({ card, initialTab: 'action' });
+                            }}
+                            style={{
+                              width: '100%',
+                              maxWidth: 410,
+                              marginTop: 4,
+                              padding: '8px 12px',
+                              borderRadius: 12,
+                              background: 'var(--surface-card)',
+                              border: '1px solid var(--border-specular)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 4,
+                              textAlign: 'left',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                              <span style={{
+                                fontSize: 9.5,
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.06em',
+                                color: 'var(--accent-gold-bright)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}>
+                                <Compass size={11} /> Act On It Today
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const nextPracticed = !card.practiced?.practiced_at;
+                                  handleMarkPracticed(card.id, nextPracticed, card.practiced?.reflection_note || '');
+                                }}
+                                style={{
+                                  background: card.practiced?.practiced_at ? 'rgba(16, 185, 129, 0.2)' : 'rgba(212, 175, 55, 0.14)',
+                                  border: card.practiced?.practiced_at ? '1px solid var(--accent-emerald)' : '1px solid var(--border-gold)',
+                                  color: card.practiced?.practiced_at ? 'var(--accent-emerald)' : 'var(--accent-gold-bright)',
+                                  borderRadius: 99,
+                                  padding: '2px 8px',
+                                  fontSize: 9.5,
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {card.practiced?.practiced_at ? '✓ Practiced' : '+ Practice'}
+                              </button>
+                            </div>
+                            <div style={{
+                              fontSize: 11.5,
+                              lineHeight: 1.4,
+                              color: 'var(--text-secondary)',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            }}>
+                              {card.deep_study.actionable_sunnah}
+                            </div>
                           </div>
                         )}
                       </div>
                     );
-                  })() : (
-                    <p
-                      className="editorial-translation reel-anim-translation"
-                      style={{
-                        fontSize: `${(baseTransRem * fontScale).toFixed(2)}rem`,
-                        lineHeight: clampedTranslationText.length > 200 ? 1.46 : 1.54,
-                        maxWidth: 420,
-                        padding: sacredColorCodingEnabled ? '8px 12px' : undefined,
-                        borderRadius: sacredColorCodingEnabled ? 14 : undefined,
-                        background: sacredColorCodingEnabled ? sacredIdentity.quoteBg : undefined,
-                        borderLeft: sacredColorCodingEnabled ? `3px solid ${sacredIdentity.accentColor}` : undefined,
-                        color: sacredColorCodingEnabled ? sacredIdentity.textTint : undefined
-                      }}
-                    >
-                      “{renderHighlightedEnglishChunk(clampedTranslationText, 'eq')}”
-                    </p>
-                  )}
-
-                  {(isLongArabic || isLongTranslation) && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        soundEngine.triggerHaptic('mediumImpact');
-                        setDeepStudyModal({ card, initialTab: 'reflection' });
-                      }}
-                      style={{
-                        background: 'rgba(212, 175, 55, 0.12)',
-                        border: '1px solid rgba(212, 175, 55, 0.35)',
-                        color: 'var(--accent-gold)',
-                        borderRadius: 999,
-                        padding: '4px 12px',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Read Full Text in Deep Study →
-                    </button>
-                  )}
-                      </>
-                    );
                   })()}
                 </div>
 
-                {/* MODERN HORIZONTAL INSTAGRAM-STYLE ACTION BAR (Like, Private Note, Share, Recite, Colors, Deep Study) */}
+                {/* ITEM 7: RIGHT-SIDE VERTICAL ACTION STACK (Like, Private Note, Share) */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 12,
+                    bottom: 72,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 14,
+                    zIndex: 18
+                  }}
+                >
+                  {/* 1. Heart: Like / Favorite & Save */}
+                  {(() => {
+                    const isFavorited = Boolean(likedCards[card.id] || card.is_bookmarked);
+                    return (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleLikeCard(card.id, card);
+                        }}
+                        aria-label="Favorite and save passage"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          padding: '2px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 2,
+                          color: isFavorited ? '#FF3B5C' : 'var(--text-primary)',
+                          cursor: 'pointer',
+                          transform: isFavorited ? 'scale(1.06)' : 'scale(1)',
+                          transition: 'all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                        }}
+                      >
+                        <Heart size={22} strokeWidth={2} fill={isFavorited ? '#FF3B5C' : 'none'} />
+                        <span style={{ fontSize: 9.5, fontWeight: 600, color: isFavorited ? '#FF3B5C' : 'var(--text-secondary)' }}>
+                          {isFavorited ? 'Liked' : 'Like'}
+                        </span>
+                      </button>
+                    );
+                  })()}
+
+                  {/* 2. Speech Bubble: Private Personal Notes */}
+                  {(() => {
+                    const hasPrivateNote = Boolean(personalNotes[card.id]?.text?.trim());
+                    return (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          soundEngine.triggerHaptic('selectionTick');
+                          setPersonalNoteModalCard(card);
+                        }}
+                        aria-label="Private personal notes"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          padding: '2px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 2,
+                          color: hasPrivateNote ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
+                          cursor: 'pointer',
+                          position: 'relative'
+                        }}
+                      >
+                        <MessageCircle size={22} strokeWidth={2} fill={hasPrivateNote ? 'rgba(232, 201, 104, 0.25)' : 'none'} />
+                        {hasPrivateNote && (
+                          <span style={{
+                            position: 'absolute',
+                            top: 1,
+                            right: 1,
+                            width: 6,
+                            height: 6,
+                            borderRadius: 99,
+                            background: '#10B981'
+                          }} />
+                        )}
+                        <span style={{ fontSize: 9.5, fontWeight: 600, color: hasPrivateNote ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
+                          {hasPrivateNote ? 'My Note' : 'Note'}
+                        </span>
+                      </button>
+                    );
+                  })()}
+
+                  {/* 3. Paper Airplane: Share */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      soundEngine.triggerHaptic('lightImpact');
+                      setShareStudioModal({ card, initialSlide: 0 });
+                    }}
+                    aria-label="Share passage"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      padding: '2px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 2,
+                      color: 'var(--text-primary)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Send size={20} strokeWidth={2} />
+                    <span style={{ fontSize: 9.5, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      Share
+                    </span>
+                  </button>
+                </div>
+
+                {/* ITEM 7 & 8: SIMPLIFIED MINIMALIST BOTTOM TOOLBAR (Recite on Left, Single Deep Study on Right) */}
                 <div
                   className="reel-anim-dock"
                   style={{
@@ -1670,241 +1827,110 @@ const App: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: 8,
+                    gap: 10,
                     zIndex: 15,
                     marginTop: 'auto',
-                    paddingTop: 10,
-                    borderTop: '1px solid rgba(255, 255, 255, 0.07)'
+                    paddingTop: 8,
+                    borderTop: '1px solid rgba(255, 255, 255, 0.06)'
                   }}
                 >
-                  {/* Left Horizontal Row: Heart (Like/Save), Speech Bubble (Private Note), Paper Airplane (Share), Recite, Colors */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {/* 1. Heart: Like / Favorite & Save */}
-                    {(() => {
-                      const isFavorited = Boolean(likedCards[card.id] || card.is_bookmarked);
-                      return (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleLikeCard(card.id, card);
-                          }}
-                          aria-label="Favorite and save passage"
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            padding: '4px 2px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: 3,
-                            color: isFavorited ? '#FF3B5C' : 'var(--text-primary)',
-                            cursor: 'pointer',
-                            transform: isFavorited ? 'scale(1.06)' : 'scale(1)',
-                            transition: 'all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                          }}
-                        >
-                          <Heart size={21} strokeWidth={2.1} fill={isFavorited ? '#FF3B5C' : 'none'} />
-                          <span style={{ fontSize: 9.5, fontWeight: 700, color: isFavorited ? '#FF3B5C' : 'var(--text-secondary)' }}>
-                            {isFavorited ? 'Liked' : 'Like'}
-                          </span>
-                        </button>
-                      );
-                    })()}
-
-                    {/* 2. Speech Bubble: PRIVATE PERSONAL NOTES */}
-                    {(() => {
-                      const hasPrivateNote = Boolean(personalNotes[card.id]?.text?.trim());
-                      return (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            soundEngine.triggerHaptic('selectionTick');
-                            setPersonalNoteModalCard(card);
-                          }}
-                          aria-label="Private personal notes"
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            padding: '4px 2px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: 3,
-                            color: hasPrivateNote ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
-                            cursor: 'pointer',
-                            position: 'relative',
-                            transition: 'all 0.18s ease'
-                          }}
-                        >
-                          <MessageCircle size={21} strokeWidth={2.1} fill={hasPrivateNote ? 'rgba(232, 201, 104, 0.25)' : 'none'} />
-                          {hasPrivateNote && (
-                            <span style={{
-                              position: 'absolute',
-                              top: 2,
-                              right: 0,
-                              width: 6,
-                              height: 6,
-                              borderRadius: 99,
-                              background: '#10B981',
-                              boxShadow: '0 0 6px #10B981'
-                            }} />
-                          )}
-                          <span style={{ fontSize: 9.5, fontWeight: 700, color: hasPrivateNote ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
-                            {hasPrivateNote ? 'My Note' : 'Note'}
-                          </span>
-                        </button>
-                      );
-                    })()}
-
-                    {/* 3. Paper Airplane: Share */}
+                  {/* Left: Recite Audio + Qari Picker */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }}>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        soundEngine.triggerHaptic('lightImpact');
-                        setShareStudioModal({ card, initialSlide: 0 });
-                      }}
-                      aria-label="Share passage"
+                      onClick={() => handleToggleRecitation(card)}
+                      aria-label="Recite passage"
+                      className="glass-pill"
                       style={{
-                        background: 'transparent',
-                        border: 'none',
-                        padding: '4px 2px',
-                        display: 'flex',
-                        flexDirection: 'column',
+                        padding: '8px 14px',
+                        borderRadius: 999,
+                        border: isCardPlaying ? '1px solid var(--border-gold)' : '1px solid var(--border-specular)',
+                        background: isCardPlaying ? 'rgba(212, 175, 55, 0.18)' : 'var(--surface-card)',
+                        color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 3,
-                        color: 'var(--text-primary)',
+                        gap: 6,
                         cursor: 'pointer'
                       }}
                     >
-                      <Send size={20} strokeWidth={2.1} />
-                      <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-secondary)' }}>
-                        Share
-                      </span>
+                      {isCardPlaying ? <Pause size={15} strokeWidth={2.2} /> : <Volume2 size={15} strokeWidth={2} />}
+                      <span>{isCardPlaying ? 'Playing' : 'Recite'}</span>
                     </button>
-
-                    {/* 4. Recite Audio + Qari Picker */}
-                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                      <button
-                        onClick={() => handleToggleRecitation(card)}
-                        aria-label="Recite passage"
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          padding: '4px 2px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 3,
-                          color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {isCardPlaying ? <Pause size={21} strokeWidth={2.2} /> : <Volume2 size={21} strokeWidth={2} />}
-                        <span style={{ fontSize: 9.5, fontWeight: 700, color: isCardPlaying ? 'var(--accent-gold-bright)' : 'var(--text-secondary)' }}>
-                          {isCardPlaying ? 'Playing' : 'Recite'}
-                        </span>
-                      </button>
+                    {card.card_type === 'quran' && (
                       <button
                         onClick={() => {
                           soundEngine.triggerHaptic('selectionTick');
                           setShowReciterMenuForCard(showReciterMenuForCard === card.id ? null : card.id);
                         }}
                         title="Select Qari / Reciter"
+                        className="glass-pill"
                         style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--text-muted)',
-                          padding: '2px',
-                          cursor: 'pointer',
-                          marginTop: -10
+                          width: 30,
+                          height: 30,
+                          borderRadius: 999,
+                          border: '1px solid var(--border-specular)',
+                          background: 'var(--surface-card)',
+                          color: 'var(--text-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
                         }}
                       >
-                        <ChevronDown size={12} />
+                        <ChevronDown size={13} />
                       </button>
+                    )}
 
-                      {showReciterMenuForCard === card.id && (
-                        <div
-                          className="glass-pill"
-                          style={{
-                            position: 'absolute',
-                            left: -40,
-                            bottom: 46,
-                            width: 215,
-                            padding: 8,
-                            borderRadius: 16,
-                            boxShadow: '0 14px 36px rgba(0,0,0,0.55)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 4,
-                            zIndex: 30
-                          }}
-                        >
-                          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-gold)', padding: '2px 6px' }}>
-                            Select Qari / Reciter
-                          </div>
-                          {RECITERS.map(r => (
-                            <button
-                              key={r.id}
-                              onClick={() => {
-                                soundEngine.triggerHaptic('selectionTick');
-                                updateServerState({ reciter: r.id });
-                                setShowReciterMenuForCard(null);
-                              }}
-                              style={{
-                                padding: '6px 8px',
-                                borderRadius: 10,
-                                border: 'none',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                background: userState.reciter === r.id ? 'rgba(212, 175, 55, 0.2)' : 'transparent',
-                                color: userState.reciter === r.id ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
-                                fontSize: 11.5,
-                                fontWeight: userState.reciter === r.id ? 700 : 500
-                              }}
-                            >
-                              <div>{r.id}</div>
-                              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{r.origin}</div>
-                            </button>
-                          ))}
+                    {showReciterMenuForCard === card.id && (
+                      <div
+                        className="glass-pill"
+                        style={{
+                          position: 'absolute',
+                          left: 0,
+                          bottom: 42,
+                          width: 215,
+                          padding: 8,
+                          borderRadius: 16,
+                          boxShadow: '0 14px 36px rgba(0,0,0,0.55)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 4,
+                          zIndex: 30
+                        }}
+                      >
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-gold)', padding: '2px 6px' }}>
+                          Select Qari / Reciter
                         </div>
-                      )}
-                    </div>
-
-                    {/* 5. Sacred Color & Word Highlighter */}
-                    <button
-                      onClick={() => {
-                        soundEngine.triggerHaptic('selectionTick');
-                        setShowHighlighterModal(true);
-                      }}
-                      aria-label="Color-coded sources & word highlighter"
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        padding: '4px 2px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 3,
-                        color: (sacredColorCodingEnabled || activeHighlightGroups.length + customHighlightWords.length > 0)
-                          ? 'var(--accent-emerald)'
-                          : 'var(--text-primary)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Highlighter size={20} strokeWidth={2} />
-                      <span style={{
-                        fontSize: 9.5,
-                        fontWeight: 700,
-                        color: (sacredColorCodingEnabled || activeHighlightGroups.length + customHighlightWords.length > 0)
-                          ? 'var(--accent-emerald)'
-                          : 'var(--text-secondary)'
-                      }}>
-                        Colors
-                      </span>
-                    </button>
+                        {RECITERS.map(r => (
+                          <button
+                            key={r.id}
+                            onClick={() => {
+                              soundEngine.triggerHaptic('selectionTick');
+                              updateServerState({ reciter: r.id });
+                              setShowReciterMenuForCard(null);
+                            }}
+                            style={{
+                              padding: '6px 8px',
+                              borderRadius: 10,
+                              border: 'none',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              background: userState.reciter === r.id ? 'rgba(212, 175, 55, 0.2)' : 'transparent',
+                              color: userState.reciter === r.id ? 'var(--accent-gold-bright)' : 'var(--text-primary)',
+                              fontSize: 11.5,
+                              fontWeight: userState.reciter === r.id ? 700 : 500
+                            }}
+                          >
+                            <div>{r.id}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{r.origin}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Right Cluster: Scroll-the-Bible Style "Deep Study" Liquid Glass Pill */}
+                  {/* Right: Single Consistent "Deep Study" Button */}
                   <button
                     onClick={() => {
                       soundEngine.triggerHaptic('lightImpact');
@@ -1912,7 +1938,7 @@ const App: React.FC = () => {
                     }}
                     className="glass-pill deep-study-cta"
                     style={{
-                      padding: '9px 14px',
+                      padding: '8px 14px',
                       borderRadius: 999,
                       border: '1px solid var(--border-gold)',
                       background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(16, 185, 129, 0.12))',
@@ -2399,12 +2425,12 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* 7. THEME, SCRIPT & TYPOGRAPHY SETTINGS DRAWER */}
+        {/* 7. CONSOLIDATED SETTINGS DESTINATION (Item 10: General, Reading Preferences, Notifications, Widgets, About/Mission, Privacy, Terms, Data Management & Support) */}
         {showSettingsDrawer && (
           <div className="spring-sheet-backdrop" onClick={() => setShowSettingsDrawer(false)}>
             <div
               className="spring-sheet-panel"
-              style={{ height: '72%' }}
+              style={{ height: '86%' }}
               onClick={(e) => e.stopPropagation()}
             >
               <div style={{
@@ -2415,11 +2441,11 @@ const App: React.FC = () => {
                 justifyContent: 'space-between'
               }}>
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-gold)' }}>
-                    Design System &amp; Reading Preferences
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-gold)', letterSpacing: '0.06em' }}>
+                    Settings &amp; Preferences
                   </div>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-                    Ambient Themes &amp; Editorial Typography
+                  <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-primary)' }}>
+                    Halal Scroll Settings
                   </h3>
                 </div>
                 <button
@@ -2438,12 +2464,14 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              <div className="drawer-scroll" style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', gap: 18 }}>
-                {/* Ambient Color Palette */}
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                    1. Ambient Sanctuary Theme (Spec Section 2.1):
+              <div className="drawer-scroll" style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* SECTION 1: GENERAL (Theme, Font Size, Script & Translation) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--accent-gold)' }}>
+                    General
                   </div>
+
+                  {/* Theme / Appearance */}
                   <button
                     onClick={() => {
                       soundEngine.triggerHaptic('selectionTick');
@@ -2452,7 +2480,6 @@ const App: React.FC = () => {
                     style={{
                       width: '100%',
                       padding: '10px 12px',
-                      marginBottom: 8,
                       borderRadius: 14,
                       textAlign: 'left',
                       cursor: 'pointer',
@@ -2470,19 +2497,20 @@ const App: React.FC = () => {
                         <Smartphone size={14} /> Match System Appearance (Auto)
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                        Follows iOS/device mode — currently {systemPrefersLight ? 'Light (Andalusian Parchment)' : 'Dark (Midnight Sanctuary)'}
+                        Currently {systemPrefersLight ? 'Light (Andalusian Parchment)' : 'Dark (Midnight Sanctuary)'}
                       </div>
                     </div>
                     {userState.theme === 'system' && (
                       <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-gold-bright)' }}>Active</span>
                     )}
                   </button>
+
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                     {[
-                      { id: 'midnight_sanctuary', label: 'Midnight Sanctuary', sub: 'Deep Obsidian & Burnished Gold', icon: <Moon size={14} /> },
-                      { id: 'andalusian_parchment', label: 'Andalusian Parchment', sub: 'Warm Linen & Deep Ink', icon: <Sun size={14} /> },
-                      { id: 'fajr_dawn', label: 'Fajr Dawn', sub: 'Indigo-Rose Morning Glow', icon: <Compass size={14} /> },
-                      { id: 'maghrib_dusk', label: 'Maghrib Dusk', sub: 'Amber-Violet Horizon', icon: <Heart size={14} /> }
+                      { id: 'midnight_sanctuary', label: 'Midnight Sanctuary', sub: 'Deep Obsidian & Gold', icon: <Moon size={14} /> },
+                      { id: 'andalusian_parchment', label: 'Andalusian Parchment', sub: 'Warm Linen & Ink', icon: <Sun size={14} /> },
+                      { id: 'fajr_dawn', label: 'Fajr Dawn', sub: 'Indigo Morning Glow', icon: <Compass size={14} /> },
+                      { id: 'maghrib_dusk', label: 'Maghrib Dusk', sub: 'Amber Horizon', icon: <Heart size={14} /> }
                     ].map((th) => {
                       const active = userState.theme === th.id;
                       return (
@@ -2493,7 +2521,7 @@ const App: React.FC = () => {
                             updateServerState({ theme: th.id as UserState['theme'] });
                           }}
                           style={{
-                            padding: 12,
+                            padding: 11,
                             borderRadius: 14,
                             textAlign: 'left',
                             cursor: 'pointer',
@@ -2505,24 +2533,105 @@ const App: React.FC = () => {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
                             {th.icon} {th.label}
                           </div>
-                          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 3 }}>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
                             {th.sub}
                           </div>
                         </button>
                       );
                     })}
                   </div>
-                </div>
 
-                {/* Arabic Script Toggle */}
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                    2. Quranic Arabic Script Style (Spec Section 2.2):
-                  </div>
+                  {/* Reading Font Size */}
+                  {(() => {
+                    const currentScale = Math.min(1.5, Math.max(0.8, Number(userState.font_scale || '1') || 1));
+                    const pct = Math.round(currentScale * 100);
+                    const stepScale = (delta: number) => {
+                      const next = Math.min(1.5, Math.max(0.8, Math.round((currentScale + delta) * 10) / 10));
+                      soundEngine.triggerHaptic('selectionTick');
+                      updateServerState({ font_scale: String(next) });
+                    };
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 14, background: 'var(--surface-card)', border: '1px solid var(--border-specular)', gap: 10 }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                            Font Size
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                            Adjust Arabic &amp; translation scale ({pct}%)
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          {pct !== 100 && (
+                            <button
+                              onClick={() => {
+                                soundEngine.triggerHaptic('selectionTick');
+                                updateServerState({ font_scale: '1' });
+                              }}
+                              style={{
+                                padding: '5px 9px',
+                                borderRadius: 99,
+                                border: '1px solid var(--border-specular)',
+                                background: 'transparent',
+                                color: 'var(--text-secondary)',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Reset
+                            </button>
+                          )}
+                          <button
+                            onClick={() => stepScale(-0.1)}
+                            disabled={currentScale <= 0.8}
+                            aria-label="Decrease font size"
+                            style={{
+                              width: 30,
+                              height: 30,
+                              borderRadius: 99,
+                              border: '1px solid var(--border-gold)',
+                              background: 'var(--surface-card)',
+                              color: currentScale <= 0.8 ? 'var(--text-muted)' : 'var(--text-primary)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: currentScale <= 0.8 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span style={{ minWidth: 38, textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--accent-gold-bright)' }}>
+                            {pct}%
+                          </span>
+                          <button
+                            onClick={() => stepScale(0.1)}
+                            disabled={currentScale >= 1.5}
+                            aria-label="Increase font size"
+                            style={{
+                              width: 30,
+                              height: 30,
+                              borderRadius: 99,
+                              border: '1px solid var(--border-gold)',
+                              background: 'var(--surface-card)',
+                              color: currentScale >= 1.5 ? 'var(--text-muted)' : 'var(--text-primary)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: currentScale >= 1.5 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Arabic Script & Translation Edition */}
                   <div style={{ display: 'flex', gap: 8 }}>
                     {[
-                      { id: 'uthmani', label: 'Uthmani Script (KFGQPC / Madinah)' },
-                      { id: 'indopak', label: 'IndoPak Nastaleeq Script' }
+                      { id: 'uthmani', label: 'Uthmani Script' },
+                      { id: 'indopak', label: 'IndoPak Script' }
                     ].map((sc) => (
                       <button
                         key={sc.id}
@@ -2546,16 +2655,10 @@ const App: React.FC = () => {
                       </button>
                     ))}
                   </div>
-                </div>
 
-                {/* English Translation Edition */}
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                    3. Primary Editorial Translation:
-                  </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {[
-                      { id: 'clear', label: 'The Clear Quran (Dr. Mustafa Khattab)' },
+                      { id: 'clear', label: 'The Clear Quran' },
                       { id: 'sahih', label: 'Sahih International' }
                     ].map((tr) => (
                       <button
@@ -2582,310 +2685,324 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Transliteration Toggle */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 14, background: 'var(--surface-card)' }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                      Show Phonetic Transliteration
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                      Helpful for learners reciting Arabic passages aloud
-                    </div>
+                {/* SECTION 2: READING PREFERENCES (Highlights, Recitation, Transliteration) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--accent-gold)' }}>
+                    Reading Preferences
                   </div>
+
                   <button
                     onClick={() => {
-                      const next = userState.show_transliteration === 'true' ? 'false' : 'true';
-                      updateServerState({ show_transliteration: next });
+                      setShowSettingsDrawer(false);
+                      setShowHighlighterModal(true);
                     }}
                     style={{
-                      padding: '6px 14px',
-                      borderRadius: 99,
-                      border: '1px solid var(--border-gold)',
-                      background: userState.show_transliteration === 'true' ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
-                      color: userState.show_transliteration === 'true' ? 'var(--accent-emerald)' : 'var(--text-secondary)',
-                      fontWeight: 700,
-                      fontSize: 12,
-                      cursor: 'pointer'
+                      padding: '12px 14px',
+                      borderRadius: 14,
+                      background: 'var(--surface-card)',
+                      border: '1px solid var(--border-specular)',
+                      color: 'var(--text-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      textAlign: 'left'
                     }}
                   >
-                    {userState.show_transliteration === 'true' ? 'Enabled ✓' : 'Hidden'}
-                  </button>
-                </div>
-
-                {/* Typography Font Size Scale */}
-                {(() => {
-                  const currentScale = Math.min(1.5, Math.max(0.8, Number(userState.font_scale || '1') || 1));
-                  const pct = Math.round(currentScale * 100);
-                  const stepScale = (delta: number) => {
-                    const next = Math.min(1.5, Math.max(0.8, Math.round((currentScale + delta) * 10) / 10));
-                    soundEngine.triggerHaptic('selectionTick');
-                    updateServerState({ font_scale: String(next) });
-                  };
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 14, background: 'var(--surface-card)', gap: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                          4. Reading Font Size
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                          Adjust Arabic, transliteration &amp; translation size ({pct}%)
-                        </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Highlighter size={14} style={{ color: 'var(--accent-emerald)' }} />
+                        Source Colors &amp; Word Highlights
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                        {pct !== 100 && (
-                          <button
-                            onClick={() => {
-                              soundEngine.triggerHaptic('selectionTick');
-                              updateServerState({ font_scale: '1' });
-                            }}
-                            style={{
-                              padding: '5px 9px',
-                              borderRadius: 99,
-                              border: '1px solid var(--border-specular)',
-                              background: 'transparent',
-                              color: 'var(--text-secondary)',
-                              fontSize: 11,
-                              fontWeight: 600,
-                              cursor: 'pointer'
-                            }}
-                            title="Reset font size to 100%"
-                          >
-                            Reset
-                          </button>
-                        )}
-                        <button
-                          onClick={() => stepScale(-0.1)}
-                          disabled={currentScale <= 0.8}
-                          aria-label="Decrease font size"
-                          style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 99,
-                            border: '1px solid var(--border-gold)',
-                            background: 'var(--surface-card)',
-                            color: currentScale <= 0.8 ? 'var(--text-muted)' : 'var(--text-primary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: currentScale <= 0.8 ? 'not-allowed' : 'pointer',
-                            opacity: currentScale <= 0.8 ? 0.5 : 1
-                          }}
-                        >
-                          <Minus size={14} />
-                        </button>
-                        <span style={{ minWidth: 38, textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--accent-gold-bright)' }}>
-                          {pct}%
-                        </span>
-                        <button
-                          onClick={() => stepScale(0.1)}
-                          disabled={currentScale >= 1.5}
-                          aria-label="Increase font size"
-                          style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 99,
-                            border: '1px solid var(--border-gold)',
-                            background: 'var(--surface-card)',
-                            color: currentScale >= 1.5 ? 'var(--text-muted)' : 'var(--text-primary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: currentScale >= 1.5 ? 'not-allowed' : 'pointer',
-                            opacity: currentScale >= 1.5 ? 0.5 : 1
-                          }}
-                        >
-                          <Plus size={14} />
-                        </button>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                        Customize Quran, Prophetic Quote &amp; Dua colors and highlighted Divine Names
                       </div>
                     </div>
-                  );
-                })()}
+                    <ArrowUpRight size={15} style={{ color: 'var(--text-muted)' }} />
+                  </button>
 
-                {/* Install App on Device */}
-                {!isStandalone && (
-                  <div style={{
-                    marginTop: 8,
-                    padding: '12px 14px',
-                    borderRadius: 14,
-                    background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(16, 185, 129, 0.12))',
-                    border: '1px solid var(--border-gold)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 12
-                  }}>
+                  {/* Qari / Reciter Selection */}
+                  <div style={{ padding: 12, borderRadius: 14, background: 'var(--surface-card)', border: '1px solid var(--border-specular)' }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+                      Quran Reciter (Qari)
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+                      {RECITERS.map((r) => {
+                        const active = userState.reciter === r.id;
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={() => {
+                              soundEngine.triggerHaptic('selectionTick');
+                              updateServerState({ reciter: r.id });
+                            }}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: 10,
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              border: active ? '1px solid var(--border-gold)' : '1px solid var(--border-specular)',
+                              background: active ? 'rgba(212, 175, 55, 0.16)' : 'transparent',
+                              color: active ? 'var(--accent-gold-bright)' : 'var(--text-primary)'
+                            }}
+                          >
+                            <div style={{ fontSize: 11.5, fontWeight: 700 }}>{r.short}</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{r.origin}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Transliteration Toggle */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 14, background: 'var(--surface-card)', border: '1px solid var(--border-specular)' }}>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Smartphone size={15} style={{ color: 'var(--accent-gold)' }} />
-                        Install as App
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                        Phonetic Transliteration (Non-Quran)
                       </div>
-                      <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
-                        Add to Home Screen for full-screen reading on iPhone &amp; Android.
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        Show Romanized pronunciation line on Hadith &amp; Dua cards
                       </div>
                     </div>
                     <button
                       onClick={() => {
-                        setShowSettingsDrawer(false);
-                        handleInstallClick();
+                        const next = userState.show_transliteration === 'true' ? 'false' : 'true';
+                        updateServerState({ show_transliteration: next });
                       }}
                       style={{
                         padding: '6px 14px',
                         borderRadius: 99,
-                        border: 'none',
-                        background: 'var(--accent-gold)',
-                        color: '#090A0F',
+                        border: '1px solid var(--border-gold)',
+                        background: userState.show_transliteration === 'true' ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+                        color: userState.show_transliteration === 'true' ? 'var(--accent-emerald)' : 'var(--text-secondary)',
                         fontWeight: 700,
                         fontSize: 12,
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap'
+                        cursor: 'pointer'
                       }}
                     >
-                      Install
-                    </button>
-                  </div>
-                )}
-
-                {/* Sacred Word Highlighter, Coach Marks & Widgets */}
-                <div style={{
-                  marginTop: 4,
-                  padding: '12px 14px',
-                  borderRadius: 14,
-                  background: 'var(--surface-card)',
-                  border: '1px solid var(--border-specular)'
-                }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
-                    5. Sacred Color Coding, Tutorials &amp; iOS Widgets
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 10 }}>
-                    Color-code Quran (Emerald), Hadith (Crimson Prophetic quotes), and Duas (Gold), replay the onboarding or interactive coach marks, or preview iPhone Home &amp; Lock Screen widgets.
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    <button
-                      onClick={() => {
-                        setShowSettingsDrawer(false);
-                        setShowHighlighterModal(true);
-                      }}
-                      style={{
-                        flex: '1 1 45%',
-                        padding: '9px 10px',
-                        borderRadius: 10,
-                        background: 'rgba(16, 185, 129, 0.14)',
-                        border: '1px solid rgba(16, 185, 129, 0.45)',
-                        color: '#6EE7B7',
-                        fontSize: 11.5,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6
-                      }}
-                    >
-                      <Highlighter size={13} /> Color &amp; Words
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowSettingsDrawer(false);
-                        setShowWidgetsModal(true);
-                      }}
-                      style={{
-                        flex: '1 1 45%',
-                        padding: '9px 10px',
-                        borderRadius: 10,
-                        background: 'rgba(212, 175, 55, 0.14)',
-                        border: '1px solid rgba(212, 175, 55, 0.4)',
-                        color: 'var(--accent-gold-bright)',
-                        fontSize: 11.5,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6
-                      }}
-                    >
-                      <Smartphone size={13} /> iOS Widgets
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowSettingsDrawer(false);
-                        setShowOnboardingModal(true);
-                      }}
-                      style={{
-                        flex: '1 1 45%',
-                        padding: '9px 10px',
-                        borderRadius: 10,
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1px solid var(--border-specular)',
-                        color: 'var(--text-primary)',
-                        fontSize: 11.5,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6
-                      }}
-                    >
-                      <Sparkles size={13} /> Intro Slides
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowSettingsDrawer(false);
-                        setShowCoachMarks(true);
-                      }}
-                      style={{
-                        flex: '1 1 45%',
-                        padding: '9px 10px',
-                        borderRadius: 10,
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1px solid var(--border-specular)',
-                        color: 'var(--text-primary)',
-                        fontSize: 11.5,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6
-                      }}
-                    >
-                      <Compass size={13} /> Coach Marks
+                      {userState.show_transliteration === 'true' ? 'On' : 'Off'}
                     </button>
                   </div>
                 </div>
 
-                {/* Sources, Authenticity & Privacy */}
-                <div style={{
-                  marginTop: 4,
-                  padding: '12px 14px',
-                  borderRadius: 14,
-                  background: 'var(--surface-card)',
-                  border: '1px solid var(--border-specular)'
-                }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
-                    6. Sources, Authenticity &amp; Privacy
+                {/* SECTION 3: NOTIFICATIONS & WIDGETS */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--accent-gold)' }}>
+                    Notifications &amp; Widgets
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    Quranic script (KFGQPC Uthmani &amp; IndoPak / Tanzil), translations (The Clear Quran, Sahih International), 40 Hadith Nawawi, and Hisn al-Muslim. Preferences &amp; bookmarks stay private on your device.
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 14, background: 'var(--surface-card)', border: '1px solid var(--border-specular)' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                        Daily Morning &amp; Evening Dhikr Reminder
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        Gentle daily reminder for morning &amp; evening remembrance
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        soundEngine.triggerHaptic('selectionTick');
+                        try {
+                          const cur = localStorage.getItem('hs_daily_reminders') === 'true';
+                          localStorage.setItem('hs_daily_reminders', cur ? 'false' : 'true');
+                          if (!cur && typeof Notification !== 'undefined' && Notification.requestPermission) {
+                            Notification.requestPermission().catch(() => {});
+                          }
+                        } catch {}
+                        setUserState((prev) => ({ ...prev }));
+                      }}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: 99,
+                        border: '1px solid var(--border-gold)',
+                        background: (typeof localStorage !== 'undefined' && localStorage.getItem('hs_daily_reminders') === 'true')
+                          ? 'rgba(16, 185, 129, 0.2)'
+                          : 'transparent',
+                        color: (typeof localStorage !== 'undefined' && localStorage.getItem('hs_daily_reminders') === 'true')
+                          ? 'var(--accent-emerald)'
+                          : 'var(--text-secondary)',
+                        fontWeight: 700,
+                        fontSize: 12,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {(typeof localStorage !== 'undefined' && localStorage.getItem('hs_daily_reminders') === 'true') ? 'Enabled' : 'Enable'}
+                    </button>
                   </div>
-                  <a
-                    href={isNativeApp() ? 'https://halalscroll-production.up.railway.app/privacy.html' : './privacy.html'}
-                    target="_blank"
-                    rel="noreferrer"
+
+                  <button
+                    onClick={() => {
+                      setShowSettingsDrawer(false);
+                      setShowWidgetsModal(true);
+                    }}
                     style={{
-                      display: 'inline-flex',
+                      padding: '12px 14px',
+                      borderRadius: 14,
+                      background: 'var(--surface-card)',
+                      border: '1px solid var(--border-specular)',
+                      color: 'var(--text-primary)',
+                      display: 'flex',
                       alignItems: 'center',
-                      gap: 4,
-                      marginTop: 8,
-                      fontSize: 11.5,
-                      fontWeight: 700,
-                      color: 'var(--accent-gold-bright)',
-                      textDecoration: 'none'
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      textAlign: 'left'
                     }}
                   >
-                    Read Privacy Policy &amp; Sources <ArrowUpRight size={12} />
-                  </a>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Smartphone size={14} style={{ color: 'var(--accent-gold-bright)' }} />
+                        iPhone Home &amp; Lock Screen Widgets
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                        Preview Daily Quran Verse, Authentic Hadith &amp; Streak widgets
+                      </div>
+                    </div>
+                    <ArrowUpRight size={15} style={{ color: 'var(--text-muted)' }} />
+                  </button>
+                </div>
+
+                {/* SECTION 4: ABOUT & MISSION */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--accent-gold)' }}>
+                    About &amp; Mission
+                  </div>
+
+                  <div style={{ padding: 14, borderRadius: 14, background: 'var(--surface-card)', border: '1px solid var(--border-specular)' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <ShieldCheck size={15} /> 100% Free Sadaqah Jariyah • 14,678 Authentic Passages
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: 4 }}>
+                      Halal Scroll is built to help Muslims replace mindless scrolling with daily remembrance across all 114 Surahs of the Noble Quran (KFGQPC Uthmani &amp; IndoPak), Riyad as-Salihin, 40 Hadith Nawawi, Al-Adab Al-Mufrad, and Hisn al-Muslim—free forever with zero ads.
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                      <button
+                        onClick={() => {
+                          setShowSettingsDrawer(false);
+                          setShowOnboardingModal(true);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '8px 10px',
+                          borderRadius: 10,
+                          background: 'rgba(255,255,255,0.06)',
+                          border: '1px solid var(--border-specular)',
+                          color: 'var(--text-primary)',
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Replay Onboarding
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowSettingsDrawer(false);
+                          setShowCoachMarks(true);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '8px 10px',
+                          borderRadius: 10,
+                          background: 'rgba(255,255,255,0.06)',
+                          border: '1px solid var(--border-specular)',
+                          color: 'var(--text-primary)',
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Feed Guide
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION 5: PRIVACY POLICY, TERMS, DATA MANAGEMENT & SUPPORT */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--accent-gold)' }}>
+                    Legal, Data Management &amp; Support
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 14, borderRadius: 14, background: 'var(--surface-card)', border: '1px solid var(--border-specular)' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
+                      <a
+                        href={isNativeApp() ? 'https://halalscroll-production.up.railway.app/privacy.html' : './privacy.html'}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: 'var(--accent-gold-bright)',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        Privacy Policy <ArrowUpRight size={12} />
+                      </a>
+                      <a
+                        href={isNativeApp() ? 'https://halalscroll-production.up.railway.app/privacy.html#terms' : './privacy.html#terms'}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: 'var(--accent-gold-bright)',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        Terms of Use &amp; Sources <ArrowUpRight size={12} />
+                      </a>
+                      <a
+                        href="mailto:support@halalscroll.app?subject=Halal%20Scroll%20Feedback"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: 'var(--text-primary)',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        Contact Support <ArrowUpRight size={12} />
+                      </a>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid var(--border-specular)', paddingTop: 10, marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        All bookmarks and personal notes are stored locally on your device.
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Reset local reading preferences, notes, and cached state on this device?')) {
+                            try {
+                              localStorage.clear();
+                            } catch {}
+                            window.location.reload();
+                          }
+                        }}
+                        style={{
+                          flexShrink: 0,
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          background: 'rgba(239, 68, 68, 0.14)',
+                          border: '1px solid rgba(239, 68, 68, 0.35)',
+                          color: '#FCA5A5',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Reset Local Data
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
