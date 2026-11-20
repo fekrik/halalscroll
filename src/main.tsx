@@ -346,13 +346,10 @@ const App: React.FC = () => {
   const handleCompleteOnboarding = () => {
     try {
       localStorage.setItem('hs_onboarding_done_v1', 'true');
+      localStorage.setItem('hs_coachmarks_done_v1', 'true');
     } catch { }
     setShowOnboardingModal(false);
-    try {
-      if (localStorage.getItem('hs_coachmarks_done_v1') !== 'true') {
-        setShowCoachMarks(true);
-      }
-    } catch { }
+    setShowCoachMarks(false);
   };
 
   const handleDismissCoachMarks = () => {

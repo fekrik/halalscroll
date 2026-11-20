@@ -1187,30 +1187,518 @@ export const PersonalNoteModal: React.FC<{
  * - Item 3: Clear content labels ("Quran • Verse", "Hadith • Prophetic Quote", "Dua • Supplication") — no color names ("Emerald Green", "Deep Red", "Warm Gold")
  * - Item 4: Dedicated mood-based discovery screen ("Find Guidance for How You Feel") with mood chips (Anxious, Grateful, Sad, Seeking Forgiveness, Hopeful, Seeking Patience), introducing search separately.
  */
+/**
+ * LIVE CHOREOGRAPHED APP EXPERIENCE SIMULATOR:
+ * A self-playing animated miniature of the entire Halal Scroll main page that demonstrates:
+ * 1. Main Page & Click Recite (cursor taps Recite -> words illuminate one by one with audio waveform)
+ * 2. Tap Arabic Word for Root (cursor taps يُسْرًا -> 3-letter root popover appears)
+ * 3. Vertical Scrolling (cursor swipes upward -> Card 1 smoothly scrolls up to Card 2: 40 Hadith Nawawi #1)
+ * 4. Click Private Note (cursor taps Note on right stack -> Private Reflection sheet slides up, auto-types note & saves)
+ */
+const LiveAppExperienceSimulator: React.FC = () => {
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFrame((f) => (f + 1) % 16);
+    }, 620);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 4 Choreographed Phases across 16 frames:
+  // Frames 0..4:  Phase 0 — Main Page & Click Recite (word-by-word gold illumination)
+  // Frames 5..7:  Phase 1 — Tap Arabic Word for 3-Letter Root Popover
+  // Frames 8..10: Phase 2 — Vertical Swipe Scroll from Quran Card to Hadith Card
+  // Frames 11..15: Phase 3 — Tap Right-Side Note Icon -> Private Note Sheet Auto-Types & Saves
+  const phase = frame <= 4 ? 0 : frame <= 7 ? 1 : frame <= 10 ? 2 : 3;
+  const isScrolledToHadith = frame >= 9;
+  const isReciting = frame >= 1 && frame <= 4;
+  const activeReciteWord = isReciting ? (frame - 1) : frame >= 5 && frame <= 7 ? 3 : -1;
+  const showRootPopover = frame >= 6 && frame <= 7;
+  const isSwipingUp = frame === 8 || frame === 9;
+  const showNoteDrawer = frame >= 12;
+  const isNoteSaved = frame >= 14;
+
+  const fullNoteString = 'Renew my intention for Allah before starting work today.';
+  const typedNote =
+    frame === 12
+      ? fullNoteString.slice(0, 22)
+      : frame >= 13
+        ? fullNoteString
+        : '';
+
+  // Animated Touch Cursor Coordinates (% inside the simulator stage)
+  const cursorPos = (() => {
+    if (frame === 0) return { left: '24%', top: '86%', tapping: true, label: 'Tap Recite' };
+    if (frame >= 1 && frame <= 4) return { left: '24%', top: '86%', tapping: false, label: 'Reciting Verse…' };
+    if (frame === 5) return { left: '34%', top: '34%', tapping: true, label: 'Tap Word' };
+    if (frame >= 6 && frame <= 7) return { left: '34%', top: '34%', tapping: false, label: '3-Letter Root' };
+    if (frame === 8) return { left: '50%', top: '74%', tapping: true, label: 'Swipe Up ↑' };
+    if (frame === 9) return { left: '50%', top: '26%', tapping: true, label: 'Next Passage' };
+    if (frame === 10) return { left: '50%', top: '45%', tapping: false, label: 'Hadith #1' };
+    if (frame === 11) return { left: '89%', top: '63%', tapping: true, label: 'Tap Note' };
+    if (frame === 12 || frame === 13) return { left: '50%', top: '68%', tapping: false, label: 'Write Private Note' };
+    return { left: '50%', top: '84%', tapping: true, label: 'Saved Privately ✓' };
+  })();
+
+  const quranWords = ['فَإِنَّ', 'مَعَ', 'ٱلْعُسْرِ', 'يُسْرًا'];
+
+  return (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Interactive Phase Selector Pills */}
+      <div style={{ display: 'flex', gap: 5, justifyContent: 'center', flexWrap: 'wrap' }}>
+        {[
+          { id: 0, startFrame: 0, label: '1. Recite' },
+          { id: 1, startFrame: 5, label: '2. Word Root' },
+          { id: 2, startFrame: 8, label: '3. Scroll' },
+          { id: 3, startFrame: 11, label: '4. Private Note' }
+        ].map((p) => {
+          const active = phase === p.id;
+          return (
+            <button
+              key={p.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                setFrame(p.startFrame);
+              }}
+              style={{
+                padding: '5px 10px',
+                borderRadius: 99,
+                fontSize: 11,
+                fontWeight: active ? 800 : 600,
+                border: active ? '1px solid #E8C968' : '1px solid rgba(255,255,255,0.12)',
+                background: active ? 'rgba(232, 201, 104, 0.22)' : 'rgba(255,255,255,0.04)',
+                color: active ? '#F7DF8B' : 'rgba(244,241,234,0.65)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Live Mini App Viewport */}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: 285,
+          borderRadius: 22,
+          overflow: 'hidden',
+          background: 'linear-gradient(170deg, #0B101B 0%, #121A2B 100%)',
+          border: '1.5px solid rgba(232, 201, 104, 0.35)',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7)',
+          userSelect: 'none'
+        }}
+      >
+        {/* Top Mini App Header */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 36,
+            padding: '0 12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            background: 'rgba(9, 13, 22, 0.75)',
+            zIndex: 10
+          }}
+        >
+          <div style={{ display: 'flex', gap: 4 }}>
+            <span style={{ padding: '2px 8px', borderRadius: 99, background: 'rgba(232,201,104,0.2)', color: '#F7DF8B', fontSize: 9.5, fontWeight: 700 }}>
+              For You
+            </span>
+            <span style={{ padding: '2px 7px', borderRadius: 99, color: 'rgba(244,241,234,0.5)', fontSize: 9.5 }}>
+              Sequential
+            </span>
+            <span style={{ padding: '2px 7px', borderRadius: 99, color: 'rgba(244,241,234,0.5)', fontSize: 9.5 }}>
+              Moods
+            </span>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#F7DF8B' }}>🔥 12</span>
+        </div>
+
+        {/* Vertically Scrolling Feed Track (Card 1: Quran -> Card 2: Hadith) */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 36,
+            left: 0,
+            right: 0,
+            bottom: 42,
+            transition: 'transform 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
+            transform: isScrolledToHadith ? 'translateY(-100%)' : 'translateY(0%)'
+          }}
+        >
+          {/* CARD 1: QURAN (Surah Ash-Sharh 94:5) */}
+          <div
+            style={{
+              height: '100%',
+              padding: '10px 44px 10px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              textAlign: 'center'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 8.5, fontWeight: 800, textTransform: 'uppercase', padding: '2px 7px', borderRadius: 99, background: 'rgba(16,185,129,0.2)', color: '#6EE7B7', border: '1px solid rgba(16,185,129,0.4)' }}>
+                Quran • Verse
+              </span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#F4F1EA' }}>
+                Surah Ash-Sharh • 94:5
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, direction: 'rtl', flexWrap: 'wrap', marginTop: 2 }}>
+              {quranWords.map((w, idx) => {
+                const isAct = activeReciteWord === idx;
+                return (
+                  <span
+                    key={w}
+                    style={{
+                      fontSize: 23,
+                      fontFamily: 'var(--font-arabic)',
+                      padding: '1px 8px',
+                      borderRadius: 8,
+                      background: isAct ? 'rgba(232, 201, 104, 0.32)' : 'transparent',
+                      border: isAct ? '1.5px solid #E8C968' : '1.5px solid transparent',
+                      color: isAct ? '#FFFBEB' : '#A7F3D0',
+                      transform: isAct ? 'scale(1.08)' : 'scale(1)',
+                      transition: 'all 0.25s ease'
+                    }}
+                  >
+                    {w}
+                  </span>
+                );
+              })}
+            </div>
+
+            <div style={{ fontSize: 12.5, color: '#E2F8EE', fontStyle: 'italic', lineHeight: 1.4 }}>
+              “So, surely with hardship comes ease.”
+            </div>
+
+            <div style={{ width: '100%', maxWidth: 260, padding: '5px 9px', borderRadius: 9, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', fontSize: 10, color: 'rgba(244,241,234,0.75)', textAlign: 'left' }}>
+              <strong style={{ color: '#F7DF8B' }}>✦ Act On It Today:</strong> Name two blessings alongside your current test.
+            </div>
+          </div>
+
+          {/* CARD 2: HADITH (40 Hadith Nawawi #1) */}
+          <div
+            style={{
+              height: '100%',
+              padding: '10px 44px 10px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 7,
+              textAlign: 'center'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 8.5, fontWeight: 800, textTransform: 'uppercase', padding: '2px 7px', borderRadius: 99, background: 'rgba(225,29,72,0.2)', color: '#FCA5A5', border: '1px solid rgba(225,29,72,0.45)' }}>
+                Hadith • Prophetic Quote
+              </span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#F4F1EA' }}>
+                40 Hadith Nawawi • #1
+              </span>
+            </div>
+
+            <div style={{ fontSize: 20, fontFamily: 'var(--font-arabic)', lineHeight: 1.6, direction: 'rtl' }}>
+              <span style={{ color: 'rgba(244,241,234,0.7)' }}>قَالَ رَسُولُ اللَّهِ ﷺ: </span>
+              <span style={{ color: '#FCA5A5' }}>إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ</span>
+            </div>
+
+            <div style={{ fontSize: 12, lineHeight: 1.4 }}>
+              <span style={{ color: 'rgba(244,241,234,0.68)' }}>Umar reported that the Prophet ﷺ said: </span>
+              <span style={{ color: '#FCA5A5', fontWeight: 600 }}>“Actions are judged only by intentions…”</span>
+            </div>
+
+            <div style={{ width: '100%', maxWidth: 260, padding: '5px 9px', borderRadius: 9, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', fontSize: 10, color: 'rgba(244,241,234,0.75)', textAlign: 'left' }}>
+              <strong style={{ color: '#F7DF8B' }}>✦ Act On It Today:</strong> Pause before your next task and dedicate your intention to Allah.
+            </div>
+          </div>
+        </div>
+
+        {/* Floating Word Root Popover (Phase 1) */}
+        {showRootPopover && (
+          <div
+            style={{
+              position: 'absolute',
+              left: 14,
+              right: 48,
+              bottom: 50,
+              zIndex: 18,
+              padding: '9px 12px',
+              borderRadius: 14,
+              background: 'rgba(15, 22, 36, 0.96)',
+              border: '1.5px solid #E8C968',
+              boxShadow: '0 12px 28px rgba(0,0,0,0.75)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              animation: 'fadeIn 0.2s ease-out'
+            }}
+          >
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 11.5, fontWeight: 800, color: '#F7DF8B' }}>
+                يُسْرًا • “Ease &amp; Relief”
+              </div>
+              <div style={{ fontSize: 10.5, color: '#6EE7B7', fontWeight: 700, marginTop: 2 }}>
+                3-Letter Root: ي س ر (Y-S-R)
+              </div>
+            </div>
+            <span style={{ fontSize: 9.5, padding: '3px 7px', borderRadius: 99, background: 'rgba(232,201,104,0.2)', color: '#F7DF8B', fontWeight: 700 }}>
+              Root Explorer →
+            </span>
+          </div>
+        )}
+
+        {/* Right-Side Action Stack (Like, Note, Share) */}
+        <div
+          style={{
+            position: 'absolute',
+            right: 10,
+            bottom: 54,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 10,
+            zIndex: 15
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, color: 'rgba(244,241,234,0.85)' }}>
+            <Heart size={16} />
+            <span style={{ fontSize: 8 }}>Like</span>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 1,
+              color: frame >= 11 ? '#F7DF8B' : 'rgba(244,241,234,0.85)',
+              transform: frame === 11 ? 'scale(1.22)' : 'scale(1)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <MessageCircle size={16} fill={frame >= 11 ? 'rgba(232,201,104,0.3)' : 'none'} />
+            <span style={{ fontSize: 8, fontWeight: 700 }}>Note</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, color: 'rgba(244,241,234,0.85)' }}>
+            <Send size={15} />
+            <span style={{ fontSize: 8 }}>Share</span>
+          </div>
+        </div>
+
+        {/* Bottom Toolbar: Recite (Left) & Deep Study (Right) */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 42,
+            padding: '0 12px',
+            borderTop: '1px solid rgba(255,255,255,0.07)',
+            background: 'rgba(9, 13, 22, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            zIndex: 15
+          }}
+        >
+          <div
+            style={{
+              padding: '5px 11px',
+              borderRadius: 99,
+              background: isReciting ? 'rgba(232, 201, 104, 0.25)' : 'rgba(255,255,255,0.06)',
+              border: isReciting ? '1px solid #E8C968' : '1px solid rgba(255,255,255,0.12)',
+              color: isReciting ? '#F7DF8B' : '#F4F1EA',
+              fontSize: 10.5,
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              transform: frame === 0 ? 'scale(1.08)' : 'scale(1)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Volume2 size={12} />
+            <span>{isReciting ? 'Playing Qari…' : 'Recite'}</span>
+          </div>
+
+          <div
+            style={{
+              padding: '5px 11px',
+              borderRadius: 99,
+              background: 'linear-gradient(135deg, rgba(212,175,55,0.22), rgba(16,185,129,0.14))',
+              border: '1px solid rgba(232,201,104,0.45)',
+              color: '#F4F1EA',
+              fontSize: 10.5,
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5
+            }}
+          >
+            <BookOpen size={12} style={{ color: '#F7DF8B' }} />
+            <span>Deep Study</span>
+          </div>
+        </div>
+
+        {/* Slide-Up Private Personal Note Sheet (Phase 3) */}
+        {showNoteDrawer && (
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: '64%',
+              background: 'rgba(13, 18, 29, 0.98)',
+              borderTop: '1.5px solid #E8C968',
+              borderTopLeftRadius: 18,
+              borderTopRightRadius: 18,
+              padding: '10px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              zIndex: 22,
+              animation: 'slideUpSpring 0.28s cubic-bezier(0.22, 1, 0.36, 1)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 9.5, fontWeight: 800, color: '#6EE7B7', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Lock size={10} /> Private Personal Reflection
+              </span>
+              <span style={{ fontSize: 10, color: 'rgba(244,241,234,0.5)' }}>40 Hadith Nawawi #1</span>
+            </div>
+
+            <div
+              style={{
+                padding: '8px 10px',
+                borderRadius: 10,
+                background: 'rgba(0,0,0,0.35)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                fontSize: 11.5,
+                color: '#F4F1EA',
+                textAlign: 'left',
+                minHeight: 46
+              }}
+            >
+              {typedNote}
+              <span style={{ color: '#E8C968', fontWeight: 800 }}>|</span>
+            </div>
+
+            <div
+              style={{
+                padding: '7px 12px',
+                borderRadius: 10,
+                background: isNoteSaved ? '#10B981' : '#E8C968',
+                color: '#090A0F',
+                fontSize: 11,
+                fontWeight: 800,
+                textAlign: 'center',
+                transition: 'all 0.25s ease'
+              }}
+            >
+              {isNoteSaved ? '✓ Saved to Private Notes!' : 'Save Personal Note'}
+            </div>
+          </div>
+        )}
+
+        {/* Vertical Swipe Gesture Trail (Frames 8-9) */}
+        {isSwipingUp && (
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '28%',
+              transform: 'translateX(-50%)',
+              width: 5,
+              height: 95,
+              borderRadius: 99,
+              background: 'linear-gradient(180deg, #E8C968, rgba(232,201,104,0))',
+              zIndex: 24,
+              pointerEvents: 'none'
+            }}
+          />
+        )}
+
+        {/* Glowing Animated Touch Cursor & Action Pill */}
+        <div
+          style={{
+            position: 'absolute',
+            left: cursorPos.left,
+            top: cursorPos.top,
+            transform: 'translate(-50%, -50%)',
+            zIndex: 25,
+            pointerEvents: 'none',
+            transition: 'left 0.48s cubic-bezier(0.22, 1, 0.36, 1), top 0.48s cubic-bezier(0.22, 1, 0.36, 1)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 4
+          }}
+        >
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 99,
+              background: cursorPos.tapping ? 'rgba(232, 201, 104, 0.55)' : 'rgba(232, 201, 104, 0.28)',
+              border: '2px solid #FFFBEB',
+              boxShadow: cursorPos.tapping
+                ? '0 0 0 10px rgba(232, 201, 104, 0.22), 0 0 20px #E8C968'
+                : '0 4px 14px rgba(0,0,0,0.6)',
+              transform: cursorPos.tapping ? 'scale(0.88)' : 'scale(1)',
+              transition: 'all 0.22s ease'
+            }}
+          />
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 99,
+              background: 'rgba(9, 12, 18, 0.92)',
+              border: '1px solid #E8C968',
+              color: '#F7DF8B',
+              fontSize: 9.5,
+              fontWeight: 800,
+              whiteSpace: 'nowrap',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.6)'
+            }}
+          >
+            {cursorPos.label}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const OnboardingTutorialModal: React.FC<{
   onComplete: () => void;
 }> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
   const [animTick, setAnimTick] = useState(0);
 
-  // Drive live animations inside the onboarding slides (especially the interactive final slide)
+  // Drive live animations inside the onboarding slides
   useEffect(() => {
     const timer = setInterval(() => {
       setAnimTick((prev) => (prev + 1) % 12);
     }, 950);
     return () => clearInterval(timer);
   }, []);
-
-  const demoArabicWords = [
-    { ar: 'فَإِنَّ', tr: 'fa-inna', en: 'So surely', root: 'أ ن ن (A-N-N)' },
-    { ar: 'مَعَ', tr: 'ma‘a', en: 'with / alongside', root: 'م ع و (M-‘-W)' },
-    { ar: 'ٱلْعُسْرِ', tr: 'al-‘usri', en: 'the hardship', root: 'ع س ر (‘-S-R)' },
-    { ar: 'يُسْرًا', tr: 'yusrā', en: 'comes double ease', root: 'ي س ر (Y-S-R)' }
-  ];
-  const activeDemoWordIdx = animTick % demoArabicWords.length;
-  const activeDemoWord = demoArabicWords[activeDemoWordIdx];
-  const demoQueries = ['Surah Ya-Sin • 36:1', 'Ayat al-Kursi • 2:255', '40 Hadith Nawawi #1', 'Patience & Relief'];
-  const activeDemoQuery = demoQueries[Math.floor(animTick / 3) % demoQueries.length];
 
   const slides = [
     {
@@ -1303,110 +1791,9 @@ export const OnboardingTutorialModal: React.FC<{
       )
     },
     {
-      title: 'Live Audio, Word Roots & Instant Search',
-      subtitle: 'Watch words illuminate as the Qari recites, tap any Arabic word to reveal its 3-letter root, or jump to any Surah.',
-      visual: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', padding: '4px 0' }}>
-          {/* Animated Word-by-Word Recitation & Root Popover Preview */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 12,
-            padding: '16px 14px',
-            borderRadius: 18,
-            background: 'rgba(255, 255, 255, 0.03)',
-            border: '1px solid rgba(232, 201, 104, 0.25)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#6EE7B7', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              <Volume2 size={13} />
-              <span>Live Synced Recitation &amp; Root Tap</span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 10, direction: 'rtl', flexWrap: 'wrap' }}>
-              {demoArabicWords.map((w, idx) => {
-                const isAct = idx === activeDemoWordIdx;
-                return (
-                  <span
-                    key={w.ar}
-                    onClick={() => setAnimTick(idx)}
-                    style={{
-                      fontSize: 27,
-                      fontFamily: 'var(--font-arabic)',
-                      padding: '2px 10px',
-                      borderRadius: 10,
-                      cursor: 'pointer',
-                      background: isAct ? 'rgba(232, 201, 104, 0.28)' : 'transparent',
-                      border: isAct ? '1.5px solid #E8C968' : '1.5px solid transparent',
-                      color: isAct ? '#FFFBEB' : 'rgba(244, 241, 234, 0.65)',
-                      transform: isAct ? 'translateY(-3px) scale(1.06)' : 'scale(1)',
-                      boxShadow: isAct ? '0 8px 20px rgba(212, 175, 55, 0.25)' : 'none',
-                      transition: 'all 0.32s cubic-bezier(0.22, 1, 0.36, 1)'
-                    }}
-                  >
-                    {w.ar}
-                  </span>
-                );
-              })}
-            </div>
-
-            {/* Animated Live Root Spotlight Chip */}
-            <div
-              key={activeDemoWord.ar}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                width: '100%',
-                padding: '9px 12px',
-                borderRadius: 12,
-                background: 'rgba(212, 175, 55, 0.14)',
-                border: '1px solid rgba(232, 201, 104, 0.4)',
-                fontSize: 12,
-                animation: 'fadeIn 0.28s ease-out'
-              }}
-            >
-              <div style={{ textAlign: 'left' }}>
-                <span style={{ fontWeight: 800, color: '#F7DF8B' }}>“{activeDemoWord.en}”</span>
-                <span style={{ color: 'rgba(244,241,234,0.65)', marginLeft: 6 }}>({activeDemoWord.tr})</span>
-              </div>
-              <span style={{
-                padding: '3px 8px',
-                borderRadius: 99,
-                background: 'rgba(16, 185, 129, 0.2)',
-                color: '#6EE7B7',
-                fontWeight: 700,
-                fontSize: 11
-              }}>
-                Root: {activeDemoWord.root}
-              </span>
-            </div>
-          </div>
-
-          {/* Animated Cycling Search & Sequential Bar */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-            padding: '11px 14px',
-            borderRadius: 14,
-            background: 'rgba(255, 255, 255, 0.04)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            fontSize: 13
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#F4F1EA' }}>
-              <Search size={15} style={{ color: 'var(--accent-gold-bright)', flexShrink: 0 }} />
-              <span key={activeDemoQuery} style={{ animation: 'fadeIn 0.3s ease-out', fontWeight: 600 }}>
-                {activeDemoQuery}
-              </span>
-            </div>
-            <span style={{ fontSize: 10.5, color: 'rgba(244,241,234,0.5)', fontWeight: 600 }}>
-              114 Surahs
-            </span>
-          </div>
-        </div>
-      )
+      title: 'See Halal Scroll in Action',
+      subtitle: 'Recite with synced word glow, tap any Arabic word for its root, swipe vertically, and save private reflections.',
+      visual: <LiveAppExperienceSimulator />
     }
   ];
 
@@ -1532,299 +1919,100 @@ export const OnboardingTutorialModal: React.FC<{
 };
 
 /**
- * DYNAMIC ANIMATED INTERACTIVE TUTORIAL / SPOTLIGHT TOUR (Replaces Static Coach Marks):
- * 4-step self-playing animated tour over the live feed:
- * - Step 0: Animated Vertical Swipe gesture with glowing motion trail
- * - Step 1: Animated Arabic Word Tap & 3-Letter Root pop-up ripple
- * - Step 2: Animated Right-Side Action Stack (Like, Private Note, Share & Jump Rail)
- * - Step 3: Animated Bottom Recite Soundwave & 5-Tab Deep Study Spotlight
+ * DYNAMIC ANIMATED INTERACTIVE TUTORIAL (Live Whole-Experience Simulator):
+ * Shows the self-playing <LiveAppExperienceSimulator /> demonstrating Main Page,
+ * Click Recite (word-by-word glow), Word Root lookup, Vertical Scrolling, and Private Note saving.
  */
 export const InteractiveCoachMarksOverlay: React.FC<{
   onDismiss: () => void;
 }> = ({ onDismiss }) => {
-  const [tourStep, setTourStep] = useState(0);
-
-  // Auto-advance every 3.4s so the user can watch the animated walkthrough hands-free, or tap to advance
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (tourStep < 3) {
-        setTourStep((s) => s + 1);
-      }
-    }, 3400);
-    return () => clearTimeout(timer);
-  }, [tourStep]);
-
-  const handleAdvanceOrFinish = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    soundEngine.triggerHaptic('selectionTick');
-    if (tourStep < 3) {
-      setTourStep(tourStep + 1);
-    } else {
-      onDismiss();
-    }
-  };
-
   return (
     <div
-      onClick={handleAdvanceOrFinish}
       style={{
         position: 'absolute',
         inset: 0,
         zIndex: 85,
-        background: 'rgba(6, 9, 15, 0.76)',
-        backdropFilter: 'blur(5px)',
+        background: 'rgba(6, 9, 15, 0.88)',
+        backdropFilter: 'blur(12px)',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        padding: 'max(18px, env(safe-area-inset-top, 18px)) 18px max(22px, env(safe-area-inset-bottom, 22px))',
+        padding: 'max(20px, env(safe-area-inset-top, 20px)) 22px max(24px, env(safe-area-inset-bottom, 24px))',
         color: '#F4F1EA',
-        cursor: 'pointer',
         animation: 'fadeIn 0.22s ease-out'
       }}
     >
-      {/* Top Bar: Step Progress Pills + Skip Button */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-        <div style={{ display: 'flex', gap: 5, flex: 1, maxWidth: 180 }}>
-          {[0, 1, 2, 3].map((idx) => (
-            <button
-              key={idx}
-              onClick={(e) => {
-                e.stopPropagation();
-                setTourStep(idx);
-              }}
-              style={{
-                flex: 1,
-                height: 4,
-                borderRadius: 99,
-                border: 'none',
-                padding: 0,
-                background: idx <= tourStep ? '#E8C968' : 'rgba(255,255,255,0.2)',
-                transition: 'all 0.3s ease',
-                cursor: 'pointer'
-              }}
-            />
-          ))}
-        </div>
+      {/* Top Bar: Skip */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
         <button
-          onClick={(e) => {
-            e.stopPropagation();
+          onClick={() => {
             soundEngine.triggerHaptic('selectionTick');
             onDismiss();
           }}
           style={{
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 99,
-            padding: '5px 12px',
-            color: '#F4F1EA',
-            fontSize: 11.5,
-            fontWeight: 700,
-            cursor: 'pointer'
+            background: 'transparent',
+            border: 'none',
+            color: 'rgba(244, 241, 234, 0.5)',
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '4px 8px'
           }}
         >
-          Skip Tour
+          Close
         </button>
       </div>
 
-      {/* Dynamic Animated Center Stage for Current Step */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-        {/* STEP 0: Animated Vertical Swipe Gesture */}
-        {tourStep === 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, textAlign: 'center', animation: 'fadeIn 0.25s ease-out' }}>
-            <div style={{ position: 'relative', width: 88, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {/* Glowing Vertical Swipe Trail */}
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: 24,
-                  width: 6,
-                  borderRadius: 99,
-                  background: 'linear-gradient(180deg, #E8C968, rgba(232, 201, 104, 0))',
-                  animation: 'tutorialSwipeTrail 1.8s ease-in-out infinite'
-                }}
-              />
-              {/* Animated Touch Circle & Upward Arrow */}
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 99,
-                  background: 'rgba(232, 201, 104, 0.25)',
-                  border: '2px solid #E8C968',
-                  boxShadow: '0 0 24px rgba(232, 201, 104, 0.5)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 20,
-                  color: '#FFFBEB',
-                  animation: 'tutorialSwipeHand 1.8s ease-in-out infinite'
-                }}
-              >
-                ↑
-              </div>
-            </div>
+      {/* Center Stage: Live Whole-Experience Simulator */}
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 420,
+          margin: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          gap: 16
+        }}
+      >
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#F4F1EA', margin: 0 }}>
+            See Halal Scroll in Action
+          </h2>
+          <p style={{ fontSize: 13.5, color: 'rgba(244, 241, 234, 0.72)', margin: '6px 0 0', lineHeight: 1.45 }}>
+            Watch how to recite with synced word glow, tap any word for its 3-letter root, scroll vertically, and jot private notes.
+          </p>
+        </div>
 
-            <div style={{ maxWidth: 290 }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#F7DF8B' }}>
-                Swipe Up for the Next Passage
-              </div>
-              <div style={{ fontSize: 13.5, color: 'rgba(244,241,234,0.8)', marginTop: 6, lineHeight: 1.45 }}>
-                Scroll effortlessly through 14,678 verses of the Quran, Sahih Hadith, and Prophetic Duas.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 1: Animated Word Tap & Trilateral Root Reveal */}
-        {tourStep === 1 && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center', animation: 'fadeIn 0.25s ease-out' }}>
-            <div
-              style={{
-                padding: '10px 22px',
-                borderRadius: 16,
-                background: 'rgba(232, 201, 104, 0.24)',
-                border: '2px solid #E8C968',
-                fontSize: 32,
-                fontFamily: 'var(--font-arabic)',
-                color: '#FFFBEB',
-                animation: 'tutorialTapRipple 1.6s ease-in-out infinite'
-              }}
-            >
-              ٱلرَّحْمَٰنِ
-            </div>
-
-            <div
-              style={{
-                padding: '12px 16px',
-                borderRadius: 16,
-                background: 'rgba(18, 25, 38, 0.96)',
-                border: '1px solid rgba(232, 201, 104, 0.5)',
-                boxShadow: '0 16px 36px rgba(0,0,0,0.65)',
-                maxWidth: 290,
-                animation: 'tutorialFloatCard 2.2s ease-in-out infinite'
-              }}
-            >
-              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#F7DF8B' }}>
-                “The Entirely Merciful” • ar-Raḥmān
-              </div>
-              <div style={{ fontSize: 12, color: '#6EE7B7', fontWeight: 700, marginTop: 4 }}>
-                3-Letter Root: ر ح م (R-Ḥ-M) — Mercy
-              </div>
-            </div>
-
-            <div style={{ maxWidth: 290, marginTop: 4 }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#F4F1EA' }}>
-                Tap Any Arabic Word
-              </div>
-              <div style={{ fontSize: 13.5, color: 'rgba(244,241,234,0.8)', marginTop: 4, lineHeight: 1.45 }}>
-                Hear isolated Arabic pronunciation and inspect its trilateral root &amp; meaning on the spot.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 2: Animated Right-Side Action Stack Spotlight */}
-        {tourStep === 2 && (
-          <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 52, animation: 'fadeIn 0.25s ease-out' }}>
-            <div
-              style={{
-                padding: '16px 18px',
-                borderRadius: 20,
-                background: 'rgba(18, 25, 38, 0.96)',
-                border: '1.5px solid rgba(232, 201, 104, 0.55)',
-                boxShadow: '0 18px 42px rgba(0,0,0,0.75)',
-                maxWidth: 270,
-                textAlign: 'left',
-                animation: 'tutorialFloatCard 2s ease-in-out infinite'
-              }}
-            >
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#F7DF8B', marginBottom: 10 }}>
-                Save, Reflect &amp; Share →
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12.5 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Heart size={17} fill="#FF3B5C" style={{ color: '#FF3B5C', flexShrink: 0 }} />
-                  <span><strong>Like:</strong> Save to your Bookmarks Vault</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <MessageCircle size={17} style={{ color: '#F7DF8B', flexShrink: 0 }} />
-                  <span><strong>Note:</strong> Private on-device reflection journal</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Send size={17} style={{ color: '#6EE7B7', flexShrink: 0 }} />
-                  <span><strong>Share:</strong> Export HD Story/Reel cards</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: Animated Bottom Recite Soundwave & Deep Study Spotlight */}
-        {tourStep === 3 && (
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', paddingBottom: 24, animation: 'fadeIn 0.25s ease-out' }}>
-            <div
-              style={{
-                width: '100%',
-                maxWidth: 340,
-                padding: '18px 18px',
-                borderRadius: 20,
-                background: 'rgba(18, 25, 38, 0.96)',
-                border: '1.5px solid rgba(232, 201, 104, 0.55)',
-                boxShadow: '0 18px 42px rgba(0,0,0,0.75)',
-                textAlign: 'center',
-                animation: 'tutorialFloatCard 2.2s ease-in-out infinite'
-              }}
-            >
-              {/* Animated Audio Waveform Bars */}
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, height: 24, marginBottom: 10 }}>
-                {[0.1, 0.25, 0.4, 0.15, 0.35, 0.5, 0.2].map((delay, i) => (
-                  <span
-                    key={i}
-                    style={{
-                      width: 4,
-                      height: 22,
-                      borderRadius: 99,
-                      background: '#E8C968',
-                      display: 'inline-block',
-                      animation: `tutorialWaveBar 0.9s ease-in-out ${delay}s infinite`
-                    }}
-                  />
-                ))}
-              </div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: '#F7DF8B' }}>
-                Recite &amp; 5-Tab Deep Study ↓
-              </div>
-              <div style={{ fontSize: 13, color: 'rgba(244,241,234,0.82)', marginTop: 6, lineHeight: 1.45 }}>
-                Tap <strong>Recite</strong> on the bottom-left for studio Qari audio, or <strong>Deep Study</strong> on the bottom-right for Classical Tafsir &amp; connected Sunnah.
-              </div>
-            </div>
-          </div>
-        )}
+        <LiveAppExperienceSimulator />
       </div>
 
-      {/* Bottom Action Bar: Next Step or Start Reading */}
-      <div style={{ display: 'flex', gap: 10 }}>
+      {/* Bottom Action Bar */}
+      <div style={{ width: '100%', maxWidth: 420, margin: '0 auto' }}>
         <button
-          onClick={handleAdvanceOrFinish}
+          onClick={() => {
+            soundEngine.triggerHaptic('softSuccess');
+            onDismiss();
+          }}
           style={{
             width: '100%',
-            padding: '14px 20px',
+            padding: '15px 20px',
             borderRadius: 16,
             border: 'none',
             background: '#E8C968',
             color: '#090A0F',
-            fontSize: 14.5,
+            fontSize: 15,
             fontWeight: 800,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 6,
-            boxShadow: '0 10px 28px rgba(0,0,0,0.5)'
+            gap: 8
           }}
         >
-          <span>{tourStep < 3 ? `Next (${tourStep + 1}/4)` : 'Start Scrolling'}</span>
-          <ChevronRight size={17} strokeWidth={2.5} />
+          <span>Start Scrolling</span>
+          <ChevronRight size={18} strokeWidth={2.5} />
         </button>
       </div>
     </div>
